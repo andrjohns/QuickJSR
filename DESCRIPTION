@@ -1,0 +1,17 @@
+Package: QuickJSR
+Title: Interface for the QuickJS lightweight JavaScript engine
+Version: 0.0.0.9000
+Authors@R:
+    person("Andrew", "Johnson", email = "andrew.johnson@arjohnsonau.com", role = c("aut", "cre"))
+Description: Interface for the QuickJS lightweight JavaScript engine.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+SystemRequirements: GNU make
+NeedsCompilation: yes
+URL: https://github.com/andrjohns/QuickJSR
+BugReports: https://github.com/andrjohns/QuickJSR/issues
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
