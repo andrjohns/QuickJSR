@@ -1,5 +1,5 @@
 Package: QuickJSR
-Title: Interface for the QuickJS lightweight JavaScript engine
+Title: Interface for the QuickJS Lightweight JavaScript Engine
 Version: 0.0.0.9000
 Authors@R:
     person("Andrew", "Johnson", email = "andrew.johnson@arjohnsonau.com", role = c("aut", "cre"))
@@ -8,10 +8,14 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
-SystemRequirements: GNU make
 NeedsCompilation: yes
+Imports:
+  jsonlite
+LinkingTo:
+  Rcpp
 URL: https://github.com/andrjohns/QuickJSR
 BugReports: https://github.com/andrjohns/QuickJSR/issues
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Config/testthat/parallel: true

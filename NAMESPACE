@@ -2,4 +2,6 @@
 
 export(cxxflags)
 export(ldflags)
+export(qjs_eval)
+importFrom(jsonlite,fromJSON)
 useDynLib(QuickJSR, .registration = TRUE)

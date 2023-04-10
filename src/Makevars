@@ -4,7 +4,8 @@ PKG_LIBS = -L../inst/lib/$(R_ARCH)/ -lquickjs
 
 .phony: all libstatic
 
-QUICKJS_SOURCES = $(wildcard quickjs/*.c)
+QUICKJS_SOURCES = quickjs/cutils.c quickjs/libbf.c quickjs/libregexp.c quickjs/libunicode.c \
+                  quickjs/quickjs-libc.c quickjs/quickjs.c quickjs/unicode_gen.c
 QUICKJS_OBJECTS = $(QUICKJS_SOURCES:.c=.o)
 
 all: $(SHLIB)

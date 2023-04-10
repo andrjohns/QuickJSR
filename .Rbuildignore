@@ -3,3 +3,5 @@
 .*\.a$
 ^check$
 ^\.github$
+^.vscode$
+^LICENSE\.md$

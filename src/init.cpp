@@ -1,18 +1,34 @@
+#include <Rcpp.h>
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
 #include <R_ext/Visibility.h>
 #include <Rversion.h>
+
+using namespace Rcpp;
+
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
+SEXP qjs_eval_(SEXP eval_string_);
+
+#ifdef __cplusplus
+}
+#endif
+
+
 #define CALLDEF(name, n)  {#name, (DL_FUNC) &name, n}
 
 static const R_CallMethodDef CallEntries[] = {
+  CALLDEF(qjs_eval_, 1),
   {NULL, NULL, 0}
 };
 
 #ifdef __cplusplus
 extern "C"  {
 #endif
-void attribute_visible R_init_quickjsr(DllInfo *dll) {
+void attribute_visible R_init_QuickJSR(DllInfo *dll) {
   R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
   // The call to R_useDynamicSymbols indicates that if the correct C

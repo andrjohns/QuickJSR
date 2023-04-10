@@ -1,4 +1,6 @@
 ^lib$
-.*\.o$
+^src/*.o$
+^src/quickjs/.*.o$
 .*\.a$
 ^check$
+^.vscode$
