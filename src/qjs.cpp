@@ -14,7 +14,7 @@ RcppExport SEXP qjs_context_(SEXP stack_size_) {
 
   RuntimeXPtr rt(JS_NewRuntime());
   if (stack_size != -1) {
-    JS_SetMaxStackSize(rt.get(), 4097152);
+    JS_SetMaxStackSize(rt.get(), stack_size);
   }
   ContextXPtr ctx(JS_NewContext(rt));
 
