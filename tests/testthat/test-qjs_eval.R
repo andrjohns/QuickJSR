@@ -4,5 +4,5 @@ test_that("qjs_eval returns correct type & value", {
   expect_equal("Hello World!", qjs_eval("'Hello World!'"))
   expect_equal("Hello World!", qjs_eval("'Hello' + ' ' + 'World!'"))
   expect_equal(list(a = 1, b = "2"),
-                qjs_eval("{'a' : 1, 'b' : '2'}"))
+                qjs_eval("var t = {'a' : 1, 'b' : '2'}; t"))
 })

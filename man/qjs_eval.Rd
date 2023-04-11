@@ -24,6 +24,6 @@ qjs_eval("1 + 2")
 qjs_eval("'1' + '2'")
 
 # Create lists from objects:
-qjs_eval("{'a' : 1, 'b' : 2}")
+qjs_eval("var t = {'a' : 1, 'b' : 2}; t")
 
 }
