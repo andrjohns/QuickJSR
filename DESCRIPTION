@@ -1,5 +1,5 @@
 Package: QuickJSR
-Title: Interface for the QuickJS Lightweight JavaScript Engine
+Title: Interface for the 'QuickJS' Lightweight JavaScript Engine
 Version: 1.0.0.9000
 Authors@R:
     person(given = c("Andrew", "R."), family = "Johnson", role = c("aut", "cre"),

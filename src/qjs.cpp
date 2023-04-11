@@ -1,20 +1,35 @@
 #include <Rcpp.h>
+#include <fstream>
+#include <sstream>
 
+typedef struct JSValue JSvalue;
+typedef struct JSRuntime JSRuntime;
+typedef struct JSContext JSContext;
 
+// We compile the functions as a separate C translation unit, as the quickjs headers
+// contain GNU extensions which trigger -Wpedantic warnings
 #ifdef __cplusplus
-extern "C"  {
+extern "C" {
 #endif
-#include <quickjs.h>
+
+  JSRuntime* JS_NewRuntime(void);
+  void JS_SetMaxStackSize(JSRuntime* rt, size_t stack_size);
+  JSContext* JS_NewContext(JSRuntime* rt);
+  void JS_FreeContext(JSContext* ctx);
+  void JS_FreeRuntime(JSRuntime* rt);
+
+  bool qjs_source_impl(JSContext* ctx, const char* code_string);
+  bool qjs_validate_impl(JSContext* ctx, const char* function_name);
+  const char* JS_ValToJSON_impl(JSContext* ctx, JSValue* val);
+  const char* qjs_call_impl(JSContext* ctx, const char* wrapped_name,
+                        const char* call_wrapper, const char* args_json);
+  const char* qjs_eval_impl(const char* eval_string);
+
 #ifdef __cplusplus
 }
 #endif
 
-#include <fstream>
-#include <sstream>
-
 // Register the Rcpp external pointer types with the correct cleanup/finaliser functions
-void JS_FreeContext(JSContext* ctx);
-void JS_FreeRuntime(JSRuntime* ctx);
 using ContextXPtr = Rcpp::XPtr<JSContext, Rcpp::PreserveStorage, JS_FreeContext>;
 using RuntimeXPtr = Rcpp::XPtr<JSRuntime, Rcpp::PreserveStorage, JS_FreeRuntime>;
 
@@ -36,10 +51,7 @@ RcppExport SEXP qjs_context_(SEXP stack_size_) {
 RcppExport SEXP qjs_source_(SEXP ctx_ptr_, SEXP code_string_) {
   JSContext* ctx = ContextXPtr(ctx_ptr_);
   const char* code_string = Rcpp::as<const char*>(code_string_);
-
-  JSValue val = JS_Eval(ctx, code_string, std::strlen(code_string), "", 0);
-  bool succeeded = !JS_IsException(val);
-  JS_FreeValue(ctx, val);
+  bool succeeded = qjs_source_impl(ctx, code_string);
 
   return Rcpp::wrap(succeeded);
 }
@@ -47,33 +59,13 @@ RcppExport SEXP qjs_source_(SEXP ctx_ptr_, SEXP code_string_) {
 RcppExport SEXP qjs_validate_(SEXP ctx_ptr_, SEXP function_name_) {
   JSContext* ctx = ContextXPtr(ctx_ptr_);
   const char* function_name = Rcpp::as<const char*>(function_name_);
-
-  JSValue global = JS_GetGlobalObject(ctx);
-  JSValue val = JS_GetPropertyStr(ctx, global, function_name);
-
-  bool succeeded = !JS_IsException(val);
-  JS_FreeValue(ctx, val);
-  JS_FreeValue(ctx, global);
+  bool succeeded = qjs_validate_impl(ctx, function_name);
 
   return Rcpp::wrap(succeeded);
 }
 
 std::string JS_ValToJSON(JSContext* ctx, JSValue* val) {
-  JSValue global = JS_GetGlobalObject(ctx);
-  JSValue json = JS_GetPropertyStr(ctx, global, "JSON");
-  JSValue stringify = JS_GetPropertyStr(ctx, json, "stringify");
-
-  JSValue result_js = JS_Call(ctx, stringify, global, 1, val);
-  const char* json_string = JS_ToCString(ctx, result_js);
-  std::string result(json_string);
-
-  JS_FreeCString(ctx, json_string);
-  JS_FreeValue(ctx, result_js);
-  JS_FreeValue(ctx, stringify);
-  JS_FreeValue(ctx, json);
-  JS_FreeValue(ctx, global);
-
-  return result;
+  return JS_ValToJSON_impl(ctx, val);
 }
 
 RcppExport SEXP qjs_call_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_json_) {
@@ -87,38 +79,14 @@ RcppExport SEXP qjs_call_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_json_) {
     "function " + wrapped_name + "(args_object) { return " + function_name +
     "(...Object.values(JSON.parse(args_object))); }";
 
-  JSValue tmp = JS_Eval(ctx, call_wrapper.c_str(), std::strlen(call_wrapper.c_str()), "", 0);
-  JS_FreeValue(ctx, tmp);
-
-  JSValue global = JS_GetGlobalObject(ctx);
-  JSValue function_wrapper = JS_GetPropertyStr(ctx, global, wrapped_name.c_str());
-  JSValue args[] = {
-    JS_NewString(ctx, Rcpp::as<const char*>(args_json_))
-  };
-
-  JSValue result_js = JS_Call(ctx, function_wrapper, global, 1, args);
-  std::string result = JS_ValToJSON(ctx, &result_js);
-
-  JS_FreeValue(ctx, result_js);
-  JS_FreeValue(ctx, args[0]);
-  JS_FreeValue(ctx, function_wrapper);
-  JS_FreeValue(ctx, global);
-
-  return Rcpp::wrap(result);
+  const char* result = qjs_call_impl(ctx, wrapped_name.c_str(), call_wrapper.c_str(),
+                                      Rcpp::as<const char*>(args_json_));
+  return Rcpp::wrap(std::string(result));
 }
 
 RcppExport SEXP qjs_eval_(SEXP eval_string_) {
-  std::string eval_string = Rcpp::as<std::string>(eval_string_);
+  const char* eval_string = Rcpp::as<const char*>(eval_string_);
+  const char* result = qjs_eval_impl(eval_string);
 
-  JSRuntime* rt = JS_NewRuntime();
-  JSContext* ctx = JS_NewContext(rt);
-
-  JSValue val = JS_Eval(ctx, eval_string.c_str(), std::strlen(eval_string.c_str()), "", 0);
-  std::string result = JS_ValToJSON(ctx, &val);
-
-  JS_FreeValue(ctx, val);
-  JS_FreeContext(ctx);
-  JS_FreeRuntime(rt);
-
-  return Rcpp::wrap(result);
+  return Rcpp::wrap(std::string(result));
 }
