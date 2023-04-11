@@ -2,7 +2,7 @@ Package: QuickJSR
 Title: Interface for the QuickJS Lightweight JavaScript Engine
 Version: 1.0.0
 Authors@R:
-    person("Johnson", "Andrew", role = c("aut", "cre"),
+    person(given = c("Andrew", "R."), family = "Johnson", role = c("aut", "cre"),
             email = "andrew.johnson@arjohnsonau.com",
             comment = c(ORCID = "0000-0001-7000-8065"))
 Description: An R interface to the QuickJS portable javascript engine by Fabrice Bellard.
