@@ -9,6 +9,6 @@
 #'
 #' @importFrom jsonlite fromJSON
 #' @importFrom R6 R6Class
-#' @importFrom Rcpp sourceCpp
+#' @importFrom Rcpp sourceCpp Rcpp.plugin.maker
 #'
 NULL
