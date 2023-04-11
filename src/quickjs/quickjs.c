@@ -216,9 +216,8 @@ typedef enum {
     JS_GC_PHASE_REMOVE_CYCLES,
 } JSGCPhaseEnum;
 
-typedef enum OPCodeEnum OPCodeEnum;
-
 #ifdef CONFIG_BIGNUM
+//typedef enum OPCodeEnum OPCodeEnum;
 /* function pointers are used for numeric operations so that it is
    possible to remove some numeric types */
 typedef struct {
@@ -226,10 +225,10 @@ typedef struct {
     JSValue (*from_string)(JSContext *ctx, const char *buf,
                            int radix, int flags, slimb_t *pexponent);
     int (*unary_arith)(JSContext *ctx,
-                       JSValue *pres, OPCodeEnum op, JSValue op1);
-    int (*binary_arith)(JSContext *ctx, OPCodeEnum op,
+                       JSValue *pres, enum OPCodeEnum op, JSValue op1);
+    int (*binary_arith)(JSContext *ctx, enum OPCodeEnum op,
                         JSValue *pres, JSValue op1, JSValue op2);
-    int (*compare)(JSContext *ctx, OPCodeEnum op,
+    int (*compare)(JSContext *ctx, enum OPCodeEnum op,
                    JSValue op1, JSValue op2);
     /* only for bigfloat: */
     JSValue (*mul_pow10_to_float64)(JSContext *ctx, const bf_t *a,
@@ -499,8 +498,8 @@ struct JSString {
     struct list_head link; /* string list */
 #endif
     union {
-        uint8_t str8[0]; /* 8 bit strings will get an extra null terminator */
-        uint16_t str16[0];
+        uint8_t str8[1]; /* 8 bit strings will get an extra null terminator */
+        uint16_t str16[1];
     } u;
 };
 
@@ -627,7 +626,7 @@ typedef struct JSBoundFunction {
     JSValue func_obj;
     JSValue this_val;
     int argc;
-    JSValue argv[0];
+    JSValue argv[];
 } JSBoundFunction;
 
 typedef enum JSIteratorKindEnum {
@@ -811,7 +810,7 @@ typedef struct JSJobEntry {
     JSContext *ctx;
     JSJobFunc *job_func;
     int argc;
-    JSValue argv[0];
+    JSValue argv[];
 } JSJobEntry;
 
 typedef struct JSProperty {
@@ -860,7 +859,7 @@ struct JSShape {
     int deleted_prop_count;
     JSShape *shape_hash_next; /* in JSRuntime.shape_hash[h] list */
     JSObject *proto;
-    JSShapeProperty prop[0]; /* prop_size elements */
+    JSShapeProperty prop[]; /* prop_size elements */
 };
 
 struct JSObject {
@@ -1530,14 +1529,14 @@ static JSValue invalid_from_string(JSContext *ctx, const char *buf,
 }
 
 static int invalid_unary_arith(JSContext *ctx,
-                               JSValue *pres, OPCodeEnum op, JSValue op1)
+                               JSValue *pres, enum OPCodeEnum op, JSValue op1)
 {
     JS_FreeValue(ctx, op1);
     JS_ThrowUnsupportedOperation(ctx);
     return -1;
 }
 
-static int invalid_binary_arith(JSContext *ctx, OPCodeEnum op,
+static int invalid_binary_arith(JSContext *ctx, enum OPCodeEnum op,
                                 JSValue *pres, JSValue op1, JSValue op2)
 {
     JS_FreeValue(ctx, op1);
@@ -5062,7 +5061,7 @@ typedef struct JSCFunctionDataRecord {
     uint8_t length;
     uint8_t data_len;
     uint16_t magic;
-    JSValue data[0];
+    JSValue data[];
 } JSCFunctionDataRecord;
 
 static void js_c_function_data_finalizer(JSRuntime *rt, JSValue val)
@@ -7242,7 +7241,7 @@ static int JS_DefinePrivateField(JSContext *ctx, JSValueConst obj,
         JS_ThrowTypeErrorNotASymbol(ctx);
         goto fail;
     }
-    prop = js_symbol_to_atom(ctx, (JSValue)name);
+    prop = js_symbol_to_atom(ctx, name);
     p = JS_VALUE_GET_OBJ(obj);
     prs = find_own_property(&pr, p, prop);
     if (prs) {
@@ -7273,7 +7272,7 @@ static JSValue JS_GetPrivateField(JSContext *ctx, JSValueConst obj,
     /* safety check */
     if (unlikely(JS_VALUE_GET_TAG(name) != JS_TAG_SYMBOL))
         return JS_ThrowTypeErrorNotASymbol(ctx);
-    prop = js_symbol_to_atom(ctx, (JSValue)name);
+    prop = js_symbol_to_atom(ctx, name);
     p = JS_VALUE_GET_OBJ(obj);
     prs = find_own_property(&pr, p, prop);
     if (!prs) {
@@ -7300,7 +7299,7 @@ static int JS_SetPrivateField(JSContext *ctx, JSValueConst obj,
         JS_ThrowTypeErrorNotASymbol(ctx);
         goto fail;
     }
-    prop = js_symbol_to_atom(ctx, (JSValue)name);
+    prop = js_symbol_to_atom(ctx, name);
     p = JS_VALUE_GET_OBJ(obj);
     prs = find_own_property(&pr, p, prop);
     if (!prs) {
@@ -7390,7 +7389,7 @@ static int JS_CheckBrand(JSContext *ctx, JSValueConst obj, JSValueConst func)
     if (unlikely(JS_VALUE_GET_TAG(obj) != JS_TAG_OBJECT))
         goto not_obj;
     p = JS_VALUE_GET_OBJ(obj);
-    prs = find_own_property(&pr, p, js_symbol_to_atom(ctx, (JSValue)brand));
+    prs = find_own_property(&pr, p, js_symbol_to_atom(ctx, brand));
     if (!prs) {
         JS_ThrowTypeError(ctx, "invalid brand on object");
         return -1;
@@ -9042,7 +9041,7 @@ int JS_DefineProperty(JSContext *ctx, JSValueConst this_obj,
                 return -1;
             }
             /* this code relies on the fact that Uint32 are never allocated */
-            val = (JSValueConst)JS_NewUint32(ctx, array_length);
+            val = JS_NewUint32(ctx, array_length);
             /* prs may have been modified */
             prs = find_own_property(&pr, p, prop);
             assert(prs != NULL);
@@ -12373,7 +12372,7 @@ static const char js_overloadable_operator_names[JS_OVOP_COUNT][4] = {
     "~",
 };
 
-static int get_ovop_from_opcode(OPCodeEnum op)
+static int get_ovop_from_opcode(enum OPCodeEnum op)
 {
     switch(op) {
     case OP_add:
@@ -12443,7 +12442,7 @@ static __exception int js_call_binary_op_fallback(JSContext *ctx,
                                                   JSValue *pret,
                                                   JSValueConst op1,
                                                   JSValueConst op2,
-                                                  OPCodeEnum op,
+                                                  enum OPCodeEnum op,
                                                   BOOL is_numeric,
                                                   int hint)
 {
@@ -12573,7 +12572,7 @@ static __exception int js_call_binary_op_simple(JSContext *ctx,
                                                 JSValueConst obj,
                                                 JSValueConst op1,
                                                 JSValueConst op2,
-                                                OPCodeEnum op)
+                                                enum OPCodeEnum op)
 {
     JSValue opset1_obj, method, ret, new_op1, new_op2;
     JSOperatorSetData *opset1;
@@ -12628,7 +12627,7 @@ static __exception int js_call_binary_op_simple(JSContext *ctx,
 static __exception int js_call_unary_op_fallback(JSContext *ctx,
                                                  JSValue *pret,
                                                  JSValueConst op1,
-                                                 OPCodeEnum op)
+                                                 enum OPCodeEnum op)
 {
     JSValue opset1_obj, method, ret;
     JSOperatorSetData *opset1;
@@ -12688,7 +12687,7 @@ static JSValue throw_bf_exception(JSContext *ctx, int status)
 }
 
 static int js_unary_arith_bigint(JSContext *ctx,
-                                 JSValue *pres, OPCodeEnum op, JSValue op1)
+                                 JSValue *pres, enum OPCodeEnum op, JSValue op1)
 {
     bf_t a_s, *r, *a;
     int ret, v;
@@ -12740,7 +12739,7 @@ static int js_unary_arith_bigint(JSContext *ctx,
 }
 
 static int js_unary_arith_bigfloat(JSContext *ctx,
-                                   JSValue *pres, OPCodeEnum op, JSValue op1)
+                                   JSValue *pres, enum OPCodeEnum op, JSValue op1)
 {
     bf_t a_s, *r, *a;
     int ret, v;
@@ -12789,7 +12788,7 @@ static int js_unary_arith_bigfloat(JSContext *ctx,
 }
 
 static int js_unary_arith_bigdecimal(JSContext *ctx,
-                                     JSValue *pres, OPCodeEnum op, JSValue op1)
+                                     JSValue *pres, enum OPCodeEnum op, JSValue op1)
 {
     bfdec_t *r, *a;
     int ret, v;
@@ -12837,7 +12836,7 @@ static int js_unary_arith_bigdecimal(JSContext *ctx,
 
 static no_inline __exception int js_unary_arith_slow(JSContext *ctx,
                                                      JSValue *sp,
-                                                     OPCodeEnum op)
+                                                     enum OPCodeEnum op)
 {
     JSValue op1, val;
     int v, ret;
@@ -12934,7 +12933,7 @@ static no_inline __exception int js_unary_arith_slow(JSContext *ctx,
 }
 
 static __exception int js_post_inc_slow(JSContext *ctx,
-                                        JSValue *sp, OPCodeEnum op)
+                                        JSValue *sp, enum OPCodeEnum op)
 {
     JSValue op1;
 
@@ -12985,7 +12984,7 @@ static no_inline int js_not_slow(JSContext *ctx, JSValue *sp)
     return -1;
 }
 
-static int js_binary_arith_bigfloat(JSContext *ctx, OPCodeEnum op,
+static int js_binary_arith_bigfloat(JSContext *ctx, enum OPCodeEnum op,
                                     JSValue *pres, JSValue op1, JSValue op2)
 {
     bf_t a_s, b_s, *r, *a, *b;
@@ -13046,7 +13045,7 @@ static int js_binary_arith_bigfloat(JSContext *ctx, OPCodeEnum op,
     return 0;
 }
 
-static int js_binary_arith_bigint(JSContext *ctx, OPCodeEnum op,
+static int js_binary_arith_bigint(JSContext *ctx, enum OPCodeEnum op,
                                   JSValue *pres, JSValue op1, JSValue op2)
 {
     bf_t a_s, b_s, *r, *a, *b;
@@ -13228,7 +13227,7 @@ static int js_bfdec_pow(bfdec_t *r, const bfdec_t *a, const bfdec_t *b)
     return bfdec_pow_ui(r, a, b2);
 }
 
-static int js_binary_arith_bigdecimal(JSContext *ctx, OPCodeEnum op,
+static int js_binary_arith_bigdecimal(JSContext *ctx, enum OPCodeEnum op,
                                       JSValue *pres, JSValue op1, JSValue op2)
 {
     bfdec_t *r, *a, *b;
@@ -13289,7 +13288,7 @@ static int js_binary_arith_bigdecimal(JSContext *ctx, OPCodeEnum op,
 }
 
 static no_inline __exception int js_binary_arith_slow(JSContext *ctx, JSValue *sp,
-                                                      OPCodeEnum op)
+                                                      enum OPCodeEnum op)
 {
     JSValue op1, op2, res;
     uint32_t tag1, tag2;
@@ -13568,7 +13567,7 @@ static no_inline __exception int js_add_slow(JSContext *ctx, JSValue *sp)
 
 static no_inline __exception int js_binary_logic_slow(JSContext *ctx,
                                                       JSValue *sp,
-                                                      OPCodeEnum op)
+                                                      enum OPCodeEnum op)
 {
     JSValue op1, op2, res;
     int ret;
@@ -13661,7 +13660,7 @@ static no_inline __exception int js_binary_logic_slow(JSContext *ctx,
 }
 
 /* Note: also used for bigint */
-static int js_compare_bigfloat(JSContext *ctx, OPCodeEnum op,
+static int js_compare_bigfloat(JSContext *ctx, enum OPCodeEnum op,
                                JSValue op1, JSValue op2)
 {
     bf_t a_s, b_s, *a, *b;
@@ -13707,7 +13706,7 @@ static int js_compare_bigfloat(JSContext *ctx, OPCodeEnum op,
     return res;
 }
 
-static int js_compare_bigdecimal(JSContext *ctx, OPCodeEnum op,
+static int js_compare_bigdecimal(JSContext *ctx, enum OPCodeEnum op,
                                  JSValue op1, JSValue op2)
 {
     bfdec_t *a, *b;
@@ -13754,7 +13753,7 @@ static int js_compare_bigdecimal(JSContext *ctx, OPCodeEnum op,
 }
 
 static no_inline int js_relational_slow(JSContext *ctx, JSValue *sp,
-                                        OPCodeEnum op)
+                                        enum OPCodeEnum op)
 {
     JSValue op1, op2, ret;
     int res;
@@ -14194,7 +14193,7 @@ int JS_ToBigInt64(JSContext *ctx, int64_t *pres, JSValueConst val)
 
 static no_inline __exception int js_unary_arith_slow(JSContext *ctx,
                                                      JSValue *sp,
-                                                     OPCodeEnum op)
+                                                     enum OPCodeEnum op)
 {
     JSValue op1;
     double d;
@@ -14225,7 +14224,7 @@ static no_inline __exception int js_unary_arith_slow(JSContext *ctx,
 
 /* specific case necessary for correct return value semantics */
 static __exception int js_post_inc_slow(JSContext *ctx,
-                                        JSValue *sp, OPCodeEnum op)
+                                        JSValue *sp, enum OPCodeEnum op)
 {
     JSValue op1;
     double d, r;
@@ -14242,7 +14241,7 @@ static __exception int js_post_inc_slow(JSContext *ctx,
 }
 
 static no_inline __exception int js_binary_arith_slow(JSContext *ctx, JSValue *sp,
-                                                      OPCodeEnum op)
+                                                      enum OPCodeEnum op)
 {
     JSValue op1, op2;
     double d1, d2, r;
@@ -14333,7 +14332,7 @@ static no_inline __exception int js_add_slow(JSContext *ctx, JSValue *sp)
 
 static no_inline __exception int js_binary_logic_slow(JSContext *ctx,
                                                       JSValue *sp,
-                                                      OPCodeEnum op)
+                                                      enum OPCodeEnum op)
 {
     JSValue op1, op2;
     uint32_t v1, v2, r;
@@ -14386,7 +14385,7 @@ static no_inline int js_not_slow(JSContext *ctx, JSValue *sp)
 }
 
 static no_inline int js_relational_slow(JSContext *ctx, JSValue *sp,
-                                        OPCodeEnum op)
+                                        enum OPCodeEnum op)
 {
     JSValue op1, op2;
     int res;
@@ -16043,7 +16042,7 @@ static JSValue js_call_c_function(JSContext *ctx, JSValueConst func_obj,
 #else
     sf->js_mode = 0;
 #endif
-    sf->cur_func = (JSValue)func_obj;
+    sf->cur_func = func_obj;
     sf->arg_count = argc;
     arg_buf = argv;
 
@@ -16287,7 +16286,7 @@ static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,
     sf->js_mode = b->js_mode;
     arg_buf = argv;
     sf->arg_count = argc;
-    sf->cur_func = (JSValue)func_obj;
+    sf->cur_func = func_obj;
     init_list_head(&sf->var_ref_list);
     var_refs = p->u.func.var_refs;
 
@@ -39258,8 +39257,8 @@ static int64_t JS_FlattenIntoArray(JSContext *ctx, JSValueConst target,
         if (!JS_IsUndefined(mapperFunction)) {
             JSValueConst args[3] = { element, JS_NewInt64(ctx, sourceIndex), source };
             element = JS_Call(ctx, mapperFunction, thisArg, 3, args);
-            JS_FreeValue(ctx, (JSValue)args[0]);
-            JS_FreeValue(ctx, (JSValue)args[1]);
+            JS_FreeValue(ctx, args[0]);
+            JS_FreeValue(ctx, args[1]);
             if (JS_IsException(element))
                 return -1;
         }
@@ -40676,7 +40675,7 @@ static JSValue js_string_match(JSContext *ctx, JSValueConst this_val,
         str = JS_NewString(ctx, "g");
         if (JS_IsException(str))
             goto fail;
-        args[args_len++] = (JSValueConst)str;
+        args[args_len++] = str;
     }
     rx = JS_CallConstructor(ctx, ctx->regexp_ctor, args_len, args);
     JS_FreeValue(ctx, str);
@@ -45704,7 +45703,7 @@ static JSMapRecord *map_add_record(JSContext *ctx, JSMapState *s,
     } else {
         JS_DupValue(ctx, key);
     }
-    mr->key = (JSValue)key;
+    mr->key = key;
     h = map_hash_key(ctx, key) & (s->hash_size - 1);
     list_add_tail(&mr->hash_link, &s->hash_table[h]);
     list_add_tail(&mr->link, &s->records);
@@ -45926,7 +45925,7 @@ static JSValue js_map_forEach(JSContext *ctx, JSValueConst this_val,
                 args[0] = args[1];
             else
                 args[0] = JS_DupValue(ctx, mr->value);
-            args[2] = (JSValue)this_val;
+            args[2] = this_val;
             ret = JS_Call(ctx, func, this_arg, 3, (JSValueConst *)args);
             JS_FreeValue(ctx, args[0]);
             if (!magic)
@@ -46904,7 +46903,7 @@ static JSValue js_promise_all(JSContext *ctx, JSValueConst this_val,
                 goto fail_reject;
             }
             resolve_element_data[0] = JS_NewBool(ctx, FALSE);
-            resolve_element_data[1] = (JSValueConst)JS_NewInt32(ctx, index);
+            resolve_element_data[1] = JS_NewInt32(ctx, index);
             resolve_element_data[2] = values;
             resolve_element_data[3] = resolving_funcs[is_promise_any];
             resolve_element_data[4] = resolve_element_env;
@@ -47263,7 +47262,7 @@ static JSValue js_async_from_sync_iterator_unwrap_func_create(JSContext *ctx,
 {
     JSValueConst func_data[1];
 
-    func_data[0] = (JSValueConst)JS_NewBool(ctx, done);
+    func_data[0] = JS_NewBool(ctx, done);
     return JS_NewCFunctionData(ctx, js_async_from_sync_iterator_unwrap,
                                1, 0, 1, func_data);
 }
@@ -52692,8 +52691,8 @@ static int js_TA_cmp_generic(const void *a, const void *b, void *opaque) {
             psc->exception = 1;
         }
     done:
-        JS_FreeValue(ctx, (JSValue)argv[0]);
-        JS_FreeValue(ctx, (JSValue)argv[1]);
+        JS_FreeValue(ctx, argv[0]);
+        JS_FreeValue(ctx, argv[1]);
     }
     return cmp;
 }

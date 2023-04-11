@@ -6,8 +6,8 @@ typedef struct JSValue JSvalue;
 typedef struct JSRuntime JSRuntime;
 typedef struct JSContext JSContext;
 
-// We compile the functions as a separate C translation unit, as the quickjs headers
-// contain GNU extensions which trigger -Wpedantic warnings
+// We compile the functions as a separate C translation unit, as the QuickJS
+// C headers trigger -Wpedantic warnings under C++
 #ifdef __cplusplus
 extern "C" {
 #endif
