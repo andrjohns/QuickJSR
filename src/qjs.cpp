@@ -20,7 +20,6 @@ extern "C" {
 
   bool qjs_source_impl(JSContext* ctx, const char* code_string);
   bool qjs_validate_impl(JSContext* ctx, const char* function_name);
-  const char* JS_ValToJSON_impl(JSContext* ctx, JSValue* val);
   const char* qjs_call_impl(JSContext* ctx, const char* wrapped_name,
                         const char* call_wrapper, const char* args_json);
   const char* qjs_eval_impl(const char* eval_string);
@@ -62,10 +61,6 @@ RcppExport SEXP qjs_validate_(SEXP ctx_ptr_, SEXP function_name_) {
   bool succeeded = qjs_validate_impl(ctx, function_name);
 
   return Rcpp::wrap(succeeded);
-}
-
-std::string JS_ValToJSON(JSContext* ctx, JSValue* val) {
-  return JS_ValToJSON_impl(ctx, val);
 }
 
 RcppExport SEXP qjs_call_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_json_) {

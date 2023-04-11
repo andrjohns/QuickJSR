@@ -21,7 +21,7 @@ bool qjs_validate_impl(JSContext* ctx, const char* function_name) {
   return succeeded;
 }
 
-const char* JS_ValToJSON_impl(JSContext* ctx, JSValue* val) {
+const char* JS_ValToJSON(JSContext* ctx, JSValue* val) {
   JSValue global = JS_GetGlobalObject(ctx);
   JSValue json = JS_GetPropertyStr(ctx, global, "JSON");
   JSValue stringify = JS_GetPropertyStr(ctx, json, "stringify");
@@ -50,7 +50,7 @@ const char* qjs_call_impl(JSContext* ctx, const char* wrapped_name,
   };
 
   JSValue result_js = JS_Call(ctx, function_wrapper, global, 1, args);
-  const char* result = JS_ValToJSON_impl(ctx, &result_js);
+  const char* result = JS_ValToJSON(ctx, &result_js);
 
   JS_FreeValue(ctx, result_js);
   JS_FreeValue(ctx, args[0]);
@@ -65,7 +65,7 @@ const char* qjs_eval_impl(const char* eval_string) {
   JSContext* ctx = JS_NewContext(rt);
 
   JSValue val = JS_Eval(ctx, eval_string, strlen(eval_string), "", 0);
-  const char* result = JS_ValToJSON_impl(ctx, &val);
+  const char* result = JS_ValToJSON(ctx, &val);
 
   JS_FreeValue(ctx, val);
   JS_FreeContext(ctx);
