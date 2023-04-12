@@ -17,7 +17,7 @@
 #'
 #' @export
 qjs_eval <- function(eval_string) {
-  jsonlite::fromJSON(.Call(`qjs_eval_`, eval_string))
+  parse_return(.Call(`qjs_eval_`, eval_string))
 }
 
 qjs_context <- function(stack_size) {
@@ -29,7 +29,7 @@ qjs_source <- function(ctx_ptr, code_string) {
 }
 
 qjs_call <- function(ctx_ptr, function_name, args_json) {
-  jsonlite::fromJSON(.Call(`qjs_call_`, ctx_ptr, function_name, args_json))
+  parse_return(.Call(`qjs_call_`, ctx_ptr, function_name, args_json))
 }
 
 qjs_validate <- function(ctx_ptr, function_name) {

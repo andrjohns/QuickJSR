@@ -74,14 +74,15 @@ RcppExport SEXP qjs_call_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_json_) {
     "function " + wrapped_name + "(args_object) { return " + function_name +
     "(...Object.values(JSON.parse(args_object))); }";
 
-  const char* result = qjs_call_impl(ctx, wrapped_name.c_str(), call_wrapper.c_str(),
+  std::string result = qjs_call_impl(ctx, wrapped_name.c_str(), call_wrapper.c_str(),
                                       Rcpp::as<const char*>(args_json_));
-  return Rcpp::wrap(std::string(result));
+
+  return Rcpp::wrap(result);
 }
 
 RcppExport SEXP qjs_eval_(SEXP eval_string_) {
   const char* eval_string = Rcpp::as<const char*>(eval_string_);
-  const char* result = qjs_eval_impl(eval_string);
+  std::string result = qjs_eval_impl(eval_string);
 
-  return Rcpp::wrap(std::string(result));
+  return Rcpp::wrap(result);
 }
