@@ -1,13 +1,18 @@
 Package: QuickJSR
-Title: Interface for the 'QuickJS' Lightweight JavaScript Engine
-Version: 1.0.1
-Authors@R:
-    person(given = c("Andrew", "R."), family = "Johnson", role = c("aut", "cre"),
-            email = "andrew.johnson@arjohnsonau.com",
-            comment = c(ORCID = "0000-0001-7000-8065"))
-Description: An R interface to the 'QuickJS' portable JavaScript engine.
-    The engine is bundled entirely within the package, allowing for no external system
-    dependencies (beyond a C compiler).
+Title: Interface for the 'QuickJS' Lightweight 'JavaScript' Engine
+Version: 1.0.2
+Authors@R: c(
+  person(given = c("Andrew", "R."), family = "Johnson", role = c("aut", "cre"),
+          email = "andrew.johnson@arjohnsonau.com",
+          comment = c(ORCID = "0000-0001-7000-8065")),
+  person(given = "Fabrice", family = "Bellard", role = c("ctb", "cph"),
+          comment = "Author of QuickJS sources and headers"),
+  person(given = "Charlie", family = "Gordon", role = c("ctb", "cph"),
+          comment = "Author of QuickJS sources and headers")
+  )
+Description: An 'R' interface to the 'QuickJS' portable 'JavaScript' engine.
+    The engine is bundled entirely within the package, requiring no external system
+    dependencies (beyond a 'C' compiler).
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -26,4 +31,4 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Config/testthat/parallel: true
-Language: en-US
+Language: en-GB

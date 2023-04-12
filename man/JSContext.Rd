@@ -3,6 +3,10 @@
 \name{JSContext}
 \alias{JSContext}
 \title{JSContext object}
+\value{
+A JSContext object containing an initialised JavaScript
+context for evaluating scripts/commands
+}
 \description{
 An initialised context within which to evaluate Javascript
 scripts or commands.
@@ -33,6 +37,9 @@ evaluation context
 \item{\code{stack_size}}{An optional fixed value for the stack size (in bytes)}
 }
 \if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+No return value, used internally to initialise the JSContext object
 }
 }
 \if{html}{\out{<hr>}}
@@ -77,6 +84,9 @@ method for returning values.
 }
 \if{html}{\out{</div>}}
 }
+\subsection{Returns}{
+No return value, called for side effects
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-JSContext-call"></a>}}
@@ -96,6 +106,10 @@ provided arguments.
 \item{\code{...}}{The arguments to be passed to the function}
 }
 \if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The result of calling the specified function,
+the return type is mapped from JS to R using \code{jsonlite::fromJSON()}
 }
 }
 \if{html}{\out{<hr>}}

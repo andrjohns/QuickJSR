@@ -10,8 +10,8 @@ qjs_eval(eval_string)
 \item{eval_string}{A single string of the expression to evaluate}
 }
 \value{
-The result of the evaluation. The return type is handled by
-the jsonlite::fromJSON function
+The result of the provided expression, the return type is
+mapped from JS to R using \code{jsonlite::fromJSON()}
 }
 \description{
 Evaluate a single Javascript expression.

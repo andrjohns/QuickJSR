@@ -4,10 +4,14 @@
 \alias{cxxflags}
 \title{cxxflags}
 \usage{
-cxxflags(as_character = FALSE)
+cxxflags(to_console = FALSE)
 }
 \arguments{
-\item{as_character}{Whether the result should be returned as a string}
+\item{to_console}{Whether the result should be returned as a string}
+}
+\value{
+Character string of CXX flags, or print flags to console
+and invisibly return NULL (for use in package Makevars or similar)
 }
 \description{
 Function for returning the C/C++ flags needed for compilation using the package's headers

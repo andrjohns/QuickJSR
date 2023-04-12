@@ -4,6 +4,9 @@
 #'   An initialised context within which to evaluate Javascript
 #'   scripts or commands.
 #'
+#' @return A JSContext object containing an initialised JavaScript
+#'           context for evaluating scripts/commands
+#'
 #' @export
 JSContext <- R6::R6Class(
   classname = "JSContext",
@@ -17,6 +20,7 @@ JSContext <- R6::R6Class(
     #' evaluation context
     #'
     #' @param stack_size An optional fixed value for the stack size (in bytes)
+    #' @return No return value, used internally to initialise the JSContext object
     initialize = function(stack_size = NULL) {
       stack_size_int = ifelse(is.null(stack_size), -1, stack_size)
       rt_and_ctx = qjs_context(stack_size_int)
@@ -40,6 +44,7 @@ JSContext <- R6::R6Class(
     #'
     #' @param file A path to the JavaScript file to load
     #' @param code A single string of JavaScript to evaluate
+    #' @return No return value, called for side effects
     source = function(file = NULL, code = NULL) {
       if (!is.null(file)) {
         if (!is.null(code)) {
@@ -53,7 +58,11 @@ JSContext <- R6::R6Class(
         stop("No JS code provided!", call. = FALSE)
       }
 
-      stopifnot(qjs_source(private$context_, code_string))
+      eval_success <- qjs_source(private$context_, code_string)
+      if (!eval_success) {
+        stop("Evaluating JS code failed!", call. = FALSE)
+      }
+      invisible(NULL)
     },
     #' @description
     #' Call a specified function in the JavaScript context with the
@@ -61,6 +70,8 @@ JSContext <- R6::R6Class(
     #'
     #' @param function_name The function to be called
     #' @param ... The arguments to be passed to the function
+    #' @return The result of calling the specified function,
+    #'         the return type is mapped from JS to R using `jsonlite::fromJSON()`
     call = function(function_name, ...) {
       qjs_call(private$context_, function_name, args_to_json(...))
     })

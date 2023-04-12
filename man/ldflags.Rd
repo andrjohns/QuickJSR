@@ -4,10 +4,14 @@
 \alias{ldflags}
 \title{ldflags}
 \usage{
-ldflags(as_character = FALSE)
+ldflags(to_console = FALSE)
 }
 \arguments{
-\item{as_character}{Whether the result should be returned as a string}
+\item{to_console}{Whether the result should be returned as a string}
+}
+\value{
+Character string of linker flags, or print flags to console
+and invisibly return NULL (for use in package Makevars or similar)
 }
 \description{
 Function for returning the flags needed for linking to the package

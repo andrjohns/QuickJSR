@@ -3,8 +3,8 @@
 #' Evaluate a single Javascript expression.
 #'
 #' @param eval_string A single string of the expression to evaluate
-#' @return The result of the evaluation. The return type is handled by
-#'         the jsonlite::fromJSON function
+#' @return The result of the provided expression, the return type is
+#'          mapped from JS to R using `jsonlite::fromJSON()`
 #' @examples
 #' # Return the sum of two numbers:
 #' qjs_eval("1 + 2")
