@@ -22,9 +22,9 @@ jobs:
           - {os: macos-latest,   r: 'release'}
           - {os: macos-latest,   r: 'oldrel'}
 
-          - {os: windows-latest, r: 'devel'}
-          - {os: windows-latest, r: 'release'}
-          - {os: windows-latest, r: 'oldrel'}
+          - {os: windows-latest, r: 'devel', rtools: '43'}
+          - {os: windows-latest, r: 'release', rtools: '42'}
+          - {os: windows-latest, r: 'oldrel', rtools: '40'}
 
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
@@ -42,6 +42,7 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.config.r }}
+          rtools-version: ${{ matrix.config.rtools }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
@@ -53,3 +54,9 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
+          check-dir: '"check"'
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: check-${{ matrix.config.os }}
+          path: ./check

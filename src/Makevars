@@ -1,5 +1,5 @@
-PKG_CPPFLAGS = -I"../inst/include" -D_GNU_SOURCE -DCONFIG_VERSION=\"2021-03-27\" -DSTRICT_R_HEADERS
-PKG_CXXFLAGS = -DSTRICT_R_HEADERS
+PKG_CPPFLAGS = -I"../inst/include" -D_GNU_SOURCE -DCONFIG_VERSION=\"2021-03-27\" -DSTRICT_R_HEADERS -Wpedantic
+PKG_CXXFLAGS = -DSTRICT_R_HEADERS -Wpedantic
 PKG_LIBS = -L../inst/lib/$(R_ARCH)/ -lquickjs
 
 .phony: all libstatic
