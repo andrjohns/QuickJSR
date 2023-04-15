@@ -2,6 +2,10 @@ PKG_CPPFLAGS = -I"../inst/include" -D_GNU_SOURCE -DCONFIG_VERSION=\"2021-03-27\"
 PKG_CXXFLAGS = -DSTRICT_R_HEADERS -Wpedantic
 PKG_LIBS = -L../inst/lib/$(R_ARCH)/ -lquickjs
 
+ifeq ($(OS),Windows_NT)
+  CFLAGS += -D__USE_MINGW_ANSI_STDIO=1
+endif
+
 QUICKJS_SOURCES = quickjs/cutils.c quickjs/libbf.c quickjs/libregexp.c quickjs/libunicode.c \
                   quickjs/quickjs-libc.c quickjs/quickjs.c quickjs/unicode_gen.c
 QUICKJS_OBJECTS = $(QUICKJS_SOURCES:.c=.o)
