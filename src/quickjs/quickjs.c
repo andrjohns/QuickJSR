@@ -23,7 +23,7 @@
  * THE SOFTWARE.
  */
 #if defined(STRICT_R_HEADERS) && defined(_WIN32)
-#define _USE_MINGW_ANSI_STDIO 1
+#define __USE_MINGW_ANSI_STDIO 1
 #endif
 #include <stdlib.h>
 #include <stdio.h>

@@ -21,6 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#if defined(STRICT_R_HEADERS) && defined(_WIN32)
+#define __USE_MINGW_ANSI_STDIO 1
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
