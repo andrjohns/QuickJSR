@@ -56,7 +56,3 @@ jobs:
           upload-snapshots: true
           check-dir: '"check"'
 
-      - uses: actions/upload-artifact@v3
-        with:
-          name: check-${{ matrix.config.os }}
-          path: ./check

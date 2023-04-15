@@ -497,7 +497,7 @@ static JSModuleDef *js_module_loader_so(JSContext *ctx,
 #ifndef STRICT_R_HEADERS
     init = dlsym(hd, "js_init_module");
 #else
-    init = (JSInitModuleFunc*)dlsym(hd, "js_init_module");
+    *(void **)(&init) = dlsym(hd, "js_init_module");
 #endif
     if (!init) {
         JS_ThrowReferenceError(ctx, "could not load module filename '%s': js_init_module not found",
