@@ -225,7 +225,32 @@ typedef enum {
     JS_GC_PHASE_REMOVE_CYCLES,
 } JSGCPhaseEnum;
 
-#ifndef STRICT_R_HEADERS
+// Forward-declarations of enums gives -Wpedantic warning, so
+// include full declaration early
+#ifdef STRICT_R_HEADERS
+enum OPCodeEnum {
+#define FMT(f)
+#define DEF(id, size, n_pop, n_push, f) OP_ ## id,
+#define def(id, size, n_pop, n_push, f)
+#include "quickjs-opcode.h"
+#undef def
+#undef DEF
+#undef FMT
+    OP_COUNT, /* excluding temporary opcodes */
+    /* temporary opcodes : overlap with the short opcodes */
+    OP_TEMP_START = OP_nop + 1,
+    OP___dummy = OP_TEMP_START - 1,
+#define FMT(f)
+#define DEF(id, size, n_pop, n_push, f)
+#define def(id, size, n_pop, n_push, f) OP_ ## id,
+#include "quickjs-opcode.h"
+#undef def
+#undef DEF
+#undef FMT
+    OP_TEMP_END,
+};
+#endif
+
 typedef enum OPCodeEnum OPCodeEnum;
 
 #ifdef CONFIG_BIGNUM
@@ -246,7 +271,6 @@ typedef struct {
                                     int64_t exponent);
     int (*mul_pow10)(JSContext *ctx, JSValue *sp);
 } JSNumericOperations;
-#endif
 #endif
 
 struct JSRuntime {
@@ -1001,6 +1025,7 @@ typedef enum OPCodeFormat {
 #undef FMT
 } OPCodeFormat;
 
+#ifndef STRICT_R_HEADERS
 enum OPCodeEnum {
 #define FMT(f)
 #define DEF(id, size, n_pop, n_push, f) OP_ ## id,
@@ -1022,6 +1047,7 @@ enum OPCodeEnum {
 #undef FMT
     OP_TEMP_END,
 };
+#endif
 
 static int JS_InitAtoms(JSRuntime *rt);
 static JSAtom __JS_NewAtomInit(JSRuntime *rt, const char *str, int len,
@@ -12398,7 +12424,11 @@ static JSValue JS_CompactBigInt1(JSContext *ctx, JSValue val,
         return JS_NewInt64(ctx, v);
     } else if (a->expn == BF_EXP_ZERO && a->sign) {
         JSBigFloat *p = JS_VALUE_GET_PTR(val);
+#ifndef STRICT_R_HEADERS
         assert(p->header.ref_count == 1);
+#else
+        ASSERT(p->header.ref_count == 1);
+#endif
         a->sign = 0;
     }
     return val;

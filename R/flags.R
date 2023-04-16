@@ -31,7 +31,8 @@ cxxflags <- function(to_console = FALSE) {
     paste0("-I", shQuote(system.file("include", package = "QuickJSR", mustWork = TRUE))),
     "-D_GNU_SOURCE",
     "-DCONFIG_VERSION=\"2021-03-27\"",
-    "-DSTRICT_R_HEADERS"
+    "-DSTRICT_R_HEADERS",
+    "-DCONFIG_BIGNUM"
   )
   if (isTRUE(to_console)) {
     cat(CXXFLAGS, " ")
