@@ -1,4 +1,4 @@
-#include <quickjs.h>
+#include <quickjs-libc.h>
 #include <stdbool.h>
 #include <string.h>
 
