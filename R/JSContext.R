@@ -60,7 +60,7 @@ JSContext <- R6::R6Class(
 
       eval_success <- qjs_source(private$context_, code_string)
       if (!eval_success) {
-        stop("Evaluating JS code failed!", call. = FALSE)
+        stop("Evaluating JS code failed, see message above!", call. = FALSE)
       }
       invisible(NULL)
     },

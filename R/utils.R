@@ -6,15 +6,8 @@ args_to_json <- function(...) {
 }
 
 parse_return <- function(qjs_return) {
-  error_strings = c(
-    "Error in JSON.stringify()!",
-    "Error initialising function!",
-    "Error calling function!",
-    "Error in evaluation!"
-  )
-
-  if (qjs_return %in% error_strings) {
-    stop(qjs_return, call. = FALSE)
+  if (qjs_return == "Error!") {
+    stop("Error in JS runtime, see error message above for more information!", call. = FALSE)
   }
   jsonlite::fromJSON(qjs_return)
 }
