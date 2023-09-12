@@ -4,21 +4,27 @@
 
 bool qjs_source_impl(JSContext* ctx, const char* code_string) {
   JSValue val = JS_Eval(ctx, code_string, strlen(code_string), "", 0);
-  bool succeeded = !(JS_IsException(val) || JS_IsError(ctx, val));
+  bool failed = JS_IsException(val);
+  if (failed) {
+    js_std_dump_error(ctx);
+  }
   JS_FreeValue(ctx, val);
 
-  return succeeded;
+  return !failed;
 }
 
 bool qjs_validate_impl(JSContext* ctx, const char* function_name) {
   JSValue global = JS_GetGlobalObject(ctx);
   JSValue val = JS_GetPropertyStr(ctx, global, function_name);
 
-  bool succeeded = !(JS_IsException(val) || JS_IsError(ctx, val));
+  bool failed = JS_IsException(val);
+  if (failed) {
+    js_std_dump_error(ctx);
+  }
   JS_FreeValue(ctx, val);
   JS_FreeValue(ctx, global);
 
-  return succeeded;
+  return !failed;
 }
 
 const char* JS_ValToJSON(JSContext* ctx, JSValue* val) {
@@ -28,8 +34,9 @@ const char* JS_ValToJSON(JSContext* ctx, JSValue* val) {
 
   JSValue result_js = JS_Call(ctx, stringify, global, 1, val);
   const char* result;
-  if (JS_IsException(result_js) || JS_IsError(ctx, result_js)) {
-    result = "Error in JSON.stringify()!";
+  if (JS_IsException(result_js)) {
+    js_std_dump_error(ctx);
+    result = "Error!";
   } else {
     result = JS_ToCString(ctx, result_js);
   }
@@ -45,10 +52,11 @@ const char* JS_ValToJSON(JSContext* ctx, JSValue* val) {
 const char* qjs_call_impl(JSContext* ctx, const char* wrapped_name,
                           const char* call_wrapper, const char* args_json) {
   JSValue tmp = JS_Eval(ctx, call_wrapper, strlen(call_wrapper), "", 0);
-  bool failed = (JS_IsException(tmp) || JS_IsError(ctx, tmp));
+  bool failed = JS_IsException(tmp);
   JS_FreeValue(ctx, tmp);
   if (failed) {
-    return "Error initialising function!";
+    js_std_dump_error(ctx);
+    return "Error!";
   }
 
   JSValue global = JS_GetGlobalObject(ctx);
@@ -57,11 +65,11 @@ const char* qjs_call_impl(JSContext* ctx, const char* wrapped_name,
     JS_NewString(ctx, args_json)
   };
 
-  const char* result;
   JSValue result_js = JS_Call(ctx, function_wrapper, global, 1, args);
-  failed = (JS_IsException(result_js) || JS_IsError(ctx, result_js));
-  if (failed) {
-    result = "Error calling function!";
+  const char* result;
+  if (JS_IsException(result_js)) {
+    js_std_dump_error(ctx);
+    result = "Error!";
   } else {
     result = JS_ValToJSON(ctx, &result_js);
   }
@@ -79,10 +87,10 @@ const char* qjs_eval_impl(const char* eval_string) {
   JSContext* ctx = JS_NewContext(rt);
 
   JSValue val = JS_Eval(ctx, eval_string, strlen(eval_string), "", 0);
-  bool failed = (JS_IsException(val) || JS_IsError(ctx, val));
   const char* result;
-  if (failed) {
-    result = "Error in evaluation!";
+  if (JS_IsException(val)) {
+    js_std_dump_error(ctx);
+    result = "Error!";
   } else {
     result = JS_ValToJSON(ctx, &val);
   }
