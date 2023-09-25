@@ -46,19 +46,18 @@ JSContext <- R6::R6Class(
     #' @param code A single string of JavaScript to evaluate
     #' @return No return value, called for side effects
     source = function(file = NULL, code = NULL) {
+      eval_success <- TRUE
       if (!is.null(file)) {
         if (!is.null(code)) {
           warning("Both a filepath and code string cannot be provided,",
                   " code will be ignored!", call. = FALSE)
         }
-        code_string <- paste0(readLines(con = file), collapse = "\n")
+        eval_success <- qjs_source_file(private$context_, file)
       } else if (!is.null(code)) {
-        code_string <- code
+        eval_success <- qjs_source(private$context_, code)
       } else {
         stop("No JS code provided!", call. = FALSE)
       }
-
-      eval_success <- qjs_source(private$context_, code_string)
       if (!eval_success) {
         stop("Evaluating JS code failed, see message above!", call. = FALSE)
       }

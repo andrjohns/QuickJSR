@@ -17,8 +17,11 @@ extern "C" {
   JSContext* JS_NewContext(JSRuntime* rt);
   void JS_FreeContext(JSContext* ctx);
   void JS_FreeRuntime(JSRuntime* rt);
+  void js_std_init_handlers(JSRuntime *rt);
+  void js_std_add_helpers(JSContext *ctx, int argc, char **argv);
 
   bool qjs_source_impl(JSContext* ctx, const char* code_string);
+  bool qjs_source_file_impl(JSContext* ctx, const char* code_string);
   bool qjs_validate_impl(JSContext* ctx, const char* function_name);
   const char* qjs_call_impl(JSContext* ctx, const char* wrapped_name,
                         const char* call_wrapper, const char* args_json);
@@ -39,12 +42,22 @@ RcppExport SEXP qjs_context_(SEXP stack_size_) {
   if (stack_size != -1) {
     JS_SetMaxStackSize(rt.get(), stack_size);
   }
+  js_std_init_handlers(rt.get());
   ContextXPtr ctx(JS_NewContext(rt));
+  js_std_add_helpers(ctx.get(), 0, (char**)"");
 
   return Rcpp::List::create(
     Rcpp::Named("runtime_ptr") = rt,
     Rcpp::Named("context_ptr") = ctx
   );
+}
+
+RcppExport SEXP qjs_source_file_(SEXP ctx_ptr_, SEXP filename_) {
+  JSContext* ctx = ContextXPtr(ctx_ptr_);
+  const char* filename = Rcpp::as<const char*>(filename_);
+  bool succeeded = qjs_source_file_impl(ctx, filename);
+
+  return Rcpp::wrap(succeeded);
 }
 
 RcppExport SEXP qjs_source_(SEXP ctx_ptr_, SEXP code_string_) {
