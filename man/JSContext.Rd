@@ -28,13 +28,15 @@ scripts or commands.
 Creates a new JSContext instance and initialises the QuickJS runtime and
 evaluation context
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{JSContext$new(stack_size = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{JSContext$new(stack_size = NULL, disable_stack_size_check = TRUE)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{stack_size}}{An optional fixed value for the stack size (in bytes)}
+
+\item{\code{disable_stack_size_check}}{Disable fixed/automatic stack size allocation.}
 }
 \if{html}{\out{</div>}}
 }
@@ -46,21 +48,20 @@ No return value, used internally to initialise the JSContext object
 \if{html}{\out{<a id="method-JSContext-validate"></a>}}
 \if{latex}{\out{\hypertarget{method-JSContext-validate}{}}}
 \subsection{Method \code{validate()}}{
-Checks whether a specified function or object is present in the initialised
-context.
+Checks whether JS code string is valid code in the current context
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{JSContext$validate(function_name)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{JSContext$validate(code_string)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{function_name}}{The name of the function to check}
+\item{\code{code_string}}{The JS code to check}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-A boolean indicating whether the function is present
+A boolean indicating whether code is valid
 }
 }
 \if{html}{\out{<hr>}}

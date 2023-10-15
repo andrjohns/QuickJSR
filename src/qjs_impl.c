@@ -2,28 +2,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-bool qjs_source_file_impl(JSContext* ctx, const char* filename) {
-  uint8_t *buf;
-  size_t buf_len;
-  buf = js_load_file(ctx, &buf_len, filename);
-  if (!buf) {
-    JS_ThrowReferenceError(ctx, "could not load '%s'", filename);
-    js_std_dump_error(ctx);
-    js_free(ctx, buf);
-    return false;
-  }
-  JSValue val = JS_Eval(ctx, (char *)buf, buf_len, filename,
-                JS_EVAL_TYPE_GLOBAL);
-  js_free(ctx, buf);
-  bool failed = JS_IsException(val);
-  if (failed) {
-    js_std_dump_error(ctx);
-  }
-  JS_FreeValue(ctx, val);
-
-  return !failed;
-}
-
 bool qjs_source_impl(JSContext* ctx, const char* code_string) {
   JSValue val = JS_Eval(ctx, code_string, strlen(code_string), "", 0);
   bool failed = JS_IsException(val);

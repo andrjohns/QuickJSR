@@ -53,12 +53,13 @@ JSContext <- R6::R6Class(
           warning("Both a filepath and code string cannot be provided,",
                   " code will be ignored!", call. = FALSE)
         }
-        eval_success <- qjs_source_file(private$context_, file)
+        code_string <- paste0(readLines(con = file), collapse = "\n")
       } else if (!is.null(code)) {
-        eval_success <- qjs_source(private$context_, code)
+        code_string <- code
       } else {
         stop("No JS code provided!", call. = FALSE)
       }
+      eval_success <- qjs_source(private$context_, code_string)
       if (!eval_success) {
         stop("Evaluating JS code failed, see message above!", call. = FALSE)
       }
