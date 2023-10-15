@@ -20,21 +20,22 @@ JSContext <- R6::R6Class(
     #' evaluation context
     #'
     #' @param stack_size An optional fixed value for the stack size (in bytes)
+    #' @param disable_stack_size_check Disable fixed/automatic stack size allocation.
     #' @return No return value, used internally to initialise the JSContext object
-    initialize = function(stack_size = NULL) {
+    initialize = function(stack_size = NULL, disable_stack_size_check = TRUE) {
       stack_size_int = ifelse(is.null(stack_size), -1, stack_size)
+      stack_size_int = ifelse(disable_stack_size_check, 0, stack_size_int)
       rt_and_ctx = qjs_context(stack_size_int)
       private$runtime_ = rt_and_ctx$runtime_ptr
       private$context_ = rt_and_ctx$context_ptr
     },
     #' @description
-    #' Checks whether a specified function or object is present in the initialised
-    #' context.
+    #' Checks whether JS code string is valid code in the current context
     #'
-    #' @param function_name The name of the function to check
-    #' @return A boolean indicating whether the function is present
-    validate = function(function_name) {
-      qjs_validate(private$context_, function_name)
+    #' @param code_string The JS code to check
+    #' @return A boolean indicating whether code is valid
+    validate = function(code_string) {
+      qjs_validate(private$context_, code_string)
     },
     #' @description
     #' Evaluate a provided JavaScript file or string within the initialised context.

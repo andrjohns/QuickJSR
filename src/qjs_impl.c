@@ -35,16 +35,10 @@ bool qjs_source_impl(JSContext* ctx, const char* code_string) {
   return !failed;
 }
 
-bool qjs_validate_impl(JSContext* ctx, const char* function_name) {
-  JSValue global = JS_GetGlobalObject(ctx);
-  JSValue val = JS_GetPropertyStr(ctx, global, function_name);
-
+bool qjs_validate_impl(JSContext* ctx, const char* code_string) {
+  JSValue val = JS_Eval(ctx, code_string, strlen(code_string), "", JS_EVAL_FLAG_COMPILE_ONLY);
   bool failed = JS_IsException(val);
-  if (failed) {
-    js_std_dump_error(ctx);
-  }
   JS_FreeValue(ctx, val);
-  JS_FreeValue(ctx, global);
 
   return !failed;
 }

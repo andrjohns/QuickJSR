@@ -68,10 +68,10 @@ RcppExport SEXP qjs_source_(SEXP ctx_ptr_, SEXP code_string_) {
   return Rcpp::wrap(succeeded);
 }
 
-RcppExport SEXP qjs_validate_(SEXP ctx_ptr_, SEXP function_name_) {
+RcppExport SEXP qjs_validate_(SEXP ctx_ptr_, SEXP code_string_) {
   JSContext* ctx = ContextXPtr(ctx_ptr_);
-  const char* function_name = Rcpp::as<const char*>(function_name_);
-  bool succeeded = qjs_validate_impl(ctx, function_name);
+  const char* code_string = Rcpp::as<const char*>(code_string_);
+  bool succeeded = qjs_validate_impl(ctx, code_string);
 
   return Rcpp::wrap(succeeded);
 }

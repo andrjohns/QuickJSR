@@ -8,8 +8,8 @@ ifeq ($(shell uname -p), powerpc)
 	endif
 endif
 
-QUICKJS_OBJECTS = quickjs/cutils.o quickjs/libbf.o quickjs/libregexp.o quickjs/libunicode.o \
-                  quickjs/quickjs-libc.o quickjs/quickjs.o quickjs/unicode_gen.o
+QUICKJS_SOURCES = $(wildcard quickjs/*.c)
+QUICKJS_OBJECTS = $(QUICKJS_SOURCES:.c=.o)
 
 $(SHLIB): ../inst/lib/$(R_ARCH)/libquickjs.a
 
