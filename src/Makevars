@@ -1,11 +1,8 @@
-PKG_CPPFLAGS = -I"../inst/include" -D_GNU_SOURCE -DCONFIG_VERSION=\"2021-03-27\" -DSTRICT_R_HEADERS -DCONFIG_BIGNUM
-PKG_CXXFLAGS = -DSTRICT_R_HEADERS
-PKG_LIBS = -L../inst/lib/$(R_ARCH)/ -lquickjs
+PKG_CPPFLAGS = -I"../inst/include" -DSTRICT_R_HEADERS -D_GNU_SOURCE -DCONFIG_VERSION=\"2021-03-27\" -DCONFIG_BIGNUM
+PKG_LIBS = ../inst/lib/$(R_ARCH)/libquickjs.a
 
-ifeq ($(shell uname -p), powerpc)
-	ifeq ($(shell getconf LONG_BIT), 32)
-		PKG_LIBS += -latomic
-	endif
+ifeq ($(shell getconf LONG_BIT), 32)
+	PKG_LIBS += -latomic
 endif
 
 QUICKJS_SOURCES = $(wildcard quickjs/*.c)
