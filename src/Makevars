@@ -1,4 +1,4 @@
-PKG_CPPFLAGS = -I"../inst/include" -DSTRICT_R_HEADERS -D_GNU_SOURCE -DCONFIG_VERSION=\"2021-03-27\" -DCONFIG_BIGNUM
+PKG_CPPFLAGS = -I"../inst/include" -DSTRICT_R_HEADERS -D_GNU_SOURCE -DCONFIG_VERSION=\"2023-12-09\" -DCONFIG_BIGNUM
 PKG_LIBS = ../inst/lib/$(R_ARCH)/libquickjs.a
 
 ifeq ($(shell getconf LONG_BIT), 32)
@@ -7,6 +7,9 @@ endif
 
 QUICKJS_SOURCES = $(wildcard quickjs/*.c)
 QUICKJS_OBJECTS = $(QUICKJS_SOURCES:.c=.o)
+
+SOURCES = quickjsr_impl.c quickjsr.cpp init.cpp
+OBJECTS = quickjsr_impl.o quickjsr.o init.o
 
 $(SHLIB): ../inst/lib/$(R_ARCH)/libquickjs.a
 
