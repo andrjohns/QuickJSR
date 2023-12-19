@@ -6,3 +6,5 @@
 ^.vscode$
 ^LICENSE\.md$
 ^cran-comments\.md$
+^src/quickjs/\.github$
+^src/quickjs/\.git$

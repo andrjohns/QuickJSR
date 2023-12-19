@@ -1,24 +1,34 @@
-PKG_CPPFLAGS = -I"../inst/include" -DSTRICT_R_HEADERS -D_GNU_SOURCE -DCONFIG_VERSION=\"2023-12-09\" -DCONFIG_BIGNUM
+PKG_CPPFLAGS = -I"../inst/include/quickjs" -DSTRICT_R_HEADERS -D_GNU_SOURCE -DCONFIG_VERSION=\"2023-12-09\" -DCONFIG_BIGNUM
 PKG_LIBS = ../inst/lib/$(R_ARCH)/libquickjs.a
 
 ifeq ($(shell getconf LONG_BIT), 32)
 	PKG_LIBS += -latomic
 endif
 
-QUICKJS_SOURCES = $(wildcard quickjs/*.c)
+QUICKJS_C_FILES = cutils.c libbf.c libregexp.c libunicode.c quickjs.c quickjs-libc.c
+QUICKJS_C_HEADERS = cutils.h libbf.h libregexp.h libregexp-opcode.h libunicode.h \
+									quickjs.h quickjs-libc.h libunicode-table.h list.h quickjs-atom.h \
+									quickjs-opcode.h
+
+QUICKJS_SOURCES = $(QUICKJS_C_FILES:%=quickjs/%)
 QUICKJS_OBJECTS = $(QUICKJS_SOURCES:.c=.o)
 
 SOURCES = quickjsr_impl.c quickjsr.cpp init.cpp
 OBJECTS = quickjsr_impl.o quickjsr.o init.o
 
-$(SHLIB): ../inst/lib/$(R_ARCH)/libquickjs.a
+.PHONY: all package-quickjs build-static
 
-../inst/lib/$(R_ARCH)/libquickjs.a: $(QUICKJS_OBJECTS)
+all: package-quickjs $(SHLIB)
+
+$(SHLIB): build-static
+
+package-quickjs:
+	@mkdir -p ../inst/include/quickjs
+	@cp $(QUICKJS_C_HEADERS:%=quickjs/%) ../inst/include/quickjs
+
+build-static: $(QUICKJS_OBJECTS)
 	@mkdir -p ../inst/lib/$(R_ARCH)
 	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a $(QUICKJS_OBJECTS)
-
-$(QUICKJS_OBJECTS): quickjs/%.o : quickjs/%.c
-	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -std=gnu11 -c $< -o $@
 
 clean:
 	$(RM) $(QUICKJS_OBJECTS) ../inst/lib/$(R_ARCH)/libquickjs.a
