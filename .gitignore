@@ -1,4 +1,4 @@
-inst/lib$
+inst
 *.o
 *.so
 *.a
