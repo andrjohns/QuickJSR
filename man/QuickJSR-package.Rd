@@ -8,3 +8,22 @@
 \description{
 An interface to the QuickJS lightweight Javascript engine
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/andrjohns/QuickJSR}
+  \item \url{https://bellard.org/quickjs/}
+  \item Report bugs at \url{https://github.com/andrjohns/QuickJSR/issues}
+}
+
+}
+\author{
+\strong{Maintainer}: Andrew R. Johnson \email{andrew.johnson@arjohnsonau.com} (\href{https://orcid.org/0000-0001-7000-8065}{ORCID})
+
+Other contributors:
+\itemize{
+  \item Fabrice Bellard (Author of QuickJS sources and headers) [contributor, copyright holder]
+  \item Charlie Gordon (Author of QuickJS sources and headers) [contributor, copyright holder]
+}
+
+}

@@ -1,6 +1,6 @@
 Package: QuickJSR
 Title: Interface for the 'QuickJS' Lightweight 'JavaScript' Engine
-Version: 1.0.9.9000
+Version: 1.1.0
 Authors@R: c(
   person(given = c("Andrew", "R."), family = "Johnson", role = c("aut", "cre"),
           email = "andrew.johnson@arjohnsonau.com",
@@ -16,7 +16,7 @@ Description: An 'R' interface to the 'QuickJS' portable 'JavaScript' engine.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.0
 NeedsCompilation: yes
 SystemRequirements: GNU make
 Imports:
@@ -25,7 +25,7 @@ Imports:
   Rcpp
 LinkingTo:
   Rcpp
-URL: https://github.com/andrjohns/QuickJSR https://bellard.org/quickjs/ (upstream)
+URL: https://github.com/andrjohns/QuickJSR, https://bellard.org/quickjs/
 BugReports: https://github.com/andrjohns/QuickJSR/issues
 Suggests:
     testthat (>= 3.0.0)

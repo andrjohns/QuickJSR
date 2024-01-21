@@ -14,5 +14,6 @@ Character string of CXX flags, or print flags to console
 and invisibly return NULL (for use in package Makevars or similar)
 }
 \description{
-Function for returning the C/C++ flags needed for compilation using the package's headers
+Function for returning the C/C++ flags needed for compilation
+using the package's headers
 }

@@ -7,36 +7,37 @@
 #'         and invisibly return NULL (for use in package Makevars or similar)
 #' @export
 ldflags <- function(to_console = FALSE) {
-  PKG_LIBS <- paste(
-    "-L", shQuote(system.file("lib", Sys.getenv("R_ARCH"), package = "QuickJSR", mustWork = TRUE)),
-    "-lquickjs"
-  )
+  libdir <- system.file("lib", Sys.getenv("R_ARCH"), package = "QuickJSR",
+                        mustWork = TRUE)
+  pkglibs <- paste("-L", shQuote(libdir), "-lquickjs")
   if (isTRUE(to_console)) {
-    cat(PKG_LIBS, " ")
+    cat(pkglibs, " ")
     return(invisible(NULL))
   }
-  PKG_LIBS
+  pkglibs
 }
 
 #' cxxflags
 #'
-#' Function for returning the C/C++ flags needed for compilation using the package's headers
+#' Function for returning the C/C++ flags needed for compilation
+#' using the package's headers
 #'
 #' @param to_console Whether the result should be returned as a string
 #' @return Character string of CXX flags, or print flags to console
 #'         and invisibly return NULL (for use in package Makevars or similar)
 #' @export
 cxxflags <- function(to_console = FALSE) {
-  CXXFLAGS <- paste(
-    paste0("-I", shQuote(system.file("include", package = "QuickJSR", mustWork = TRUE))),
+  incdir <- system.file("include", package = "QuickJSR", mustWork = TRUE)
+  pkg_cxxflags <- paste(
+    paste0("-I", shQuote(incdir)),
     "-D_GNU_SOURCE",
-    "-DCONFIG_VERSION=\"2021-03-27\"",
+    paste0("-DCONFIG_VERSION=\"", quickjs_version(), "\""),
     "-DSTRICT_R_HEADERS",
     "-DCONFIG_BIGNUM"
   )
   if (isTRUE(to_console)) {
-    cat(CXXFLAGS, " ")
+    cat(pkg_cxxflags, " ")
     return(invisible(NULL))
   }
-  CXXFLAGS
+  pkg_cxxflags
 }
