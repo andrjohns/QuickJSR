@@ -6,6 +6,34 @@ ifeq ($(shell getconf LONG_BIT), 32)
 	PKG_LIBS += -latomic
 endif
 
+# Older versions of gcc and clang don't provide the stdatomic.h header
+CC_CHECK := $(shell $(CC) --version 2>&1)
+CC_VERSION :=  $(shell $(CC) -dumpfullversion -dumpversion 2>&1)
+CC_MAJOR := $(word 1,$(subst ., ,$(CC_VERSION)))
+CC_MINOR := $(word 2,$(subst ., ,$(CC_VERSION)))
+
+ifneq (,$(findstring gcc,$(CC_CHECK)))
+	ifeq ($(shell expr $(CC_MAJOR) \== 4), 1)
+		ifeq ($(shell expr $(CC_MINOR) \< 9), 1)
+			PKG_CPPFLAGS += -DDISABLE_ATOMICS
+		endif
+	endif
+	ifeq ($(shell expr $(CC_MAJOR) \< 4), 1)
+		PKG_CPPFLAGS += -DDISABLE_ATOMICS
+	endif
+endif
+
+ifneq (,$(findstring clang,$(CC_CHECK)))
+	ifeq ($(shell expr $(CC_MAJOR) \== 3), 1)
+		ifeq ($(shell expr $(CC_MINOR) \< 6), 1)
+			PKG_CPPFLAGS += -DDISABLE_ATOMICS
+		endif
+	endif
+	ifeq ($(shell expr $(CC_MAJOR) \< 3), 1)
+		PKG_CPPFLAGS += -DDISABLE_ATOMICS
+	endif
+endif
+
 QUICKJS_C_FILES = cutils.c libbf.c libregexp.c libunicode.c quickjs.c quickjs-libc.c
 QUICKJS_C_HEADERS = $(QUICKJS_C_FILES:.c=.h) \
 					libregexp-opcode.h libunicode-table.h list.h \
