@@ -13,23 +13,19 @@ CC_MAJOR := $(word 1,$(subst ., ,$(CC_VERSION)))
 CC_MINOR := $(word 2,$(subst ., ,$(CC_VERSION)))
 
 ifneq (,$(findstring gcc,$(CC_CHECK)))
-	ifeq ($(shell expr $(CC_MAJOR) \== 4), 1)
-		ifeq ($(shell expr $(CC_MINOR) \< 9), 1)
-			PKG_CPPFLAGS += -DDISABLE_ATOMICS
-		endif
+	ifeq ($(shell expr $(CC_MAJOR) \< 5), 1)
+		PKG_CPPFLAGS += -DDISABLE_ATOMICS
 	endif
-	ifeq ($(shell expr $(CC_MAJOR) \< 4), 1)
+endif
+
+ifneq (,$(findstring GCC,$(CC_CHECK)))
+	ifeq ($(shell expr $(CC_MAJOR) \< 5), 1)
 		PKG_CPPFLAGS += -DDISABLE_ATOMICS
 	endif
 endif
 
 ifneq (,$(findstring clang,$(CC_CHECK)))
-	ifeq ($(shell expr $(CC_MAJOR) \== 3), 1)
-		ifeq ($(shell expr $(CC_MINOR) \< 6), 1)
-			PKG_CPPFLAGS += -DDISABLE_ATOMICS
-		endif
-	endif
-	ifeq ($(shell expr $(CC_MAJOR) \< 3), 1)
+	ifeq ($(shell expr $(CC_MAJOR) \< 4), 1)
 		PKG_CPPFLAGS += -DDISABLE_ATOMICS
 	endif
 endif
