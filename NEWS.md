@@ -1,4 +1,8 @@
 # QuickJSR 1.1.0
+  - Fixed UBSAN error in `JS_Eval`
+  - Fixed compilation errors with older GCC & Clang (`stdatomic.h not found`)
+
+# QuickJSR 1.1.0
 
 * Bundled QuickJS engine updated to the 2024-01-13 release:
   - top-level-await support in modules
