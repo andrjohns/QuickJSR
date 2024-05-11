@@ -24,7 +24,5 @@ Imports:
 URL: https://github.com/andrjohns/QuickJSR, https://bellard.org/quickjs/
 BugReports: https://github.com/andrjohns/QuickJSR/issues
 Suggests:
-    testthat (>= 3.0.0)
-Config/testthat/edition: 3
-Config/testthat/parallel: true
+  tinytest
 Language: en-GB
