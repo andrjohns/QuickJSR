@@ -1,6 +1,9 @@
-inst
+inst/lib
+inst/VERSION
+inst/include/**.h
 *.o
 *.so
 *.a
 ^check$
-^.vscode$
+.vscode
+*.DS_Store
