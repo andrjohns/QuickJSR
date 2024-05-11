@@ -2,16 +2,17 @@ PKG_CPPFLAGS = -I"../inst/include/" -DSTRICT_R_HEADERS -D_GNU_SOURCE -DCONFIG_BI
 PKG_CPPFLAGS += -DCONFIG_VERSION=\"$(shell cat quickjs/VERSION)\"
 PKG_LIBS = ../inst/lib/$(R_ARCH)/libquickjs.a
 
-CC_CHECK := $(shell $(CC) --version 2>&1)
 CC_VERSION :=  $(shell $(CC) -dumpfullversion -dumpversion 2>&1)
 CC_MAJOR := $(word 1,$(subst ., ,$(CC_VERSION)))
 
-IS_GCC := $(echo $(CC_CHECK) | grep -i gcc)
-IS_CLANG := $(echo $(CC_CHECK) | grep -i clang)
+CLANG_CHECK := $(shell echo | $(CC) -dM -E - | grep -i __clang__)
 
 # Older versions of gcc and clang don't provide the stdatomic.h header
-
-ifneq (,$(IS_GCC))
+ifneq (,$(CLANG_CHECK))
+	ifeq ($(shell expr $(CC_MAJOR) \< 4), 1)
+		PKG_CPPFLAGS += -DDISABLE_ATOMICS
+	endif
+else
 	ifeq ($(shell expr $(CC_MAJOR) \< 5), 1)
 		PKG_CPPFLAGS += -DDISABLE_ATOMICS
 	else
@@ -19,12 +20,6 @@ ifneq (,$(IS_GCC))
 		ifeq ($(shell getconf LONG_BIT), 32)
 			PKG_LIBS += -latomic
 		endif
-	endif
-endif
-
-ifneq (,$(IS_CLANG))
-	ifeq ($(shell expr $(CC_MAJOR) \< 4), 1)
-		PKG_CPPFLAGS += -DDISABLE_ATOMICS
 	endif
 endif
 
