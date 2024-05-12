@@ -1,4 +1,4 @@
-PKG_CPPFLAGS = -I"../inst/include/" -DSTRICT_R_HEADERS -D_GNU_SOURCE -DCONFIG_BIGNUM
+PKG_CPPFLAGS = -I"../inst/include/" -D_GNU_SOURCE -DCONFIG_BIGNUM
 PKG_CPPFLAGS += -DCONFIG_VERSION=\"$(shell cat quickjs/VERSION)\"
 PKG_LIBS = ../inst/lib/$(R_ARCH)/libquickjs.a
 
@@ -31,8 +31,8 @@ QUICKJS_C_HEADERS = $(QUICKJS_C_FILES:.c=.h) \
 QUICKJS_SOURCES = $(QUICKJS_C_FILES:%=quickjs/%)
 QUICKJS_OBJECTS = $(QUICKJS_SOURCES:.c=.o)
 
-SOURCES = quickjsr_impl.c quickjsr.cpp init.cpp
-OBJECTS = quickjsr_impl.o quickjsr.o init.o
+SOURCES = quickjsr.cpp init.cpp
+OBJECTS = quickjsr.o init.o
 
 .PHONY: all package-quickjs build-static
 
@@ -50,7 +50,7 @@ build-static: $(QUICKJS_OBJECTS)
 	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a $(QUICKJS_OBJECTS)
 
 $(QUICKJS_OBJECTS): quickjs/%.o : quickjs/%.c
-	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -funsigned-char -fwrapv -std=c11 -c $< -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DSTRICT_R_HEADERS -funsigned-char -fwrapv -std=c11 -c $< -o $@
 
 clean:
 	$(RM) $(QUICKJS_OBJECTS) ../inst/lib/$(R_ARCH)/libquickjs.a

@@ -2,39 +2,11 @@
 #include <cpp11/declarations.hpp>
 #include <fstream>
 #include <sstream>
-
-using JSvalue = struct JSValue;
-using JSRuntime = struct JSRuntime;
-using JSContext = struct JSContext;
-
-// We compile the functions as a separate C translation unit, as the QuickJS
-// C headers trigger -Wpedantic warnings under C++
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-  JSRuntime* JS_NewRuntime(void);
-  void JS_SetMaxStackSize(JSRuntime* rt, size_t stack_size);
-  JSContext* JS_NewContext(JSRuntime* rt);
-  void JS_FreeContext(JSContext* ctx);
-  void JS_FreeRuntime(JSRuntime* rt);
-  void js_std_init_handlers(JSRuntime *rt);
-  void js_std_add_helpers(JSContext *ctx, int argc, char **argv);
-
-  bool qjs_source_impl(JSContext* ctx, const char* code_string);
-  bool qjs_validate_impl(JSContext* ctx, const char* function_name);
-  const char* qjs_call_impl(JSContext* ctx, const char* wrapped_name,
-                        const char* call_wrapper, const char* args_json);
-  const char* qjs_eval_impl(const char* eval_string);
-
-#ifdef __cplusplus
-}
-#endif
+#include <quickjs-libc.h>
 
 // Register the cpp11 external pointer types with the correct cleanup/finaliser functions
 using ContextXPtr = cpp11::external_pointer<JSContext, JS_FreeContext>;
 using RuntimeXPtr = cpp11::external_pointer<JSRuntime, JS_FreeRuntime>;
-
 
 extern "C" SEXP qjs_context_(SEXP stack_size_) {
   BEGIN_CPP11
@@ -61,7 +33,13 @@ extern "C" SEXP qjs_source_(SEXP ctx_ptr_, SEXP code_string_) {
   BEGIN_CPP11
   JSContext* ctx = ContextXPtr(ctx_ptr_).get();
   std::string code_string = cpp11::as_cpp<std::string>(code_string_);
-  return cpp11::as_sexp(qjs_source_impl(ctx, code_string.c_str()));
+  JSValue val = JS_Eval(ctx, code_string.c_str(), code_string.size(), "", 0);
+  bool failed = JS_IsException(val);
+  if (failed) {
+    js_std_dump_error(ctx);
+  }
+  JS_FreeValue(ctx, val);
+  return cpp11::as_sexp(!failed);
   END_CPP11
 }
 
@@ -69,8 +47,33 @@ extern "C" SEXP qjs_validate_(SEXP ctx_ptr_, SEXP code_string_) {
   BEGIN_CPP11
   JSContext* ctx = ContextXPtr(ctx_ptr_).get();
   std::string code_string = cpp11::as_cpp<std::string>(code_string_);
-  return cpp11::as_sexp(qjs_validate_impl(ctx, code_string.c_str()));
+  JSValue val = JS_Eval(ctx, code_string.c_str(), code_string.size(), "", JS_EVAL_FLAG_COMPILE_ONLY);
+  bool failed = JS_IsException(val);
+  JS_FreeValue(ctx, val);
+  return cpp11::as_sexp(!failed);
   END_CPP11
+}
+
+const char* JS_ValToJSON(JSContext* ctx, JSValue* val) {
+  JSValue global = JS_GetGlobalObject(ctx);
+  JSValue json = JS_GetPropertyStr(ctx, global, "JSON");
+  JSValue stringify = JS_GetPropertyStr(ctx, json, "stringify");
+
+  JSValue result_js = JS_Call(ctx, stringify, global, 1, val);
+  const char* result;
+  if (JS_IsException(result_js)) {
+    js_std_dump_error(ctx);
+    result = "Error!";
+  } else {
+    result = JS_ToCString(ctx, result_js);
+  }
+
+  JS_FreeValue(ctx, result_js);
+  JS_FreeValue(ctx, stringify);
+  JS_FreeValue(ctx, json);
+  JS_FreeValue(ctx, global);
+
+  return result;
 }
 
 extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_json_) {
@@ -85,14 +88,57 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_json_) {
     "function " + wrapped_name + "(args_object) { return " + function_name +
     "(...Object.values(JSON.parse(args_object))); }";
 
-  return cpp11::as_sexp(qjs_call_impl(ctx, wrapped_name.c_str(), call_wrapper.c_str(),
-                                      args_json.c_str()));
+  JSValue tmp = JS_Eval(ctx, call_wrapper.c_str(), call_wrapper.size(), "", 0);
+  bool failed = JS_IsException(tmp);
+  JS_FreeValue(ctx, tmp);
+  if (failed) {
+    js_std_dump_error(ctx);
+    return cpp11::as_sexp("Error!");
+  }
+
+  JSValue global = JS_GetGlobalObject(ctx);
+  JSValue function_wrapper = JS_GetPropertyStr(ctx, global, wrapped_name.c_str());
+  JSValue args[] = {
+    JS_NewString(ctx, args_json.c_str())
+  };
+
+  JSValue result_js = JS_Call(ctx, function_wrapper, global, 1, args);
+  const char* result;
+  if (JS_IsException(result_js)) {
+    js_std_dump_error(ctx);
+    result = "Error!";
+  } else {
+    result = JS_ValToJSON(ctx, &result_js);
+  }
+
+  JS_FreeValue(ctx, result_js);
+  JS_FreeValue(ctx, args[0]);
+  JS_FreeValue(ctx, function_wrapper);
+  JS_FreeValue(ctx, global);
+
+  return cpp11::as_sexp(result);
   END_CPP11
 }
 
 extern "C" SEXP qjs_eval_(SEXP eval_string_) {
   BEGIN_CPP11
   std::string eval_string = cpp11::as_cpp<std::string>(eval_string_);
-  return cpp11::as_sexp(qjs_eval_impl(eval_string.c_str()));
+  JSRuntime* rt = JS_NewRuntime();
+  JSContext* ctx = JS_NewContext(rt);
+
+  JSValue val = JS_Eval(ctx, eval_string.c_str(), eval_string.size(), "", 0);
+  const char* result;
+  if (JS_IsException(val)) {
+    js_std_dump_error(ctx);
+    result = "Error!";
+  } else {
+    result = JS_ValToJSON(ctx, &val);
+  }
+
+  JS_FreeValue(ctx, val);
+  JS_FreeContext(ctx);
+  JS_FreeRuntime(rt);
+
+  return cpp11::as_sexp(result);
   END_CPP11
 }
