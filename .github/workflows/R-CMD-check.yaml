@@ -3,12 +3,8 @@
 on:
   push:
     branches: [main, master]
-    paths:
-      - "!.github"
   pull_request:
     branches: [main, master]
-    paths:
-      - "!.github"
 
 name: R-CMD-check
 
