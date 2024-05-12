@@ -30,6 +30,7 @@ cxxflags <- function(to_console = FALSE) {
   incdir <- system.file("include", package = "QuickJSR", mustWork = TRUE)
   pkg_cxxflags <- paste(
     paste0("-I", shQuote(incdir)),
+    paste0("-I", shQuote(file.path(incdir, "quickjs"))),
     "-D_GNU_SOURCE",
     paste0("-DCONFIG_VERSION=\"", quickjs_version(), "\""),
     "-DSTRICT_R_HEADERS",

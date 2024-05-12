@@ -1,6 +1,6 @@
 inst/lib
 inst/VERSION
-inst/include/**.h
+inst/include/quickjs
 *.o
 *.so
 *.a

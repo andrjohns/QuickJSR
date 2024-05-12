@@ -1,7 +1,5 @@
 #include <cpp11.hpp>
 #include <cpp11/declarations.hpp>
-#include <fstream>
-#include <sstream>
 #include <quickjs-libc.h>
 
 // Register the cpp11 external pointer types with the correct cleanup/finaliser functions
