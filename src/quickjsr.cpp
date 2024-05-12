@@ -140,3 +140,98 @@ extern "C" SEXP qjs_eval_(SEXP eval_string_) {
   return cpp11::as_sexp(result);
   END_CPP11
 }
+
+JSValue SEXP_to_JSValue_scalar(JSContext* ctx, SEXP x, int i = 0) {
+  switch(TYPEOF(x)) {
+    case REALSXP:
+      return JS_NewFloat64(ctx, REAL(x)[i]);
+    case INTSXP:
+      return JS_NewInt32(ctx, INTEGER(x)[i]);
+    case LGLSXP:
+      return JS_NewBool(ctx, LOGICAL(x)[i]);
+    case STRSXP:
+      return JS_NewString(ctx, CHAR(STRING_ELT(x, i)));
+    default:
+      return JS_UNDEFINED;
+  }
+}
+
+JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x) {
+  if (TYPEOF(x) == VECSXP) {
+    JSValue obj = JS_NewObject(ctx);
+    for (int i = 0; i < Rf_length(x); i++) {
+      SEXP name = STRING_ELT(Rf_getAttrib(x, R_NamesSymbol), i);
+      JSValue val = SEXP_to_JSValue(ctx, VECTOR_ELT(x, i));
+      JS_SetPropertyStr(ctx, obj, CHAR(name), val);
+    }
+    return obj;
+  }
+  if (Rf_length(x) == 1) {
+    return SEXP_to_JSValue_scalar(ctx, x);
+  } else {
+    JSValue arr = JS_NewArray(ctx);
+    for (int i = 0; i < Rf_length(x); i++) {
+      JSValue val = SEXP_to_JSValue_scalar(ctx, x, i);
+      JS_SetPropertyUint32(ctx, arr, i, val);
+    }
+    return arr;
+  }
+}
+
+SEXP JSValue_to_SEXP_scalar(JSContext* ctx, JSValue val) {
+  if (JS_IsBool(val)) {
+    return cpp11::as_sexp(static_cast<bool>(JS_ToBool(ctx, val)));
+  }
+  if (JS_IsNumber(val)) {
+    double res;
+    JS_ToFloat64(ctx, &res, val);
+    return cpp11::as_sexp(res);
+  }
+  if (JS_IsString(val)) {
+    return cpp11::as_sexp(JS_ToCString(ctx, val));
+  }
+  return cpp11::as_sexp("Unsupported type");
+}
+
+SEXP JSValue_to_SEXP(JSContext* ctx, JSValue val) {
+  // TODO: Implement array and object conversion
+  return JSValue_to_SEXP_scalar(ctx, val);
+}
+
+extern "C" SEXP qjs_passthrough_(SEXP args_) {
+  BEGIN_CPP11
+  JSRuntime* rt = JS_NewRuntime();
+  JSContext* ctx = JS_NewContext(rt);
+
+  std::string function_string = "function passthrough(x) { return x; }";
+  JSValue tmp = JS_Eval(ctx, function_string.c_str(), function_string.size(), "", 0);
+  bool failed = JS_IsException(tmp);
+  JS_FreeValue(ctx, tmp);
+  if (failed) {
+    js_std_dump_error(ctx);
+    return cpp11::as_sexp("Error!");
+  }
+  std::string wrapped_name = "passthrough";
+  JSValue global = JS_GetGlobalObject(ctx);
+  JSValue function_wrapper = JS_GetPropertyStr(ctx, global, wrapped_name.c_str());
+  JSValue args[] = { SEXP_to_JSValue(ctx, args_) };
+  JSValue result_js = JS_Call(ctx, function_wrapper, global, 1, args);
+
+  SEXP result;
+  if (JS_IsException(result_js)) {
+    js_std_dump_error(ctx);
+    result = cpp11::as_sexp("Error!");
+  } else {
+    result = JSValue_to_SEXP(ctx, result_js);
+  }
+
+  JS_FreeValue(ctx, result_js);
+  JS_FreeValue(ctx, args[0]);
+  JS_FreeValue(ctx, function_wrapper);
+  JS_FreeValue(ctx, global);
+  JS_FreeContext(ctx);
+  JS_FreeRuntime(rt);
+
+  return cpp11::as_sexp(result);
+  END_CPP11
+}
