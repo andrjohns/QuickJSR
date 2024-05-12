@@ -1,4 +1,5 @@
-PKG_CPPFLAGS = -I"../inst/include/" -D_GNU_SOURCE -DCONFIG_BIGNUM
+PKG_CPPFLAGS = -I"../inst/include/" -I"../inst/include/quickjs"
+PKG_CPPFLAGS += -D_GNU_SOURCE -DCONFIG_BIGNUM
 PKG_CPPFLAGS += -DCONFIG_VERSION=\"$(shell cat quickjs/VERSION)\"
 PKG_LIBS = ../inst/lib/$(R_ARCH)/libquickjs.a
 
@@ -41,8 +42,8 @@ all: package-quickjs $(SHLIB)
 $(SHLIB): build-static
 
 package-quickjs:
-	@mkdir -p ../inst/include
-	@cp $(QUICKJS_C_HEADERS:%=quickjs/%) ../inst/include
+	@mkdir -p ../inst/include/quickjs
+	@cp $(QUICKJS_C_HEADERS:%=quickjs/%) ../inst/include/quickjs
 	@cp quickjs/VERSION ../inst/
 
 build-static: $(QUICKJS_OBJECTS)
@@ -53,4 +54,5 @@ $(QUICKJS_OBJECTS): quickjs/%.o : quickjs/%.c
 	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DSTRICT_R_HEADERS -funsigned-char -fwrapv -std=c11 -c $< -o $@
 
 clean:
-	$(RM) $(QUICKJS_OBJECTS) ../inst/lib/$(R_ARCH)/libquickjs.a
+	$(RM) $(QUICKJS_OBJECTS) $(OBJECTS) ../inst/VERSION
+	$(RM) -r ../inst/lib ../inst/include/quickjs

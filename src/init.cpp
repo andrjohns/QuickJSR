@@ -1,4 +1,4 @@
-#include "cpp11.hpp"
+#include <cpp11.hpp>
 #include <R_ext/Visibility.h>
 
 #ifdef __cplusplus
