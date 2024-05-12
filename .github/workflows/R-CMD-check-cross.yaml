@@ -1,0 +1,43 @@
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+name: R-CMD-check-crossplatform
+
+jobs:
+  R-CMD-check:
+    runs-on: ubuntu-latest
+
+    name: Check (${{ matrix.config.platform }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          -  { platform: linux/386 }
+          -  { platform: linux/arm/v5 }
+          -  { platform: linux/arm/v7 }
+          -  { platform: linux/mips64le }
+          -  { platform: linux/ppc64le }
+          -  { platform: linux/riscv64 }
+          -  { platform: linux/s390x }
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: docker/setup-qemu-action@v2
+      - uses: addnab/docker-run-action@v3
+        with:
+          image: andrjohns/quickjsr-cross-tests
+          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
+          run: |
+            R CMD build /quickjsr
+            R CMD check --output=/quickjsr --as-cran --no-manual QuickJSR_*.tar.gz
+

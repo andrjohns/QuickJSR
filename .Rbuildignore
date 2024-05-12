@@ -8,3 +8,4 @@
 ^cran-comments\.md$
 ^src/quickjs/\.github$
 ^src/quickjs/\.git$
+semicolon_delimited_script
