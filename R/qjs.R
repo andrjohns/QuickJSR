@@ -35,3 +35,7 @@ qjs_call <- function(ctx_ptr, function_name, args_json) {
 qjs_validate <- function(ctx_ptr, function_name) {
   .Call(`qjs_validate_`, ctx_ptr, function_name)
 }
+
+qjs_passthrough <- function(args) {
+  .Call(`qjs_passthrough_`, args)
+}
