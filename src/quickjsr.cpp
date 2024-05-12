@@ -1,6 +1,7 @@
 #include <cpp11.hpp>
 #include <cpp11/declarations.hpp>
 #include <quickjs-libc.h>
+#include <iostream>
 
 // Register the cpp11 external pointer types with the correct cleanup/finaliser functions
 using ContextXPtr = cpp11::external_pointer<JSContext, JS_FreeContext>;
@@ -179,23 +180,105 @@ JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x) {
 }
 
 SEXP JSValue_to_SEXP_scalar(JSContext* ctx, JSValue val) {
-  if (JS_IsBool(val)) {
-    return cpp11::as_sexp(static_cast<bool>(JS_ToBool(ctx, val)));
+  switch(JS_VALUE_GET_TAG(val)) {
+    case JS_TAG_BOOL:
+      return cpp11::as_sexp(static_cast<bool>(JS_ToBool(ctx, val)));
+    case JS_TAG_INT:
+      return cpp11::as_sexp(JS_VALUE_GET_INT(val));
+    case JS_TAG_FLOAT64:
+      return cpp11::as_sexp(JS_VALUE_GET_FLOAT64(val));
+    case JS_TAG_STRING:
+      return cpp11::as_sexp(JS_ToCString(ctx, val));
+    default:
+      return cpp11::as_sexp("Unsupported type");
   }
-  if (JS_IsNumber(val)) {
-    double res;
-    JS_ToFloat64(ctx, &res, val);
-    return cpp11::as_sexp(res);
+}
+
+bool JSValue_is_scalar(JSValue val) {
+  return JS_IsBool(val) || JS_IsNumber(val) || JS_IsString(val);
+}
+
+int TYPEOF_JSValue(JSValue val) {
+  return JS_VALUE_GET_TAG(val);
+}
+
+bool JSValue_convertible(JSValue val, int type) {
+  switch(type) {
+    case JS_TAG_BOOL:
+      return JS_IsBool(val);
+    case JS_TAG_INT:
+      return JS_IsNumber(val);
+    case JS_TAG_FLOAT64:
+      return JS_IsNumber(val);
+    case JS_TAG_STRING:
+      return JS_IsString(val);
+    default:
+      return false;
   }
-  if (JS_IsString(val)) {
-    return cpp11::as_sexp(JS_ToCString(ctx, val));
+}
+
+bool JSValue_is_vector(JSContext* ctx, JSValue val) {
+  if (!JS_IsArray(ctx, val)) {
+    return false;
   }
-  return cpp11::as_sexp("Unsupported type");
+  JSValue elem = JS_GetPropertyUint32(ctx, val, 0);
+  bool is_vector = JSValue_is_scalar(elem);
+  int type = TYPEOF_JSValue(elem);
+  int len = JS_VALUE_GET_INT(JS_GetPropertyStr(ctx, val, "length"));
+  JS_FreeValue(ctx, elem);
+  for (int i = 1; i < len; i++) {
+    elem = JS_GetPropertyUint32(ctx, val, i);
+    if (!JSValue_convertible(elem, type)) {
+      is_vector = false;
+      JS_FreeValue(ctx, elem);
+      break;
+    }
+    JS_FreeValue(ctx, elem);
+  }
+  return is_vector;
+}
+
+template <typename T>
+using cast_t = std::conditional_t<std::is_same<T, cpp11::r_string>::value, const char*,
+                                  std::conditional_t<std::is_same<T, cpp11::r_bool>::value, bool, T>>;
+
+template <typename T>
+cpp11::r_vector<T> JSValue_to_SEXP_vector(JSContext* ctx, JSValue val) {
+  int len = JS_VALUE_GET_INT(JS_GetPropertyStr(ctx, val, "length"));
+  cpp11::writable::r_vector<T> result(len);
+  for (int i = 0; i < len; i++) {
+    JSValue elem = JS_GetPropertyUint32(ctx, val, i);
+    result[i] = cpp11::as_cpp<cast_t<T>>(JSValue_to_SEXP_scalar(ctx, elem));
+    JS_FreeValue(ctx, elem);
+  }
+  return result;
 }
 
 SEXP JSValue_to_SEXP(JSContext* ctx, JSValue val) {
-  // TODO: Implement array and object conversion
-  return JSValue_to_SEXP_scalar(ctx, val);
+  if (JSValue_is_scalar(val)) {
+    return JSValue_to_SEXP_scalar(ctx, val);
+  }
+
+  // If the value is an array which is not nested and contains all the same type, return a vector
+  if (JSValue_is_vector(ctx, val)) {
+    int type = TYPEOF_JSValue(JS_GetPropertyUint32(ctx, val, 0));
+    switch(type) {
+      case JS_TAG_BOOL:
+        return JSValue_to_SEXP_vector<cpp11::r_bool>(ctx, val);
+      case JS_TAG_INT:
+        return JSValue_to_SEXP_vector<double>(ctx, val);
+      case JS_TAG_FLOAT64:
+        return JSValue_to_SEXP_vector<double>(ctx, val);
+      case JS_TAG_STRING: {
+        return JSValue_to_SEXP_vector<cpp11::r_string>(ctx, val);
+      }
+      default:
+        return cpp11::as_sexp("Unsupported type");
+    }
+  }
+
+  // TODO: Implement object conversion
+  return cpp11::as_sexp("Not yet implemented!");;
 }
 
 extern "C" SEXP qjs_passthrough_(SEXP args_) {
