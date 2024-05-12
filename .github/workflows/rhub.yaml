@@ -32,7 +32,9 @@ jobs:
       platforms: ${{ steps.rhub-setup.outputs.platforms }}
 
     steps:
-    # NO NEED TO CHECKOUT HERE
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
     - uses: r-hub/actions/setup@v1
       with:
         config: ${{ github.event.inputs.config }}
@@ -51,9 +53,6 @@ jobs:
       image: ${{ matrix.config.container }}
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
       - uses: r-hub/actions/platform-info@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -78,9 +77,6 @@ jobs:
         config: ${{ fromJson(needs.setup.outputs.platforms) }}
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
       - uses: r-hub/actions/setup-r@v1
         with:
           job-config: ${{ matrix.config.job-config }}
