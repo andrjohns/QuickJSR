@@ -36,6 +36,14 @@ qjs_validate <- function(ctx_ptr, function_name) {
   .Call(`qjs_validate_`, ctx_ptr, function_name)
 }
 
+#' qjs_passthrough
+#'
+#' Test function to pass through arguments
+#'
+#' @param args Args to pass through
+#' @return The input argument unchanged
+#'
+#' @export
 qjs_passthrough <- function(args) {
   .Call(`qjs_passthrough_`, args)
 }
