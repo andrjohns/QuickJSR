@@ -27,3 +27,19 @@ expect_eq_jsonlite(list(list(a = 1, b = 2), list(c = 3, d = 4)))
 expect_eq_jsonlite(list(c("e", "f"), c("g", "h")))
 expect_eq_jsonlite(list(list("e", "f"), list("g", "h")))
 expect_eq_jsonlite(list(list(a = "e", b = "f"), list(c = "g", d = "h")))
+
+
+# Test that the full round-trip conversion is consistent.
+expect_eq_jsonlite_full <- function(x) {
+  expect_equal(qjs_passthrough(x, FALSE), jsonlite::fromJSON(jsonlite::toJSON(x)))
+}
+expect_eq_jsonlite_full(1)
+expect_eq_jsonlite_full(1:3)
+expect_eq_jsonlite_full(c(1.5, 2.5))
+
+expect_eq_jsonlite_full("a")
+expect_eq_jsonlite_full(c("a", "b", "c"))
+
+expect_eq_jsonlite_full(TRUE)
+expect_eq_jsonlite_full(FALSE)
+expect_eq_jsonlite_full(c(TRUE, FALSE))
