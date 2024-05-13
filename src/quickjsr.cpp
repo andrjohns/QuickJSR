@@ -1,6 +1,7 @@
 #include <cpp11.hpp>
 #include <cpp11/declarations.hpp>
 #include <quickjs-libc.h>
+#include <quickjsr.hpp>
 
 // Register the cpp11 external pointer types with the correct cleanup/finaliser functions
 using ContextXPtr = cpp11::external_pointer<JSContext, JS_FreeContext>;
@@ -141,64 +142,7 @@ extern "C" SEXP qjs_eval_(SEXP eval_string_) {
   END_CPP11
 }
 
-JSValue SEXP_to_JSValue_scalar(JSContext* ctx, SEXP x, int i = 0) {
-  switch(TYPEOF(x)) {
-    case REALSXP:
-      return JS_NewFloat64(ctx, REAL(x)[i]);
-    case INTSXP:
-      return JS_NewInt32(ctx, INTEGER(x)[i]);
-    case LGLSXP:
-      return JS_NewBool(ctx, LOGICAL(x)[i]);
-    case STRSXP:
-      return JS_NewString(ctx, CHAR(STRING_ELT(x, i)));
-    default:
-      return JS_UNDEFINED;
-  }
-}
-
-JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x) {
-  if (TYPEOF(x) == VECSXP) {
-    JSValue obj = JS_NewObject(ctx);
-    for (int i = 0; i < Rf_length(x); i++) {
-      SEXP name = STRING_ELT(Rf_getAttrib(x, R_NamesSymbol), i);
-      JSValue val = SEXP_to_JSValue(ctx, VECTOR_ELT(x, i));
-      JS_SetPropertyStr(ctx, obj, CHAR(name), val);
-    }
-    return obj;
-  }
-  if (Rf_length(x) == 1) {
-    return SEXP_to_JSValue_scalar(ctx, x);
-  } else {
-    JSValue arr = JS_NewArray(ctx);
-    for (int i = 0; i < Rf_length(x); i++) {
-      JSValue val = SEXP_to_JSValue_scalar(ctx, x, i);
-      JS_SetPropertyUint32(ctx, arr, i, val);
-    }
-    return arr;
-  }
-}
-
-SEXP JSValue_to_SEXP_scalar(JSContext* ctx, JSValue val) {
-  if (JS_IsBool(val)) {
-    return cpp11::as_sexp(static_cast<bool>(JS_ToBool(ctx, val)));
-  }
-  if (JS_IsNumber(val)) {
-    double res;
-    JS_ToFloat64(ctx, &res, val);
-    return cpp11::as_sexp(res);
-  }
-  if (JS_IsString(val)) {
-    return cpp11::as_sexp(JS_ToCString(ctx, val));
-  }
-  return cpp11::as_sexp("Unsupported type");
-}
-
-SEXP JSValue_to_SEXP(JSContext* ctx, JSValue val) {
-  // TODO: Implement array and object conversion
-  return JSValue_to_SEXP_scalar(ctx, val);
-}
-
-extern "C" SEXP qjs_passthrough_(SEXP args_) {
+extern "C" SEXP qjs_passthrough_(SEXP args_, SEXP jsonlite_rtn_) {
   BEGIN_CPP11
   JSRuntime* rt = JS_NewRuntime();
   JSContext* ctx = JS_NewContext(rt);
@@ -214,7 +158,7 @@ extern "C" SEXP qjs_passthrough_(SEXP args_) {
   std::string wrapped_name = "passthrough";
   JSValue global = JS_GetGlobalObject(ctx);
   JSValue function_wrapper = JS_GetPropertyStr(ctx, global, wrapped_name.c_str());
-  JSValue args[] = { SEXP_to_JSValue(ctx, args_) };
+  JSValue args[] = { quickjsr::SEXP_to_JSValue(ctx, args_) };
   JSValue result_js = JS_Call(ctx, function_wrapper, global, 1, args);
 
   SEXP result;
@@ -222,7 +166,11 @@ extern "C" SEXP qjs_passthrough_(SEXP args_) {
     js_std_dump_error(ctx);
     result = cpp11::as_sexp("Error!");
   } else {
-    result = JSValue_to_SEXP(ctx, result_js);
+    if (cpp11::as_cpp<bool>(jsonlite_rtn_)) {
+      result = cpp11::as_sexp(JS_ValToJSON(ctx, &result_js));
+    } else {
+      result = quickjsr::JSValue_to_SEXP(ctx, result_js);
+    }
   }
 
   JS_FreeValue(ctx, result_js);
