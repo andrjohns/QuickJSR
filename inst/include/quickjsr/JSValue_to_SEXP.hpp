@@ -3,25 +3,45 @@
 
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
+#include <quickjsr/JSValue_to_Cpp.hpp>
 
 namespace quickjsr {
+// Forward declaration to allow for recursive calls
+SEXP JSValue_to_SEXP(JSContext* ctx, JSValue val);
 
 SEXP JSValue_to_SEXP_scalar(JSContext* ctx, JSValue val) {
   if (JS_IsBool(val)) {
-    return cpp11::as_sexp(static_cast<bool>(JS_ToBool(ctx, val)));
+    return cpp11::as_sexp(JSValue_to_Cpp<bool>(ctx, val));
   }
   if (JS_IsNumber(val)) {
-    double res;
-    JS_ToFloat64(ctx, &res, val);
-    return cpp11::as_sexp(res);
+    return cpp11::as_sexp(JSValue_to_Cpp<double>(ctx, val));
   }
   if (JS_IsString(val)) {
-    return cpp11::as_sexp(JS_ToCString(ctx, val));
+    return cpp11::as_sexp(JSValue_to_Cpp<std::string>(ctx, val));
   }
   return cpp11::as_sexp("Unsupported type");
 }
 
+SEXP JSValue_to_SEXP_vector(JSContext* ctx, JSValue val) {
+  JSValue elem = JS_GetPropertyUint32(ctx, val, 0);
+  SEXP rtn;
+  if (JS_IsBool(elem)) {
+    rtn = cpp11::as_sexp(JSValue_to_Cpp<std::vector<bool>>(ctx, val));
+  } else if (JS_IsNumber(elem)) {
+    rtn = cpp11::as_sexp(JSValue_to_Cpp<std::vector<double>>(ctx, val));
+  } else if (JS_IsString(elem)) {
+    rtn = cpp11::as_sexp(JSValue_to_Cpp<std::vector<std::string>>(ctx, val));
+  } else {
+    rtn = cpp11::as_sexp("Unsupported type");
+  }
+  JS_FreeValue(ctx, elem);
+  return rtn;
+}
+
 SEXP JSValue_to_SEXP(JSContext* ctx, JSValue val) {
+  if (JS_IsArray(ctx, val)) {
+    return JSValue_to_SEXP_vector(ctx, val);
+  }
   // TODO: Implement array and object conversion
   return JSValue_to_SEXP_scalar(ctx, val);
 }
