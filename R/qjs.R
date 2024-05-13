@@ -36,6 +36,19 @@ qjs_validate <- function(ctx_ptr, function_name) {
   .Call(`qjs_validate_`, ctx_ptr, function_name)
 }
 
-qjs_passthrough <- function(args) {
-  .Call(`qjs_passthrough_`, args)
+#' qjs_passthrough
+#'
+#' Test function to pass through arguments
+#'
+#' @param args Args to pass through
+#' @param jsonlite Whether to return a JSON string to be parsed by jsonlite
+#' @return The input argument unchanged
+#'
+#' @export
+qjs_passthrough <- function(args, jsonlite = TRUE) {
+  if (isTRUE(jsonlite)) {
+    parse_return(.Call(`qjs_passthrough_`, args, jsonlite))
+  } else {
+    .Call(`qjs_passthrough_`, args, jsonlite)
+  }
 }

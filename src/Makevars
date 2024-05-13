@@ -3,6 +3,12 @@ PKG_CPPFLAGS += -D_GNU_SOURCE -DCONFIG_BIGNUM
 PKG_CPPFLAGS += -DCONFIG_VERSION=\"$(shell cat quickjs/VERSION)\"
 PKG_LIBS = ../inst/lib/$(R_ARCH)/libquickjs.a
 
+ifeq ($(OS),Windows_NT)
+  DLL := .dll
+else
+	DLL := .so
+endif
+
 CC_VERSION :=  $(shell $(CC) -dumpfullversion -dumpversion 2>&1)
 CC_MAJOR := $(word 1,$(subst ., ,$(CC_VERSION)))
 
@@ -54,5 +60,5 @@ $(QUICKJS_OBJECTS): quickjs/%.o : quickjs/%.c
 	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DSTRICT_R_HEADERS -funsigned-char -fwrapv -std=c11 -c $< -o $@
 
 clean:
-	$(RM) $(QUICKJS_OBJECTS) $(OBJECTS) ../inst/VERSION
+	$(RM) $(QUICKJS_OBJECTS) $(OBJECTS) ../inst/VERSION QuickJSR$(DLL)
 	$(RM) -r ../inst/lib ../inst/include/quickjs
