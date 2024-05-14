@@ -4,12 +4,12 @@
 \alias{qjs_passthrough}
 \title{qjs_passthrough}
 \usage{
-qjs_passthrough(args, jsonlite = TRUE)
+qjs_passthrough(args, json = TRUE)
 }
 \arguments{
 \item{args}{Args to pass through}
 
-\item{jsonlite}{Whether to return a JSON string to be parsed by jsonlite}
+\item{json}{Whether to return a JSON string}
 }
 \value{
 The input argument unchanged
