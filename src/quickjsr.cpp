@@ -147,11 +147,13 @@ extern "C" SEXP from_json_(SEXP json_) {
   JSContext* ctx = JS_NewContext(rt);
 
   std::string json = cpp11::as_cpp<std::string>(json_);
-  SEXP result = quickjsr::JSON_to_SEXP(ctx, json);
+  JSValue result = quickjsr::JSON_to_JSValue(ctx, json);
+  SEXP rtn = quickjsr::JSValue_to_SEXP(ctx, result);
 
+  JS_FreeValue(ctx, result);
   JS_FreeContext(ctx);
   JS_FreeRuntime(rt);
 
-  return result;
+  return rtn;
   END_CPP11
 }
