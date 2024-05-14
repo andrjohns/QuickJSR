@@ -36,15 +36,26 @@ qjs_validate <- function(ctx_ptr, function_name) {
   .Call(`qjs_validate_`, ctx_ptr, function_name)
 }
 
-#' qjs_passthrough
+#' to_json
 #'
-#' Test function to pass through arguments
+#' Use the QuickJS C API to convert an R object to a JSON string
 #'
-#' @param args Args to pass through
-#' @param json Whether to return a JSON string
-#' @return The input argument unchanged
+#' @param arg Argument to convert to JSON
+#' @return JSON string
 #'
 #' @export
-qjs_passthrough <- function(args, json = TRUE) {
-  .Call(`qjs_passthrough_`, args, json)
+to_json <- function(arg) {
+  .Call(`to_json_`, arg)
+}
+
+#' from_json
+#'
+#' Use the QuickJS C API to convert a JSON string to an R object
+#'
+#' @param json JSON string to convert to an R object
+#' @return R object
+#'
+#' @export
+from_json <- function(json) {
+  .Call(`from_json_`, json)
 }
