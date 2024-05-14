@@ -29,7 +29,10 @@ namespace quickjsr {
 
   template <typename T, std::enable_if_t<std::is_same<T, std::string>::value>* = nullptr>
   T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
-    return JS_ToCString(ctx, val);
+    const char* res_str = JS_ToCString(ctx, val);
+    std::string result = res_str;
+    JS_FreeCString(ctx, res_str);
+    return result;
   }
 
   template <typename T, std::enable_if_t<is_std_vector<T>::value>* = nullptr>
