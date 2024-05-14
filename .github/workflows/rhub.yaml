@@ -52,7 +52,14 @@ jobs:
 
     steps:
       - name: Install git
-        run: apt-get update && apt-get install -y git
+        run: |
+          if [ $(cat /etc/*release | grep "^ID=") = "ID=debian" ]; then \
+            apt-get update && apt-get install -y git; \
+          fi
+          if [ $(cat /etc/*release | grep "^ID=") = "ID=fedora" ]; then \
+            dnf check-update && dnf install -y git; \
+          fi
+
       - uses: r-hub/actions/checkout@v1.1.9
         with:
           submodules: true
