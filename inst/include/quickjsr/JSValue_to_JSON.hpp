@@ -6,7 +6,7 @@
 
 namespace quickjsr {
 
-std::string JS_ValToJSON(JSContext* ctx, JSValue* val) {
+std::string JSValue_to_JSON(JSContext* ctx, JSValue* val) {
   JSValue global = JS_GetGlobalObject(ctx);
   JSValue json = JS_GetPropertyStr(ctx, global, "JSON");
   JSValue stringify = JS_GetPropertyStr(ctx, json, "stringify");
