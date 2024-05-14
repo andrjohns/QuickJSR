@@ -16,13 +16,13 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: clang-asan,
-              job-config: "{\"label\":\"clang-asan\",\"name\":\"clang-asan\",\"container\":\"ghcr.io/r-hub/containers/clang-asan:latest\"}",
+          - { label: "clang-asan",
+              name: "clang-asan",
               container: "ghcr.io/r-hub/containers/clang-asan:latest",
               git-install: apt-get update && apt-get install -y git }
-          - { name: valgrind,
+          - { label: "valgrind",
+              name: "valgrind",
               container: "ghcr.io/r-hub/containers/valgrind:latest",
-              job-config: "{\"label\":\"valgrind\",\"name\":\"valgrind\",\"container\":\"ghcr.io/r-hub/containers/valgrind:latest\"}",
               git-install: dnf check-update && dnf install -y git }
 
     steps:
@@ -35,13 +35,13 @@ jobs:
       - uses: r-hub/actions/platform-info@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          job-config: ${{ matrix.config.job-config }}
+          job-config: ${{ matrix.config }}
       - uses: r-hub/actions/setup-deps@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          job-config: ${{ matrix.config.job-config }}
+          job-config: ${{ matrix.config }}
       - uses: r-hub/actions/run-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          job-config: ${{ matrix.config.job-config }}
+          job-config: ${{ matrix.config }}
 

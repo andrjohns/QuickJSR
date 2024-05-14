@@ -56,6 +56,9 @@ jobs:
           if [ $(cat /etc/*release | grep "^ID=") = "ID=debian" ]; then \
             apt-get update && apt-get install -y git; \
           fi
+          if [ $(cat /etc/*release | grep "^ID=") = "ID=ubuntu" ]; then \
+            apt-get update && apt-get install -y git; \
+          fi
           if [ $(cat /etc/*release | grep "^ID=") = "ID=fedora" ]; then \
             dnf check-update && dnf install -y git; \
           fi
