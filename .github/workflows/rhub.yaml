@@ -51,10 +51,11 @@ jobs:
       image: ${{ matrix.config.container }}
 
     steps:
-      - uses: r-hub/actions/checkout@v1.1.8
+      - name: Install git
+        run: apt-get update && apt-get install -y git
+      - uses: r-hub/actions/checkout@v1.1.9
         with:
           submodules: true
-          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: r-hub/actions/platform-info@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
