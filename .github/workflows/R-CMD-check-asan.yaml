@@ -17,11 +17,11 @@ jobs:
       matrix:
         config:
           - { name: clang-asan,
-              job-config: "{\"label\":\"valgrind\",\"name\":\"valgrind\",\"container\":\"ghcr.io/r-hub/containers/valgrind:latest\"}",
-              container: ghcr.io/r-hub/containers/clang-asan,
+              job-config: "{\"label\":\"clang-asan\",\"name\":\"clang-asan\",\"container\":\"ghcr.io/r-hub/containers/clang-asan:latest\"}",
+              container: "ghcr.io/r-hub/containers/clang-asan:latest",
               git-install: apt-get update && apt-get install -y git }
           - { name: valgrind,
-              container: ghcr.io/r-hub/containers/valgrind,
+              container: "ghcr.io/r-hub/containers/valgrind:latest",
               job-config: "{\"label\":\"valgrind\",\"name\":\"valgrind\",\"container\":\"ghcr.io/r-hub/containers/valgrind:latest\"}",
               git-install: dnf check-update && dnf install -y git }
 
