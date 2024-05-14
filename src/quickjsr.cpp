@@ -125,7 +125,7 @@ extern "C" SEXP qjs_eval_(SEXP eval_string_) {
   END_CPP11
 }
 
-extern "C" SEXP qjs_passthrough_(SEXP args_, SEXP jsonlite_rtn_) {
+extern "C" SEXP qjs_passthrough_(SEXP args_, SEXP json_rtn_) {
   BEGIN_CPP11
   JSRuntime* rt = JS_NewRuntime();
   JSContext* ctx = JS_NewContext(rt);
@@ -149,7 +149,7 @@ extern "C" SEXP qjs_passthrough_(SEXP args_, SEXP jsonlite_rtn_) {
     js_std_dump_error(ctx);
     result = cpp11::as_sexp("Error!");
   } else {
-    if (cpp11::as_cpp<bool>(jsonlite_rtn_)) {
+    if (cpp11::as_cpp<bool>(json_rtn_)) {
       result = cpp11::as_sexp(quickjsr::JS_ValToJSON(ctx, &result_js));
     } else {
       result = quickjsr::JSValue_to_SEXP(ctx, result_js);

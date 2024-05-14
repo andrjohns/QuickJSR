@@ -22,5 +22,8 @@ namespace quickjsr {
 
   template <typename T>
   using value_type_t = typename value_type<T>::type;
+
+  template <typename GoalT, typename InT>
+  using enable_if_type_t = std::enable_if_t<std::is_same<GoalT, InT>::value>;
 } // namespace quickjsr
 #endif

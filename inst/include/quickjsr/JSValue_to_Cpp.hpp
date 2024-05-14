@@ -8,26 +8,26 @@
 #include <quickjs-libc.h>
 
 namespace quickjsr {
-  template <typename T, std::enable_if_t<std::is_same<T, double>::value>* = nullptr>
+  template <typename T, enable_if_type_t<double, T>* = nullptr>
   T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
     double res;
     JS_ToFloat64(ctx, &res, val);
     return res;
   }
 
-  template <typename T, std::enable_if_t<std::is_same<T, int32_t>::value>* = nullptr>
+  template <typename T, enable_if_type_t<int32_t, T>* = nullptr>
   T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
     int32_t res;
     JS_ToInt32(ctx, &res, val);
     return res;
   }
 
-  template <typename T, std::enable_if_t<std::is_same<T, bool>::value>* = nullptr>
+  template <typename T, enable_if_type_t<bool, T>* = nullptr>
   T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
     return static_cast<bool>(JS_ToBool(ctx, val));
   }
 
-  template <typename T, std::enable_if_t<std::is_same<T, std::string>::value>* = nullptr>
+  template <typename T, enable_if_type_t<std::string, T>* = nullptr>
   T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
     const char* res_str = JS_ToCString(ctx, val);
     std::string result = res_str;

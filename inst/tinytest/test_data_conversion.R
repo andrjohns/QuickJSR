@@ -1,9 +1,9 @@
 # Check conversions from R types to JS types are consistent with jsonlite.
 #  - The inputs are directly converted from R to JS types using the QuickJS API.
-#  - The outputs are returned as JSON strings and parsed back to R using jsonlite.
-#  - If the conversion is consistent, the output should be the same as the input.
+#  - The outputs are returned as JSON strings
+#  - If the conversion is consistent, the output should match jsonlite's conversion
 expect_eq_jsonlite <- function(x) {
-  expect_equal(qjs_passthrough(x), jsonlite::fromJSON(jsonlite::toJSON(x)))
+  expect_equal(qjs_passthrough(x), as.character(jsonlite::toJSON(x)))
 }
 expect_eq_jsonlite(1)
 expect_eq_jsonlite(1:3)

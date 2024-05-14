@@ -10,7 +10,7 @@ extern "C" {
   SEXP qjs_validate_(SEXP ctx_ptr_, SEXP code_string_);
   SEXP qjs_call_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_json_);
   SEXP qjs_eval_(SEXP eval_string_);
-  SEXP qjs_passthrough_(SEXP args_, SEXP jsonlite_rtn_);
+  SEXP qjs_passthrough_(SEXP args_, SEXP json_rtn_);
 
 
   static const R_CallMethodDef CallEntries[] = {
