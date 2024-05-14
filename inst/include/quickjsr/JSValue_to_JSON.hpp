@@ -17,7 +17,7 @@ std::string JS_ValToJSON(JSContext* ctx, JSValue* val) {
     js_std_dump_error(ctx);
     result = "Error!";
   } else {
-    result = JS_ToCString(ctx, result_js);
+    result = JSValue_to_Cpp<std::string>(ctx, result_js);
   }
 
   JS_FreeValue(ctx, result_js);
