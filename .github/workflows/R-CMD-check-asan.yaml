@@ -16,22 +16,32 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: sanitizers,
+          - { name: clang-asan,
+              job-config: {"label":"clang-asan","name":"clang-asan","container":"ghcr.io/r-hub/containers/clang-asan:latest"},
               container: ghcr.io/r-hub/containers/clang-asan,
               git-install: apt-get update && apt-get install -y git }
           - { name: valgrind,
               container: ghcr.io/r-hub/containers/valgrind,
+              job-config: { "label":"valgrind","name":"valgrind","container":"ghcr.io/r-hub/containers/valgrind:latest" },
               git-install: dnf check-update && dnf install -y git }
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      R_KEEP_PKG_SOURCE: yes
+
     steps:
       - name: Install git
         run: ${{ matrix.config.git-install }}
+
       - uses: r-hub/actions/checkout@v1.1.9
         with:
           submodules: true
       - uses: r-hub/actions/platform-info@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          job-config: ${{ matrix.config.job-config }}
       - uses: r-hub/actions/setup-deps@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          job-config: ${{ matrix.config.job-config }}
       - uses: r-hub/actions/run-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          job-config: ${{ matrix.config.job-config }}
 
