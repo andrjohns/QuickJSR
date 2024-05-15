@@ -1,8 +1,7 @@
 #ifndef QUICKJSR_JSVALUE_TO_SEXP_HPP
 #define QUICKJSR_JSVALUE_TO_SEXP_HPP
 
-#include <cpp11.hpp>
-#include <quickjs-libc.h>
+#include <quickjsr/wrapper_classes.hpp>
 #include <quickjsr/JSValue_to_Cpp.hpp>
 
 namespace quickjsr {
@@ -23,7 +22,7 @@ SEXP JSValue_to_SEXP_scalar(JSContext* ctx, JSValue val) {
 }
 
 SEXP JSValue_to_SEXP_vector(JSContext* ctx, JSValue val) {
-  JSValue elem = JS_GetPropertyUint32(ctx, val, 0);
+  JSValueWrapper elem = JS_GetPropertyUint32(ctx, val, 0);
   SEXP rtn;
   if (JS_IsBool(elem)) {
     rtn = cpp11::as_sexp(JSValue_to_Cpp<std::vector<bool>>(ctx, val));
@@ -34,7 +33,6 @@ SEXP JSValue_to_SEXP_vector(JSContext* ctx, JSValue val) {
   } else {
     rtn = cpp11::as_sexp("Unsupported type");
   }
-  JS_FreeValue(ctx, elem);
   return rtn;
 }
 
