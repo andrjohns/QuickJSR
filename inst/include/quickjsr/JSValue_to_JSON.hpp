@@ -1,17 +1,16 @@
 #ifndef QUICKJSR_JSVALUE_TO_JSON_HPP
 #define QUICKJSR_JSVALUE_TO_JSON_HPP
 
-#include <cpp11.hpp>
-#include <quickjs-libc.h>
+#include <quickjsr/wrapper_classes.hpp>
 
 namespace quickjsr {
 
 std::string JSValue_to_JSON(JSContext* ctx, JSValue* val) {
-  JSValue global = JS_GetGlobalObject(ctx);
-  JSValue json = JS_GetPropertyStr(ctx, global, "JSON");
-  JSValue stringify = JS_GetPropertyStr(ctx, json, "stringify");
+  JSValueWrapper global = JS_GetGlobalObject(ctx);
+  JSValueWrapper json = JS_GetPropertyStr(ctx, global, "JSON");
+  JSValueWrapper stringify = JS_GetPropertyStr(ctx, json, "stringify");
 
-  JSValue result_js = JS_Call(ctx, stringify, global, 1, val);
+  JSValueWrapper result_js = JS_Call(ctx, stringify, global, 1, val);
   std::string result;
   if (JS_IsException(result_js)) {
     js_std_dump_error(ctx);
@@ -19,11 +18,6 @@ std::string JSValue_to_JSON(JSContext* ctx, JSValue* val) {
   } else {
     result = JSValue_to_Cpp<std::string>(ctx, result_js);
   }
-
-  JS_FreeValue(ctx, result_js);
-  JS_FreeValue(ctx, stringify);
-  JS_FreeValue(ctx, json);
-  JS_FreeValue(ctx, global);
 
   return result;
 }
