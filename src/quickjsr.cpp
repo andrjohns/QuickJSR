@@ -2,18 +2,11 @@
 #include <cpp11/declarations.hpp>
 #include <quickjs-libc.h>
 #include <quickjsr.hpp>
-#include <memory>
-
-void JS_FreeRuntimeStdHandlers(JSRuntime* rt) {
-  js_std_free_handlers(rt);
-  JS_FreeRuntime(rt);
-}
-
-// Register the cpp11 external pointer types with the correct cleanup/finaliser functions
-using ContextXPtr = cpp11::external_pointer<JSContext, JS_FreeContext>;
-using RuntimeXPtr = cpp11::external_pointer<JSRuntime, JS_FreeRuntimeStdHandlers>;
 
 using quickjsr::JSRuntimeContextWrapper;
+
+// The wrapper class has a destructor that frees the context and runtime
+// so we don't need to provide a finaliser function for the external pointer.
 using RtCtxPtr = cpp11::external_pointer<JSRuntimeContextWrapper>;
 
 extern "C" SEXP qjs_context_(SEXP stack_size_) {
