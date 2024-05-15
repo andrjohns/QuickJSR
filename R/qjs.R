@@ -28,8 +28,8 @@ qjs_source <- function(ctx_ptr, code_string) {
   .Call(`qjs_source_`, ctx_ptr, code_string)
 }
 
-qjs_call <- function(ctx_ptr, function_name, args_json) {
-  parse_return(.Call(`qjs_call_`, ctx_ptr, function_name, args_json))
+qjs_call <- function(ctx_ptr, function_name, ...) {
+  parse_return(.Call(`qjs_call_`, ctx_ptr, function_name, list(...)))
 }
 
 qjs_validate <- function(ctx_ptr, function_name) {
