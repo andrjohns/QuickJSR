@@ -1,8 +1,3 @@
-args_to_json <- function(...) {
-  dots <- list(...)
-  lapply(dots, jsonlite::toJSON, auto_unbox = TRUE)
-}
-
 parse_return <- function(qjs_return) {
   if (qjs_return == "Error!") {
     stop("Error in JS runtime, see error message above for more information!",

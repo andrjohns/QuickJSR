@@ -30,7 +30,7 @@ new_JSContext <- function(stack_size = NULL) {
     invisible(NULL)
   }
   ContextList$call <- function(function_name, ...) {
-    qjs_call(ContextList$context, function_name, list(...))
+    qjs_call(ContextList$context, function_name, ...)
   }
   structure(
     class = "JSContext",
