@@ -58,33 +58,20 @@ extern "C" SEXP qjs_validate_(SEXP ctx_ptr_, SEXP code_string_) {
   END_CPP11
 }
 
-extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_json_) {
+extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   BEGIN_CPP11
   JSContext* ctx = ContextXPtr(ctx_ptr_).get();
-  std::string function_name = cpp11::as_cpp<std::string>(function_name_);
-  std::string args_json = cpp11::as_cpp<std::string>(args_json_);
-  // Arguments are passed from R as a JSON object string, so we use a wrapper function
-  // which 'spreads' the object to separate arguments.
-  std::string wrapped_name = function_name + "_wrapper";
-  std::string call_wrapper =
-    "function " + wrapped_name + "(args_object) { return " + function_name +
-    "(...Object.values(JSON.parse(args_object))); }";
 
-  JSValue tmp = JS_Eval(ctx, call_wrapper.c_str(), call_wrapper.size(), "", 0);
-  bool failed = JS_IsException(tmp);
-  JS_FreeValue(ctx, tmp);
-  if (failed) {
-    js_std_dump_error(ctx);
-    return cpp11::as_sexp("Error!");
+  int n_args = Rf_length(args_list_);
+  std::vector<JSValue> args(n_args);
+  for (int i = 0; i < n_args; i++) {
+    args[i] = quickjsr::SEXP_to_JSValue(ctx, VECTOR_ELT(args_list_, i), true);
   }
 
   JSValue global = JS_GetGlobalObject(ctx);
-  JSValue function_wrapper = JS_GetPropertyStr(ctx, global, wrapped_name.c_str());
-  JSValue args[] = {
-    JS_NewString(ctx, args_json.c_str())
-  };
+  JSValue fun = JS_GetPropertyStr(ctx, global, CHAR(STRING_ELT(fun_name_, 0)));
+  JSValue result_js = JS_Call(ctx, fun, global, args.size(), args.data());
 
-  JSValue result_js = JS_Call(ctx, function_wrapper, global, 1, args);
   std::string result;
   if (JS_IsException(result_js)) {
     js_std_dump_error(ctx);
@@ -94,8 +81,10 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_json_) {
   }
 
   JS_FreeValue(ctx, result_js);
-  JS_FreeValue(ctx, args[0]);
-  JS_FreeValue(ctx, function_wrapper);
+  for (auto&& arg : args) {
+    JS_FreeValue(ctx, arg);
+  }
+  JS_FreeValue(ctx, fun);
   JS_FreeValue(ctx, global);
 
   return cpp11::as_sexp(result);
