@@ -1,13 +1,11 @@
 new_JSContext <- function(stack_size = NULL) {
   stack_size_int = ifelse(is.null(stack_size), -1, stack_size)
-  rt_and_ctx = qjs_context(stack_size_int)
   ContextList = list(
-    runtime = rt_and_ctx$runtime_ptr,
-    context = rt_and_ctx$context_ptr
+    runtime_context = qjs_context(stack_size_int)
   )
 
   ContextList$validate <- function(code_string) {
-    qjs_validate(ContextList$context, code_string)
+    qjs_validate(ContextList$runtime_context, code_string)
   }
 
   ContextList$source <- function(file = NULL, code = NULL) {
@@ -23,14 +21,14 @@ new_JSContext <- function(stack_size = NULL) {
     } else {
       stop("No JS code provided!", call. = FALSE)
     }
-    eval_success <- qjs_source(ContextList$context, code_string)
+    eval_success <- qjs_source(ContextList$runtime_context, code_string)
     if (!eval_success) {
       stop("Evaluating JS code failed, see message above!", call. = FALSE)
     }
     invisible(NULL)
   }
   ContextList$call <- function(function_name, ...) {
-    qjs_call(ContextList$context, function_name, args_to_json(...))
+    qjs_call(ContextList$runtime_context, function_name, args_to_json(...))
   }
   structure(
     class = "JSContext",
