@@ -4,10 +4,12 @@
 \alias{to_json}
 \title{to_json}
 \usage{
-to_json(arg)
+to_json(arg, auto_unbox = FALSE)
 }
 \arguments{
 \item{arg}{Argument to convert to JSON}
+
+\item{auto_unbox}{Automatically unbox single element vectors}
 }
 \value{
 JSON string
