@@ -3,6 +3,7 @@
 
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
+#include <iostream>
 
 namespace quickjsr {
   // Forward declaration to allow for recursive calls
@@ -47,12 +48,15 @@ namespace quickjsr {
   JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, bool auto_unbox = false) {
     // Following jsonlite conventions:
     //   - R list with names is an object, otherwise an array
-    if (TYPEOF(x) == VECSXP) {
+    if (Rf_isNewList(x)) {
       if (Rf_getAttrib(x, R_NamesSymbol) != R_NilValue) {
         return SEXP_to_JSValue_object(ctx, x, auto_unbox);
       } else {
         return SEXP_to_JSValue_array(ctx, x, auto_unbox);
       }
+    }
+    if (Rf_isArray(x)) {
+      return SEXP_to_JSValue_array(ctx, x, auto_unbox);
     }
     if (Rf_length(x) == 1 && auto_unbox) {
       return SEXP_to_JSValue_elem(ctx, x, 0, true);
