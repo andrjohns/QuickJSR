@@ -6,12 +6,9 @@
 
 namespace quickjsr {
 
-std::string JSValue_to_JSON(JSContext* ctx, JSValue* val) {
-  JSValue global = JS_GetGlobalObject(ctx);
-  JSValue json = JS_GetPropertyStr(ctx, global, "JSON");
-  JSValue stringify = JS_GetPropertyStr(ctx, json, "stringify");
+std::string JSValue_to_JSON(JSContext* ctx, JSValue val) {
 
-  JSValue result_js = JS_Call(ctx, stringify, global, 1, val);
+  JSValue result_js = JS_JSONStringify(ctx, val, JS_UNDEFINED, JS_UNDEFINED);
   std::string result;
   if (JS_IsException(result_js)) {
     js_std_dump_error(ctx);
@@ -21,9 +18,6 @@ std::string JSValue_to_JSON(JSContext* ctx, JSValue* val) {
   }
 
   JS_FreeValue(ctx, result_js);
-  JS_FreeValue(ctx, stringify);
-  JS_FreeValue(ctx, json);
-  JS_FreeValue(ctx, global);
 
   return result;
 }

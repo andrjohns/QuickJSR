@@ -29,7 +29,8 @@ qjs_source <- function(ctx_ptr, code_string) {
 }
 
 qjs_call <- function(ctx_ptr, function_name, ...) {
-  parse_return(.Call(`qjs_call_`, ctx_ptr, function_name, list(...)))
+  args_json <- lapply(list(...), jsonlite::toJSON, auto_unbox = TRUE)
+  parse_return(.Call(`qjs_call_`, ctx_ptr, function_name, args_json))
 }
 
 qjs_validate <- function(ctx_ptr, function_name) {
@@ -41,11 +42,12 @@ qjs_validate <- function(ctx_ptr, function_name) {
 #' Use the QuickJS C API to convert an R object to a JSON string
 #'
 #' @param arg Argument to convert to JSON
+#' @param auto_unbox Automatically unbox single element vectors
 #' @return JSON string
 #'
 #' @export
-to_json <- function(arg) {
-  .Call(`to_json_`, arg)
+to_json <- function(arg, auto_unbox = FALSE) {
+  .Call(`to_json_`, arg, auto_unbox)
 }
 
 #' from_json
