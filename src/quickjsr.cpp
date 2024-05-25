@@ -65,7 +65,7 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   int n_args = Rf_length(args_list_);
   std::vector<JSValue> args(n_args);
   for (int i = 0; i < n_args; i++) {
-    args[i] = quickjsr::JSON_to_JSValue(ctx, cpp11::as_cpp<std::string>(VECTOR_ELT(args_list_, i)));
+    args[i] = quickjsr::SEXP_to_JSValue(ctx, VECTOR_ELT(args_list_, i), true);
   }
 
   JSValue global = JS_GetGlobalObject(ctx);
