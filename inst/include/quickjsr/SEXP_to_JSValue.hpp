@@ -3,7 +3,6 @@
 
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
-#include <iostream>
 
 namespace quickjsr {
   // Forward declaration to allow for recursive calls
