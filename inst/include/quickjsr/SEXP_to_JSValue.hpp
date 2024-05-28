@@ -9,7 +9,7 @@ namespace quickjsr {
     static constexpr double milliseconds_day = 86400000;
     JSValue global_obj = JS_GetGlobalObject(ctx);
     JSValue date_ctor = JS_GetPropertyStr(ctx, global_obj, "Date");
-    JSValue timestamp_val = JS_NewFloat64(ctx, timestamp * milliseconds_day);
+    JSValue timestamp_val = __JS_NewFloat64(ctx, timestamp * milliseconds_day);
     JSValue date = JS_CallConstructor(ctx, date_ctor, 1, &timestamp_val);
 
     JS_FreeValue(ctx, global_obj);
