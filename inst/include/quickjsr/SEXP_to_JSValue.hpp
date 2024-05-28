@@ -35,7 +35,7 @@ namespace quickjsr {
     for (int i = 0; i < Rf_length(x); i++) {
       SEXP name = STRING_ELT(Rf_getAttrib(x, R_NamesSymbol), i);
       JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
-      JS_SetPropertyStr(ctx, obj, CHAR(name), val);
+      JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(name), val);
     }
     return obj;
   }
@@ -51,11 +51,11 @@ namespace quickjsr {
       JSValue obj = JS_NewObject(ctx);
       for (int j = 0; j < Rf_length(colnames); j++) {
         JSValue val = SEXP_to_JSValue(ctx, VECTOR_ELT(x, j), auto_unbox, auto_unbox_curr, i);
-        JS_SetPropertyStr(ctx, obj, CHAR(STRING_ELT(colnames, j)), val);
+        JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(colnames, j)), val);
       }
       // Only add rownames if they are character strings
       if (rownames != R_NilValue && Rf_isString(rownames)) {
-        JSValue val = JS_NewString(ctx, CHAR(STRING_ELT(rownames, i)));
+        JSValue val = JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(rownames, i)));
         JS_SetPropertyStr(ctx, obj, "_row", val);
       }
       JS_SetPropertyUint32(ctx, arr, i, obj);
@@ -79,20 +79,20 @@ namespace quickjsr {
     }
     switch (TYPEOF(x)) {
       case LGLSXP:
-        return JS_NewBool(ctx, LOGICAL(x)[index]);
+        return JS_NewBool(ctx, LOGICAL_ELT(x, index));
       case INTSXP: {
         if (Rf_inherits(x, "factor")) {
           SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
-          return JS_NewString(ctx, CHAR(STRING_ELT(levels, INTEGER(x)[index] - 1)));
+          return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, INTEGER_ELT(x, index) - 1)));
         } else {
-          return JS_NewInt32(ctx, INTEGER(x)[index]);
+          return JS_NewInt32(ctx, INTEGER_ELT(x, index));
         }
       }
       case REALSXP: {
         if (Rf_inherits(x, "Date")) {
-          return JS_NewDate(ctx, REAL(x)[index]);
+          return JS_NewDate(ctx, REAL_ELT(x, index));
         } else {
-          return JS_NewFloat64(ctx, REAL(x)[index]);
+          return JS_NewFloat64(ctx, REAL_ELT(x, index));
         }
       }
       case STRSXP:
