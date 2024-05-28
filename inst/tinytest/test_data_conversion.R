@@ -5,29 +5,34 @@
 expect_eq_jsonlite <- function(x) {
   expect_equal(to_json(x), as.character(jsonlite::toJSON(x)))
 }
-expect_eq_jsonlite(1)
-expect_eq_jsonlite(1:3)
-expect_eq_jsonlite(c(1.5, 2.5))
+expect_equal(to_json(1), "[1]")
+expect_equal(to_json(1:3), "[1,2,3]")
+expect_equal(to_json(c(1.5, 2.5)), "[1.5,2.5]")
 
-expect_eq_jsonlite("a")
-expect_eq_jsonlite(c("a", "b", "c"))
+expect_equal(to_json("a"), "[\"a\"]")
+expect_equal(to_json(c("a", "b", "c")), "[\"a\",\"b\",\"c\"]")
 
-expect_eq_jsonlite(TRUE)
-expect_eq_jsonlite(FALSE)
-expect_eq_jsonlite(c(TRUE, FALSE))
+expect_equal(to_json(TRUE), "[true]")
+expect_equal(to_json(FALSE), "[false]")
+expect_equal(to_json(c(TRUE, FALSE)), "[true,false]")
 
-expect_eq_jsonlite(list(1, 2, 3))
-expect_eq_jsonlite(list(a = 1, b = 2, c = 3))
-expect_eq_jsonlite(list(a = "d", b = "e", c = "f"))
+expect_equal(to_json(list(1, 2, 3)), "[[1],[2],[3]]")
+expect_equal(to_json(list(a = 1, b = 2, c = 3)),
+              "{\"a\":[1],\"b\":[2],\"c\":[3]}")
+expect_equal(to_json(list(a = "d", b = "e", c = "f")),
+              "{\"a\":[\"d\"],\"b\":[\"e\"],\"c\":[\"f\"]}")
 
-expect_eq_jsonlite(list(c(1, 2), c(3, 4)))
-expect_eq_jsonlite(list(list(1, 2), list(3, 4)))
-expect_eq_jsonlite(list(list(a = 1, b = 2), list(c = 3, d = 4)))
+expect_equal(to_json(list(c(1, 2), c(3, 4))), "[[1,2],[3,4]]")
+expect_equal(to_json(list(list(1, 2), list(3, 4))), "[[[1],[2]],[[3],[4]]]")
+expect_equal(to_json(list(list(a = 1, b = 2), list(c = 3, d = 4))),
+              "[{\"a\":[1],\"b\":[2]},{\"c\":[3],\"d\":[4]}]")
 
-expect_eq_jsonlite(list(c("e", "f"), c("g", "h")))
-expect_eq_jsonlite(list(list("e", "f"), list("g", "h")))
-expect_eq_jsonlite(list(list(a = "e", b = "f"), list(c = "g", d = "h")))
-
+expect_equal(to_json(list(c("e", "f"), c("g", "h"))),
+              "[[\"e\",\"f\"],[\"g\",\"h\"]]")
+expect_equal(to_json(list(list("e", "f"), list("g", "h"))),
+              "[[[\"e\"],[\"f\"]],[[\"g\"],[\"h\"]]]")
+expect_equal(to_json(list(list(a = "e", b = "f"), list(c = "g", d = "h"))),
+              "[{\"a\":[\"e\"],\"b\":[\"f\"]},{\"c\":[\"g\"],\"d\":[\"h\"]}]")
 
 # Test that the full round-trip conversion is consistent.
 expect_eq_jsonlite_full <- function(x) {
