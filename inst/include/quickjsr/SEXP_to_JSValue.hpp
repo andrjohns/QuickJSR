@@ -5,6 +5,18 @@
 #include <quickjs-libc.h>
 
 namespace quickjsr {
+  JSValue JS_NewDate(JSContext* ctx, double timestamp) {
+    static constexpr double milliseconds_day = 86400000;
+    JSValue global_obj = JS_GetGlobalObject(ctx);
+    JSValue date_ctor = JS_GetPropertyStr(ctx, global_obj, "Date");
+    JSValue timestamp_val = JS_NewFloat64(ctx, timestamp * milliseconds_day);
+    JSValue date = JS_CallConstructor(ctx, date_ctor, 1, &timestamp_val);
+
+    JS_FreeValue(ctx, global_obj);
+    JS_FreeValue(ctx, date_ctor);
+    JS_FreeValue(ctx, timestamp_val);
+    return date;
+  }
   // Forward declaration to allow for recursive calls
   JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr);
   JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr, int index);
@@ -51,6 +63,16 @@ namespace quickjsr {
     return arr;
   }
 
+  JSValue SEXP_to_JSValue_list(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr) {
+    // Following jsonlite conventions:
+    //   - R list with names is an object, otherwise an array
+    if (Rf_getAttrib(x, R_NamesSymbol) != R_NilValue) {
+      return SEXP_to_JSValue_object(ctx, x, auto_unbox, auto_unbox_curr);
+    } else {
+      return SEXP_to_JSValue_array(ctx, x, auto_unbox, auto_unbox_curr);
+    }
+  }
+
   JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr, int index) {
     if (Rf_isNewList(x)) {
       return SEXP_to_JSValue(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
@@ -58,10 +80,21 @@ namespace quickjsr {
     switch (TYPEOF(x)) {
       case LGLSXP:
         return JS_NewBool(ctx, LOGICAL(x)[index]);
-      case INTSXP:
-        return JS_NewInt32(ctx, INTEGER(x)[index]);
-      case REALSXP:
-        return JS_NewFloat64(ctx, REAL(x)[index]);
+      case INTSXP: {
+        if (Rf_inherits(x, "factor")) {
+          SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
+          return JS_NewString(ctx, CHAR(STRING_ELT(levels, INTEGER(x)[index] - 1)));
+        } else {
+          return JS_NewInt32(ctx, INTEGER(x)[index]);
+        }
+      }
+      case REALSXP: {
+        if (Rf_inherits(x, "Date")) {
+          return JS_NewDate(ctx, REAL(x)[index]);
+        } else {
+          return JS_NewFloat64(ctx, REAL(x)[index]);
+        }
+      }
       case STRSXP:
         return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(x, index)));
       case VECSXP:
@@ -80,20 +113,11 @@ namespace quickjsr {
     if (Rf_isFrame(x)) {
       return SEXP_to_JSValue_df(ctx, x, auto_unbox_inp, auto_unbox_curr);
     }
-    // Following jsonlite conventions:
-    //   - R list with names is an object, otherwise an array
     if (Rf_isNewList(x)) {
-      if (Rf_getAttrib(x, R_NamesSymbol) != R_NilValue) {
-        return SEXP_to_JSValue_object(ctx, x, auto_unbox_inp, auto_unbox_curr);
-      } else {
-        return SEXP_to_JSValue_array(ctx, x, auto_unbox_inp, auto_unbox_curr);
-      }
+      return SEXP_to_JSValue_list(ctx, x, auto_unbox_inp, auto_unbox_curr);
     }
-    if (Rf_isArray(x)) {
-      return SEXP_to_JSValue_array(ctx, x, auto_unbox_inp, auto_unbox_curr);
-    }
-    if (Rf_isVectorAtomic(x)) {
-      if (Rf_length(x) > 1 || !auto_unbox_curr) {
+    if (Rf_isVectorAtomic(x) || Rf_isArray(x)) {
+      if (Rf_length(x) > 1 || !auto_unbox_curr || Rf_isArray(x)) {
         return SEXP_to_JSValue_array(ctx, x, auto_unbox_inp, auto_unbox_curr);
       }
     }
