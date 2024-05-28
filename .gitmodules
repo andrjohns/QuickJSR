@@ -1,4 +1,4 @@
 [submodule "src/quickjs"]
 	path = src/quickjs
 	url = https://github.com/andrjohns/quickjs
-  branch = test-attr
+  branch = wpedantic-compat
