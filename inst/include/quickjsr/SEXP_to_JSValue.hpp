@@ -83,7 +83,7 @@ namespace quickjsr {
       case INTSXP: {
         if (Rf_inherits(x, "factor")) {
           SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
-          return JS_NewString(ctx, CHAR(Rf_translateCharUTF8(levels, INTEGER_ELT(x, index) - 1)));
+          return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, INTEGER_ELT(x, index) - 1)));
         } else {
           return JS_NewInt32(ctx, INTEGER_ELT(x, index));
         }
