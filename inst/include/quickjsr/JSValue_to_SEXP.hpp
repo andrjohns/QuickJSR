@@ -4,6 +4,7 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <quickjsr/JSValue_to_Cpp.hpp>
+#include <quickjsr/JSCommonType.hpp>
 
 namespace quickjsr {
 // Forward declaration to allow for recursive calls
@@ -22,20 +23,52 @@ SEXP JSValue_to_SEXP_scalar(JSContext* ctx, JSValue val) {
   return cpp11::as_sexp("Unsupported type");
 }
 
-SEXP JSValue_to_SEXP_vector(JSContext* ctx, JSValue val) {
+JSCommonType JS_ArrayCommonType(JSContext* ctx, JSValue val) {
   JSValue elem = JS_GetPropertyUint32(ctx, val, 0);
-  SEXP rtn;
-  if (JS_IsBool(elem)) {
-    rtn = cpp11::as_sexp(JSValue_to_Cpp<std::vector<bool>>(ctx, val));
-  } else if (JS_IsNumber(elem)) {
-    rtn = cpp11::as_sexp(JSValue_to_Cpp<std::vector<double>>(ctx, val));
-  } else if (JS_IsString(elem)) {
-    rtn = cpp11::as_sexp(JSValue_to_Cpp<std::vector<std::string>>(ctx, val));
-  } else {
-    rtn = cpp11::as_sexp("Unsupported type");
-  }
+  JSCommonType common_type = JS_GetCommonType(elem);
   JS_FreeValue(ctx, elem);
-  return rtn;
+
+  uint32_t len;
+  JSValue arr_len = JS_GetPropertyStr(ctx, val, "length");
+  JS_ToUint32(ctx, &len, arr_len);
+  JS_FreeValue(ctx, arr_len);
+
+  for (uint32_t i = 1; i < len; i++) {
+    elem = JS_GetPropertyUint32(ctx, val, i);
+    common_type = JS_UpdateCommonType(common_type, elem);
+    JS_FreeValue(ctx, elem);
+  }
+  return common_type;
+}
+
+SEXP JSValue_to_SEXP_vector(JSContext* ctx, JSValue val) {
+  JSCommonType common_type = JS_ArrayCommonType(ctx, val);
+  switch (common_type) {
+    case Integer:
+      return cpp11::as_sexp(JSValue_to_Cpp<std::vector<int>>(ctx, val));
+    case Double:
+      return cpp11::as_sexp(JSValue_to_Cpp<std::vector<double>>(ctx, val));
+    case Logical:
+      return cpp11::as_sexp(JSValue_to_Cpp<std::vector<bool>>(ctx, val));
+    case Character:
+      return cpp11::as_sexp(JSValue_to_Cpp<std::vector<std::string>>(ctx, val));
+    case Object: {
+      uint32_t len;
+      JSValue arr_len = JS_GetPropertyStr(ctx, val, "length");
+      JS_ToUint32(ctx, &len, arr_len);
+      JS_FreeValue(ctx, arr_len);
+
+      cpp11::writable::list out(len);
+      for (uint32_t i = 0; i < len; i++) {
+        JSValue elem = JS_GetPropertyUint32(ctx, val, i);
+        out[static_cast<R_xlen_t>(i)] = JSValue_to_SEXP(ctx, elem);
+        JS_FreeValue(ctx, elem);
+      }
+      return out;
+    }
+    default:
+      return cpp11::as_sexp("Unsupported type");
+  }
 }
 
 SEXP JSValue_to_SEXP(JSContext* ctx, JSValue val) {

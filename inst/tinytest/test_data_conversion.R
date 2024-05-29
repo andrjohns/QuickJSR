@@ -1,10 +1,3 @@
-# Check conversions from R types to JS types are consistent with jsonlite.
-#  - The inputs are directly converted from R to JS types using the QuickJS API.
-#  - The outputs are returned as JSON strings
-#  - If the conversion is consistent, the output should match jsonlite's conversion
-expect_eq_jsonlite <- function(x) {
-  expect_equal(to_json(x), as.character(jsonlite::toJSON(x)))
-}
 expect_equal(to_json(1), "[1]")
 expect_equal(to_json(1:3), "[1,2,3]")
 expect_equal(to_json(c(1.5, 2.5)), "[1.5,2.5]")
@@ -34,18 +27,34 @@ expect_equal(to_json(list(list("e", "f"), list("g", "h"))),
 expect_equal(to_json(list(list(a = "e", b = "f"), list(c = "g", d = "h"))),
               "[{\"a\":[\"e\"],\"b\":[\"f\"]},{\"c\":[\"g\"],\"d\":[\"h\"]}]")
 
-# Test that the full round-trip conversion is consistent.
-expect_eq_jsonlite_full <- function(x) {
-  x_json <- jsonlite::toJSON(x)
-  expect_equal(from_json(x_json), jsonlite::fromJSON(x_json))
-}
-expect_eq_jsonlite_full(1)
-expect_eq_jsonlite_full(1:3)
-expect_eq_jsonlite_full(c(1.5, 2.5))
+expect_equal(1, from_json("[1]"))
+expect_equal(1:3, from_json("[1,2,3]"))
+expect_equal(c(1.5, 2.5), from_json("[1.5,2.5]"))
 
-expect_eq_jsonlite_full("a")
-expect_eq_jsonlite_full(c("a", "b", "c"))
+expect_equal("a", from_json("[\"a\"]"))
+expect_equal(c("a", "b", "c"), from_json("[\"a\",\"b\",\"c\"]"))
 
-expect_eq_jsonlite_full(TRUE)
-expect_eq_jsonlite_full(FALSE)
-expect_eq_jsonlite_full(c(TRUE, FALSE))
+expect_equal(TRUE, from_json("[true]"))
+expect_equal(FALSE, from_json("[false]"))
+expect_equal(c(TRUE, FALSE), from_json("[true,false]"))
+
+# Mixed-Type Conversions
+expect_equal(c(1, 1), from_json("[1,true]"))
+expect_equal(c(1.5, 1.0), from_json("[1.5,true]"))
+expect_equal(c(1, "a"), from_json("[1,\"a\"]"))
+expect_equal(c(1.2, 1.0), from_json("[1.2,1]"))
+expect_equal(c("1", "a", "TRUE"), from_json("[1,\"a\",true]"))
+expect_equal(c("1.5", "TRUE", "a", "1"), from_json("[1.5,true,\"a\",1]"))
+
+
+#expect_equal(list(1, 2, 3), from_json("[[1],[2],[3]]"))
+#expect_equal(list(a = 1, b = 2, c = 3), from_json("{\"a\":[1],\"b\":[2],\"c\":[3]}"))
+#expect_equal(list(a = "d", b = "e", c = "f"), from_json("{\"a\":[\"d\"],\"b\":[\"e\"],\"c\":[\"f\"]}"))
+
+#expect_equal(list(c(1, 2), c(3, 4)), from_json("[[1,2],[3,4]]"))
+#expect_equal(list(list(1, 2), list(3, 4)), from_json("[[[1],[2]],[[3],[4]]]"))
+#expect_equal(list(list(a = 1, b = 2), list(c = 3, d = 4)), from_json("[{\"a\":[1],\"b\":[2]},{\"c\":[3],\"d\":[4]}]"))
+
+#expect_equal(list(c("e", "f"), c("g", "h")), from_json("[[\"e\",\"f\"],[\"g\",\"h\"]]"))
+#expect_equal(list(list("e", "f"), list("g", "h")), from_json("[[[\"e\"],[\"f\"]],[[\"g\"],[\"h\"]]]"))
+#expect_equal(list(list(a = "e", b = "f"), list(c = "g", d = "h")), from_json("[{\"a\":[\"e\"],\"b\":[\"f\"]},{\"c\":[\"g\"],\"d\":[\"h\"]}]"))

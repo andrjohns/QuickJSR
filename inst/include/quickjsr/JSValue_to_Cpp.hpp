@@ -32,7 +32,7 @@ namespace quickjsr {
     const char* res_str = JS_ToCString(ctx, val);
     std::string result = res_str;
     JS_FreeCString(ctx, res_str);
-    return result;
+    return result == "true" ? "TRUE" : result == "false" ? "FALSE" : result;
   }
 
   template <typename T, std::enable_if_t<is_std_vector<T>::value>* = nullptr>
