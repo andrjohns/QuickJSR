@@ -2,7 +2,6 @@
 #define QUICKJSR_JSCOMMONTYPE_HPP
 
 #include <quickjs-libc.h>
-#include <iostream>
 
 namespace quickjsr {
 
