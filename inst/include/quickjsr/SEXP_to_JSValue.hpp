@@ -87,6 +87,21 @@ namespace quickjsr {
     return arr;
   }
 
+  inline JSValue SEXP_to_JSValue_matrix(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
+    int nrow = Rf_nrows(x);
+    int ncol = Rf_ncols(x);
+    JSValue arr = JS_NewArray(ctx);
+    for (int i = 0; i < nrow; i++) {
+      JSValue row = JS_NewArray(ctx);
+      for (int j = 0; j < ncol; j++) {
+        JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox, i + j * nrow);
+        JS_SetPropertyUint32(ctx, row, j, val);
+      }
+      JS_SetPropertyUint32(ctx, arr, i, row);
+    }
+    return arr;
+  }
+
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int index) {
     if (Rf_isFrame(x)) {
       return SEXP_to_JSValue_df(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
@@ -132,6 +147,9 @@ namespace quickjsr {
     }
     if (Rf_isNewList(x)) {
       return SEXP_to_JSValue_list(ctx, x, auto_unbox_inp, auto_unbox_curr);
+    }
+    if (Rf_isMatrix(x)) {
+      return SEXP_to_JSValue_matrix(ctx, x, auto_unbox_inp, auto_unbox_curr);
     }
     if (Rf_isVectorAtomic(x) || Rf_isArray(x)) {
       if (Rf_length(x) > 1 || !auto_unbox_curr || Rf_isArray(x)) {
