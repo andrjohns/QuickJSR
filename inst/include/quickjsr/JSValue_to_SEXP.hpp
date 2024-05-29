@@ -42,8 +42,7 @@ JSCommonType JS_ArrayCommonType(JSContext* ctx, JSValue val) {
 }
 
 SEXP JSValue_to_SEXP_vector(JSContext* ctx, JSValue val) {
-  JSCommonType common_type = JS_ArrayCommonType(ctx, val);
-  switch (common_type) {
+  switch (JS_ArrayCommonType(ctx, val)) {
     case Integer:
       return cpp11::as_sexp(JSValue_to_Cpp<std::vector<int>>(ctx, val));
     case Double:
