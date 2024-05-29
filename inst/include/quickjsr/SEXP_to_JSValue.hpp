@@ -3,9 +3,10 @@
 
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
+#include <iostream>
 
 namespace quickjsr {
-  JSValue JS_NewDate(JSContext* ctx, double timestamp) {
+  inline JSValue JS_NewDate(JSContext* ctx, double timestamp) {
     static constexpr double milliseconds_day = 86400000;
     JSValue global_obj = JS_GetGlobalObject(ctx);
     JSValue date_ctor = JS_GetPropertyStr(ctx, global_obj, "Date");
@@ -18,10 +19,10 @@ namespace quickjsr {
     return date;
   }
   // Forward declaration to allow for recursive calls
-  JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr);
-  JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr, int index);
+  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
+  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int index);
 
-  JSValue SEXP_to_JSValue_array(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr) {
+  inline JSValue SEXP_to_JSValue_array(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
     JSValue arr = JS_NewArray(ctx);
     for (int i = 0; i < Rf_length(x); i++) {
       JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
@@ -30,40 +31,17 @@ namespace quickjsr {
     return arr;
   }
 
-  JSValue SEXP_to_JSValue_object(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr) {
+  inline JSValue SEXP_to_JSValue_object(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
     JSValue obj = JS_NewObject(ctx);
     for (int i = 0; i < Rf_length(x); i++) {
-      SEXP name = STRING_ELT(Rf_getAttrib(x, R_NamesSymbol), i);
       JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
+      SEXP name = STRING_ELT(Rf_getAttrib(x, R_NamesSymbol), i);
       JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(name), val);
     }
     return obj;
   }
 
-  JSValue SEXP_to_JSValue_df(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr) {
-    SEXP rownames = Rf_getAttrib(x, R_RowNamesSymbol);
-    SEXP colnames = Rf_getAttrib(x, R_NamesSymbol);
-
-    // Array of objects (one per row), if there are rownames
-    // then they are placed at the end with name "_row"
-    JSValue arr = JS_NewArray(ctx);
-    for (int i = 0; i < Rf_length(rownames); i++) {
-      JSValue obj = JS_NewObject(ctx);
-      for (int j = 0; j < Rf_length(colnames); j++) {
-        JSValue val = SEXP_to_JSValue(ctx, VECTOR_ELT(x, j), auto_unbox, auto_unbox_curr, i);
-        JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(colnames, j)), val);
-      }
-      // Only add rownames if they are character strings
-      if (rownames != R_NilValue && Rf_isString(rownames)) {
-        JSValue val = JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(rownames, i)));
-        JS_SetPropertyStr(ctx, obj, "_row", val);
-      }
-      JS_SetPropertyUint32(ctx, arr, i, obj);
-    }
-    return arr;
-  }
-
-  JSValue SEXP_to_JSValue_list(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr) {
+  inline JSValue SEXP_to_JSValue_list(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
     // Following jsonlite conventions:
     //   - R list with names is an object, otherwise an array
     if (Rf_getAttrib(x, R_NamesSymbol) != R_NilValue) {
@@ -73,7 +51,47 @@ namespace quickjsr {
     }
   }
 
-  JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, bool auto_unbox, bool auto_unbox_curr, int index) {
+  // For a dataframe with the first column of type list and the second column of type data.frame
+  JSValue SEXP_to_JSValue_df(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
+    SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
+    SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
+    JSValue arr = JS_NewArray(ctx);
+
+    for (int i = 0; i < Rf_length(VECTOR_ELT(x, 0)); i++) {
+      JSValue obj = JS_NewObject(ctx);
+
+      for (int j = 0; j < Rf_length(x); j++) {
+        SEXP col = VECTOR_ELT(x, j);
+        if (Rf_isFrame(col)) {
+          JSValue df_obj = JS_NewObject(ctx);
+          SEXP df_names = Rf_getAttrib(col, R_NamesSymbol);
+          for (int k = 0; k < Rf_length(col); k++) {
+            JSValue val = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i);
+            JS_SetPropertyStr(ctx, df_obj, Rf_translateCharUTF8(STRING_ELT(df_names, k)), val);
+          }
+          JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), df_obj);
+        } else {
+          JSValue val = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i);
+          JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), val);
+        }
+      }
+
+      // If row names are present and a character vector, add them to the object
+      if (Rf_isString(row_names)) {
+        JSValue row_name = JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(row_names, i)));
+        JS_SetPropertyStr(ctx, obj, "_row", row_name);
+      }
+
+      JS_SetPropertyUint32(ctx, arr, i, obj);
+    }
+
+    return arr;
+  }
+
+  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int index) {
+    if (Rf_isFrame(x)) {
+      return SEXP_to_JSValue_df(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
+    }
     if (Rf_isNewList(x)) {
       return SEXP_to_JSValue(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
     }
@@ -106,7 +124,7 @@ namespace quickjsr {
     }
   }
 
-  JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x,
+  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x,
                           bool auto_unbox_inp = false,
                           bool auto_unbox = false) {
     bool auto_unbox_curr = static_cast<bool>(Rf_inherits(x, "AsIs")) ? false : auto_unbox_inp;
