@@ -3,7 +3,6 @@
 
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
-#include <iostream>
 
 namespace quickjsr {
   inline JSValue JS_NewDate(JSContext* ctx, double timestamp) {
