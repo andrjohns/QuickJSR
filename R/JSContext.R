@@ -55,8 +55,7 @@ source <- NULL
 #'
 #' @param function_name The function to be called
 #' @param ... The arguments to be passed to the function
-#' @return The result of calling the specified function,
-#'         the return type is mapped from JS to R using `jsonlite::fromJSON()`
+#' @return The result of calling the specified function
 #'
 #' @examples
 #' \dontrun{

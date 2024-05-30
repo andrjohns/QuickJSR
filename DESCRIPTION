@@ -19,8 +19,6 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
 NeedsCompilation: yes
 SystemRequirements: GNU make
-Imports:
-  jsonlite
 URL: https://github.com/andrjohns/QuickJSR, https://bellard.org/quickjs/
 BugReports: https://github.com/andrjohns/QuickJSR/issues
 Suggests:

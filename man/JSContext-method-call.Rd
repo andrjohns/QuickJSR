@@ -17,8 +17,7 @@ call(function_name, ...)
 \item{...}{The arguments to be passed to the function}
 }
 \value{
-The result of calling the specified function,
-the return type is mapped from JS to R using \code{jsonlite::fromJSON()}
+The result of calling the specified function
 }
 \description{
 Call a specified function in the JavaScript context with the

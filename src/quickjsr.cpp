@@ -72,12 +72,12 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   JSValue fun = JS_GetPropertyStr(ctx, global, CHAR(STRING_ELT(fun_name_, 0)));
   JSValue result_js = JS_Call(ctx, fun, global, args.size(), args.data());
 
-  std::string result;
+  SEXP result;
   if (JS_IsException(result_js)) {
     js_std_dump_error(ctx);
-    result = "Error!";
+    result =  cpp11::as_sexp("Error!");
   } else {
-    result = quickjsr::JSValue_to_JSON(ctx, result_js);
+    result = quickjsr::JSValue_to_SEXP(ctx, result_js);
   }
 
   JS_FreeValue(ctx, result_js);
@@ -87,7 +87,7 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   JS_FreeValue(ctx, fun);
   JS_FreeValue(ctx, global);
 
-  return cpp11::as_sexp(result);
+  return result;
   END_CPP11
 }
 
@@ -98,19 +98,19 @@ extern "C" SEXP qjs_eval_(SEXP eval_string_) {
   JSContext* ctx = JS_NewContext(rt);
 
   JSValue val = JS_Eval(ctx, eval_string.c_str(), eval_string.size(), "", 0);
-  std::string result;
+  SEXP result;
   if (JS_IsException(val)) {
     js_std_dump_error(ctx);
-    result = "Error!";
+    result =  cpp11::as_sexp("Error!");
   } else {
-    result = quickjsr::JSValue_to_JSON(ctx, val);
+    result = quickjsr::JSValue_to_SEXP(ctx, val);
   }
 
   JS_FreeValue(ctx, val);
   JS_FreeContext(ctx);
   JS_FreeRuntime(rt);
 
-  return cpp11::as_sexp(result);
+  return result;
   END_CPP11
 }
 

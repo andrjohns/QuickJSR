@@ -3,8 +3,8 @@
 #' Evaluate a single Javascript expression.
 #'
 #' @param eval_string A single string of the expression to evaluate
-#' @return The result of the provided expression, the return type is
-#'          mapped from JS to R using `jsonlite::fromJSON()`
+#' @return The result of the provided expression
+#'
 #' @examples
 #' # Return the sum of two numbers:
 #' qjs_eval("1 + 2")
@@ -17,7 +17,7 @@
 #'
 #' @export
 qjs_eval <- function(eval_string) {
-  parse_return(.Call(`qjs_eval_`, eval_string))
+  .Call(`qjs_eval_`, eval_string)
 }
 
 qjs_context <- function(stack_size) {
@@ -29,7 +29,7 @@ qjs_source <- function(ctx_ptr, code_string) {
 }
 
 qjs_call <- function(ctx_ptr, function_name, ...) {
-  parse_return(.Call(`qjs_call_`, ctx_ptr, function_name, list(...)))
+  .Call(`qjs_call_`, ctx_ptr, function_name, list(...))
 }
 
 qjs_validate <- function(ctx_ptr, function_name) {
