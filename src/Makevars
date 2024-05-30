@@ -19,11 +19,11 @@ ifneq (,$(CLANG_CHECK))
 	ifeq ($(shell expr $(CC_MAJOR) \< 4), 1)
 		PKG_CPPFLAGS += -DDISABLE_ATOMICS
 	endif
-# Clang on armel can error with atomics, so check and disable if not supported
+# Clang on armel needs libatomic
 	ifeq ($(shell uname -m), armv7l)
-	  ATOMIC_SIZE_CHECK := $(shell echo | $(CC) -dM -E - | grep -i __CLANG_ATOMIC_BOOL_LOCK_FREE | cut -d' ' -f3)
-		ifneq ($(ATOMIC_SIZE_CHECK), 2)
-			PKG_CPPFLAGS += -DDISABLE_ATOMICS
+	  CC_TARGET := $(shell $(CC) -v 2>&1 | grep Target | cut -d ' ' -f 2)
+		ifneq ($(findstring gnueabihf,$(CC_TARGET)),)
+			PKG_LIBS += -latomic
 		endif
 	endif
 else
