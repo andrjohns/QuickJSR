@@ -25,6 +25,8 @@ jobs:
               container: "ghcr.io/r-hub/containers/valgrind:latest",
               git-install: dnf check-update && dnf install -y git }
 
+    env:
+      MAKEFLAGS: -j4
     steps:
       - name: Install git
         run: ${{ matrix.config.git-install }}
