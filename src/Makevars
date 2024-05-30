@@ -22,7 +22,7 @@ ifneq (,$(CLANG_CHECK))
 # Clang on armel needs libatomic
 	ifeq ($(shell uname -m), armv7l)
 	  CC_TARGET := $(shell $(CC) -v 2>&1 | grep Target | cut -d ' ' -f 2)
-		ifneq ($(findstring gnueabihf,$(CC_TARGET)),)
+		ifeq ($(findstring gnueabihf,$(CC_TARGET)),)
 			PKG_LIBS += -latomic
 		endif
 	endif
