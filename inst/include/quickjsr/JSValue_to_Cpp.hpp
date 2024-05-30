@@ -2,6 +2,7 @@
 #define QUICKJSR_JSVALUE_TO_CPP_HPP
 
 #include <quickjsr/type_traits.hpp>
+#include <quickjsr/JSCommonType.hpp>
 #include <type_traits>
 #include <string>
 #include <vector>
@@ -10,6 +11,14 @@
 namespace quickjsr {
   template <typename T, enable_if_type_t<double, T>* = nullptr>
   T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
+    if (JS_IsDate(ctx, val)) {
+      JSValue time = JS_GetTime(ctx, val);
+      double res;
+      JS_ToFloat64(ctx, &res, time);
+      JS_FreeValue(ctx, time);
+      return res / 1000.0; // Convert milliseconds to seconds for R POSIXct
+    }
+
     double res;
     JS_ToFloat64(ctx, &res, val);
     return res;

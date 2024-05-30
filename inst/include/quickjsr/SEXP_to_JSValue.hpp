@@ -1,22 +1,11 @@
 #ifndef QUICKJSR_SEXP_TO_JSVALUE_HPP
 #define QUICKJSR_SEXP_TO_JSVALUE_HPP
 
+#include <quickjsr/JSValue_Date.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 
 namespace quickjsr {
-  inline JSValue JS_NewDate(JSContext* ctx, double timestamp) {
-    static constexpr double milliseconds_day = 86400000;
-    JSValue global_obj = JS_GetGlobalObject(ctx);
-    JSValue date_ctor = JS_GetPropertyStr(ctx, global_obj, "Date");
-    JSValue timestamp_val = JS_NewFloat64(ctx, timestamp * milliseconds_day);
-    JSValue date = JS_CallConstructor(ctx, date_ctor, 1, &timestamp_val);
-
-    JS_FreeValue(ctx, global_obj);
-    JS_FreeValue(ctx, date_ctor);
-    JS_FreeValue(ctx, timestamp_val);
-    return date;
-  }
   // Forward declaration to allow for recursive calls
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int index);
@@ -121,7 +110,9 @@ namespace quickjsr {
         }
       }
       case REALSXP: {
-        if (Rf_inherits(x, "Date")) {
+        if (Rf_inherits(x, "POSIXct")) {
+          return JS_NewDate(ctx, REAL_ELT(x, index), true);
+        } else if (Rf_inherits(x, "Date")) {
           return JS_NewDate(ctx, REAL_ELT(x, index));
         } else {
           return JS_NewFloat64(ctx, REAL_ELT(x, index));

@@ -6,3 +6,6 @@ expect_equal(to_json(data.frame(foo=object)),
               "[{\"foo\":\"1985-06-18T00:00:00.000Z\"}]");
 expect_equal(to_json(list(foo=data.frame(bar=object))),
               "{\"foo\":[{\"bar\":\"1985-06-18T00:00:00.000Z\"}]}");
+
+object <- as.POSIXct("1985-06-18 12:34:56");
+expect_equal(to_json(object), "[\"1985-06-18T12:34:56.000Z\"]");
