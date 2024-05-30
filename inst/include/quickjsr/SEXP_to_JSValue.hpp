@@ -81,7 +81,7 @@ namespace quickjsr {
                                 JSValueConst* argv, int magic, JSValue* data) {
     int64_t ptr;
     JS_ToBigInt64(ctx, &ptr, *data);
-    SEXP x = (SEXP)ptr;
+    SEXP x = reinterpret_cast<SEXP>(ptr);
     cpp11::writable::list args(argc);
     for (int i = 0; i < argc; i++) {
       args[i] = JSValue_to_SEXP(ctx, argv[i]);
@@ -97,7 +97,8 @@ namespace quickjsr {
     // passed to the JS C function
     JSValue data;
     data = JS_NewBigInt64(ctx, reinterpret_cast<int64_t>(x));
-    return JS_NewCFunctionData(ctx, js_fun_static, Rf_length(FORMALS(x)), JS_CFUNC_generic, 1, &data);
+    return JS_NewCFunctionData(ctx, js_fun_static, Rf_length(FORMALS(x)),
+                                JS_CFUNC_generic, 1, &data);
   }
 
   inline JSValue SEXP_to_JSValue_matrix(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
