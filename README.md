@@ -19,7 +19,7 @@ A portable, lightweight, zero-dependency JavaScript engine for R, using
 
 Values and objects are directly passed between R and QuickJS, with no
 need for serialization or deserialization. This both reduces overhead
-allows for more complex data structures to be passed between R and
+and allows for more complex data structures to be passed between R and
 JavaScript - including functions.
 
 ## Installation
@@ -53,7 +53,7 @@ qjs_eval("1 + 1")
 
 ``` r
 qjs_eval("Math.random()")
-#> [1] 0.7065871
+#> [1] 0.9898961
 ```
 
 For more complex interactions, you can create a QuickJS context and

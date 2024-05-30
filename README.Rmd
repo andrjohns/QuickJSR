@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
 
 A portable, lightweight, zero-dependency JavaScript engine for R, using [QuickJS](https://bellard.org/quickjs/).
 
-Values and objects are directly passed between R and QuickJS, with no need for serialization or deserialization. This both reduces overhead allows for more complex data structures to be passed between R and JavaScript - including functions.
+Values and objects are directly passed between R and QuickJS, with no need for serialization or deserialization. This both reduces overhead and allows for more complex data structures to be passed between R and JavaScript - including functions.
 
 ## Installation
 
