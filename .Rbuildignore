@@ -10,3 +10,4 @@
 ^src/quickjs/\.git$
 semicolon_delimited_script
 Makefile
+^README\.Rmd$

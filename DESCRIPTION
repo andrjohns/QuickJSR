@@ -2,25 +2,24 @@ Package: QuickJSR
 Title: Interface for the 'QuickJS' Lightweight 'JavaScript' Engine
 Version: 1.2.0
 Authors@R: c(
-  person(given = c("Andrew", "R."), family = "Johnson", role = c("aut", "cre"),
-          email = "andrew.johnson@arjohnsonau.com",
-          comment = c(ORCID = "0000-0001-7000-8065")),
-  person(given = "Fabrice", family = "Bellard", role = c("ctb", "cph"),
-          comment = "Author of QuickJS sources and headers"),
-  person(given = "Charlie", family = "Gordon", role = c("ctb", "cph"),
-          comment = "Author of QuickJS sources and headers")
+    person(c("Andrew", "R."), "Johnson", , "andrew.johnson@arjohnsonau.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-7000-8065")),
+    person("Fabrice", "Bellard", role = c("ctb", "cph"),
+           comment = "Author of QuickJS sources and headers"),
+    person("Charlie", "Gordon", role = c("ctb", "cph"),
+           comment = "Author of QuickJS sources and headers")
   )
-Description: An 'R' interface to the 'QuickJS' portable 'JavaScript' engine.
-    The engine is bundled entirely within the package, requiring no external system
-    dependencies beyond a 'C' compiler.
+Description: An 'R' interface to the 'QuickJS' portable 'JavaScript'
+    engine.  The engine and all 'R' to 'JavaScript' operability is bundled
+    within the package, requiring no dependencies beyond a 'C' compiler.
 License: MIT + file LICENSE
-Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
-NeedsCompilation: yes
-SystemRequirements: GNU make
 URL: https://github.com/andrjohns/QuickJSR, https://bellard.org/quickjs/
 BugReports: https://github.com/andrjohns/QuickJSR/issues
 Suggests:
-  tinytest
-Language: en-GB
+    tinytest
+Encoding: UTF-8
+Language: en-AU
+NeedsCompilation: yes
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+SystemRequirements: GNU make
