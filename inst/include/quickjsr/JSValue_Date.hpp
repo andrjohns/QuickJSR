@@ -4,6 +4,7 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <cstring>
+#include <iostream>
 
 namespace quickjsr {
 
@@ -15,6 +16,10 @@ inline double get_tz_offset_seconds() {
 
 inline bool JS_IsDate(JSContext* ctx, const JSValue& val) {
   JSValue ctor = JS_GetPropertyStr(ctx, val, "constructor");
+  if (JS_IsException(ctor)) {
+    JS_FreeValue(ctx, ctor);
+    return false;
+  }
   JSValue ctorName = JS_GetPropertyStr(ctx, ctor, "name");
 
   const char* name = JS_ToCString(ctx, ctorName);

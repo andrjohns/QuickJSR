@@ -24,6 +24,9 @@ static void js_free_prop_enum(JSContext *ctx, JSPropertyEnum *tab, uint32_t len)
 SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val);
 
 SEXP JSValue_to_SEXP_scalar(JSContext* ctx, const JSValue& val) {
+  if (JS_IsUndefined(val)) {
+    return R_NilValue;
+  }
   if (JS_IsBool(val)) {
     return cpp11::as_sexp(JSValue_to_Cpp<bool>(ctx, val));
   }
@@ -54,6 +57,8 @@ SEXP JSValue_to_SEXP_vector(JSContext* ctx, const JSValue& val) {
       return cpp11::as_sexp(JSValue_to_Cpp<std::vector<bool>>(ctx, val));
     case Character:
       return cpp11::as_sexp(JSValue_to_Cpp<std::vector<std::string>>(ctx, val));
+    case Undefined:
+      return R_NilValue;
     case Date: {
       cpp11::writable::doubles res = cpp11::as_sexp(JSValue_to_Cpp<std::vector<double>>(ctx, val));
       res.attr("class") = "POSIXct";
@@ -95,8 +100,14 @@ SEXP JSValue_to_SEXP_vector(JSContext* ctx, const JSValue& val) {
       }
       return out;
     }
-    default:
-      return cpp11::as_sexp("Unsupported type");
+    default: {
+      std::string type_str = "Unsupported type: ";
+      // Get result of typeof
+      JSValue typeof_val = JS_GetPropertyStr(ctx, val, "typeof");
+      type_str += JSValue_to_Cpp<std::string>(ctx, typeof_val);
+      JS_FreeValue(ctx, typeof_val);
+      return cpp11::as_sexp(type_str.c_str());
+    }
   }
 }
 
@@ -123,6 +134,9 @@ SEXP JSValue_to_SEXP_list(JSContext* ctx, const JSValue& val) {
 }
 
 SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
+  if (JS_IsUndefined(val)) {
+    return R_NilValue;
+  }
   if (JS_IsArray(ctx, val)) {
     return JSValue_to_SEXP_vector(ctx, val);
   }

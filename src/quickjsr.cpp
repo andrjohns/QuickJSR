@@ -24,8 +24,9 @@ extern "C" SEXP qjs_context_(SEXP stack_size_) {
   int stack_size = cpp11::as_cpp<int>(stack_size_);
 
   RuntimeXPtr rt(JS_NewRuntime());
+  // Workaround for RStan stack overflow until they update
   if (stack_size != -1) {
-    JS_SetMaxStackSize(rt.get(), stack_size);
+    JS_SetMaxStackSize(rt.get(), 0);
   }
   js_std_init_handlers(rt.get());
   ContextXPtr ctx(JS_NewContext(rt.get()));

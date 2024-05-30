@@ -1,3 +1,10 @@
+# QuickJSR 1.2.0
+  - `Rcpp` dependency replaced with vendored `cpp11` headers
+  - `R6` dependency removed
+  - `R` and `JS` interopability added, removing `jsonlite` dependency
+  - Fixes for libatomic linking on 32-bit systems
+  - Added `to_json` and `from_json` functions for testing `R`/`JS` interop
+
 # QuickJSR 1.1.0
   - Fixed UBSAN error in `JS_Eval`
   - Fixed compilation errors with older GCC & Clang (`stdatomic.h not found`)
