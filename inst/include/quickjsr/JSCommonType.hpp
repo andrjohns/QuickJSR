@@ -36,9 +36,6 @@ JSCommonType JS_GetCommonType(JSContext* ctx, const JSValue& val) {
   if (JS_IsString(val)) {
     return Character;
   }
-  if (JS_IsObject(val)) {
-    return Object;
-  }
   if (JS_IsDate(ctx, val)) {
     return Date;
   }
@@ -47,6 +44,9 @@ JSCommonType JS_GetCommonType(JSContext* ctx, const JSValue& val) {
     if (common_type == Integer || common_type == Double) {
       return NumberArray;
     }
+  }
+  if (JS_IsObject(val)) {
+    return Object;
   }
   return Unknown;
 }

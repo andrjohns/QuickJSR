@@ -4,13 +4,11 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <cstring>
-#include <iostream>
 
 namespace quickjsr {
 
 inline double get_tz_offset_seconds() {
   cpp11::function get_tz_offset_seconds = cpp11::package("QuickJSR")["get_tz_offset_seconds"];
-
   return cpp11::as_cpp<double>(get_tz_offset_seconds());
 }
 
