@@ -3,13 +3,20 @@
 #include <quickjs-libc.h>
 #include <quickjsr.hpp>
 
+void JS_FreeJSContextandTape(JSContext* ctx) {
+  for (auto&& val : quickjsr::global_tape) {
+    JS_FreeValue(ctx, val);
+  }
+  JS_FreeContext(ctx);
+}
+
 void JS_FreeRuntimeStdHandlers(JSRuntime* rt) {
   js_std_free_handlers(rt);
   JS_FreeRuntime(rt);
 }
 
 // Register the cpp11 external pointer types with the correct cleanup/finaliser functions
-using ContextXPtr = cpp11::external_pointer<JSContext, JS_FreeContext>;
+using ContextXPtr = cpp11::external_pointer<JSContext, JS_FreeJSContextandTape>;
 using RuntimeXPtr = cpp11::external_pointer<JSRuntime, JS_FreeRuntimeStdHandlers>;
 
 extern "C" SEXP qjs_context_(SEXP stack_size_) {

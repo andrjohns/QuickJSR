@@ -7,6 +7,10 @@
 #include <quickjs-libc.h>
 
 namespace quickjsr {
+  // Global tape to store JSValue objects that are created during conversion but
+  // but can't be immediately freed because they are needed
+  std::vector<JSValue> global_tape;
+
   // Forward declaration to allow for recursive calls
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int index);
@@ -95,10 +99,9 @@ namespace quickjsr {
                                           bool auto_unbox = false) {
     // Store the SEXP pointer as a 64-bit integer so that it can be
     // passed to the JS C function
-    JSValue data;
-    data = JS_NewBigInt64(ctx, reinterpret_cast<int64_t>(x));
+    global_tape.push_back(JS_NewBigInt64(ctx, reinterpret_cast<int64_t>(x)));
     return JS_NewCFunctionData(ctx, js_fun_static, Rf_length(FORMALS(x)),
-                                JS_CFUNC_generic, 1, &data);
+                                JS_CFUNC_generic, 1, &global_tape[global_tape.size() - 1]);
   }
 
   inline JSValue SEXP_to_JSValue_matrix(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
