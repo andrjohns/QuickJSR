@@ -2,10 +2,15 @@
 #define QUICKJSR_SEXP_TO_JSVALUE_HPP
 
 #include <quickjsr/JSValue_Date.hpp>
+#include <quickjsr/JSValue_to_SEXP.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 
 namespace quickjsr {
+  // Global tape to store JSValue objects that are created during conversion but
+  // but can't be immediately freed because they are needed
+  std::vector<JSValue> global_tape;
+
   // Forward declaration to allow for recursive calls
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int index);
@@ -76,6 +81,29 @@ namespace quickjsr {
     return arr;
   }
 
+  static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
+                                JSValueConst* argv, int magic, JSValue* data) {
+    int64_t ptr;
+    JS_ToBigInt64(ctx, &ptr, *data);
+    SEXP x = reinterpret_cast<SEXP>(ptr);
+    cpp11::writable::list args(argc);
+    for (int i = 0; i < argc; i++) {
+      args[i] = JSValue_to_SEXP(ctx, argv[i]);
+    }
+    cpp11::function do_call = cpp11::package("base")["do.call"];
+    return SEXP_to_JSValue(ctx, do_call(x, args), true, true);
+  }
+
+  inline JSValue SEXP_to_JSValue_function(JSContext* ctx, const SEXP& x,
+                                          bool auto_unbox_inp = false,
+                                          bool auto_unbox = false) {
+    // Store the SEXP pointer as a 64-bit integer so that it can be
+    // passed to the JS C function
+    global_tape.push_back(JS_NewBigInt64(ctx, reinterpret_cast<int64_t>(x)));
+    return JS_NewCFunctionData(ctx, js_fun_static, Rf_length(FORMALS(x)),
+                                JS_CFUNC_generic, 1, &global_tape[global_tape.size() - 1]);
+  }
+
   inline JSValue SEXP_to_JSValue_matrix(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
     int nrow = Rf_nrows(x);
     int ncol = Rf_ncols(x);
@@ -122,6 +150,8 @@ namespace quickjsr {
         return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(x, index)));
       case VECSXP:
         return SEXP_to_JSValue(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
+      case CLOSXP:
+        return SEXP_to_JSValue_function(ctx, x, auto_unbox, auto_unbox_curr);
       case NILSXP:
         return JS_UNDEFINED;
       default:
