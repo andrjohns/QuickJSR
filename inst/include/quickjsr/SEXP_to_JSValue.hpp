@@ -2,6 +2,7 @@
 #define QUICKJSR_SEXP_TO_JSVALUE_HPP
 
 #include <quickjsr/JSValue_Date.hpp>
+#include <quickjsr/JSValue_to_SEXP.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 
@@ -76,6 +77,29 @@ namespace quickjsr {
     return arr;
   }
 
+  static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
+                                JSValueConst* argv, int magic, JSValue* data) {
+    int64_t ptr;
+    JS_ToBigInt64(ctx, &ptr, *data);
+    SEXP x = (SEXP)ptr;
+    cpp11::writable::list args(argc);
+    for (int i = 0; i < argc; i++) {
+      args[i] = JSValue_to_SEXP(ctx, argv[i]);
+    }
+    cpp11::function do_call = cpp11::package("base")["do.call"];
+    return SEXP_to_JSValue(ctx, do_call(x, args), true, true);
+  }
+
+  inline JSValue SEXP_to_JSValue_function(JSContext* ctx, const SEXP& x,
+                                          bool auto_unbox_inp = false,
+                                          bool auto_unbox = false) {
+    // Store the SEXP pointer as a 64-bit integer so that it can be
+    // passed to the JS C function
+    JSValue data;
+    data = JS_NewBigInt64(ctx, reinterpret_cast<int64_t>(x));
+    return JS_NewCFunctionData(ctx, js_fun_static, Rf_length(FORMALS(x)), JS_CFUNC_generic, 1, &data);
+  }
+
   inline JSValue SEXP_to_JSValue_matrix(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
     int nrow = Rf_nrows(x);
     int ncol = Rf_ncols(x);
@@ -122,6 +146,8 @@ namespace quickjsr {
         return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(x, index)));
       case VECSXP:
         return SEXP_to_JSValue(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
+      case CLOSXP:
+        return SEXP_to_JSValue_function(ctx, x, auto_unbox, auto_unbox_curr);
       case NILSXP:
         return JS_UNDEFINED;
       default:
