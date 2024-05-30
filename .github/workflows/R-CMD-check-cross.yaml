@@ -32,12 +32,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-qemu-action@master
       - uses: addnab/docker-run-action@v3
         with:
           image: andrjohns/quickjsr-cross-tests
-          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
+          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }} -e MAKEFLAGS=-j4
           run: |
             R CMD build /quickjsr
             R CMD check --output=/quickjsr --as-cran --no-manual QuickJSR_*.tar.gz
-
