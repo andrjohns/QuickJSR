@@ -1,11 +1,3 @@
-parse_return <- function(qjs_return) {
-  if (qjs_return == "Error!") {
-    stop("Error in JS runtime, see error message above for more information!",
-          call. = FALSE)
-  }
-  jsonlite::fromJSON(qjs_return)
-}
-
 #' Get the version of the bundled QuickJS library
 #'
 #' @return Character string of the version of the bundled QuickJS library
