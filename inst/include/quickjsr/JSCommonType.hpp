@@ -1,6 +1,7 @@
 #ifndef QUICKJSR_JSCOMMONTYPE_HPP
 #define QUICKJSR_JSCOMMONTYPE_HPP
 
+#include <quickjsr/JSValue_Date.hpp>
 #include <quickjs-libc.h>
 
 namespace quickjsr {
@@ -10,6 +11,7 @@ enum JSCommonType {
   Double,
   Logical,
   Character,
+  Date,
   NumberArray,
   Object,
   Unknown
@@ -29,6 +31,9 @@ JSCommonType JS_GetCommonType(JSContext* ctx, const JSValue& val) {
   }
   if (JS_IsString(val)) {
     return Character;
+  }
+  if (JS_IsDate(ctx, val)) {
+    return Date;
   }
   if (JS_IsArray(ctx, val)) {
     JSCommonType common_type = JS_ArrayCommonType(ctx, val);
@@ -51,8 +56,9 @@ JSCommonType JS_UpdateCommonType(JSCommonType current, JSContext* ctx, const JSV
   if (current == new_type) {
     return current;
   }
-  // If both types are not NumberArray (checked above), return Object
-  if (new_type == NumberArray || current == NumberArray || new_type == Object) {
+  // If one, but not both, types are NumberArray or Date (checked above), return Object
+  if (new_type == NumberArray || current == NumberArray || new_type == Object
+      || new_type == Date || current == Date) {
     return Object;
   }
 

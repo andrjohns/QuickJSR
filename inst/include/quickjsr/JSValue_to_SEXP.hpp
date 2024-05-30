@@ -5,6 +5,7 @@
 #include <quickjs-libc.h>
 #include <quickjsr/JSValue_to_Cpp.hpp>
 #include <quickjsr/JSCommonType.hpp>
+#include <quickjsr/JSValue_Date.hpp>
 
 namespace quickjsr {
 
@@ -35,6 +36,11 @@ SEXP JSValue_to_SEXP_scalar(JSContext* ctx, const JSValue& val) {
   if (JS_IsString(val)) {
     return cpp11::as_sexp(JSValue_to_Cpp<std::string>(ctx, val));
   }
+  if (JS_IsDate(ctx, val)) {
+    cpp11::writable::doubles res = cpp11::as_sexp(JSValue_to_Cpp<double>(ctx, val));
+    res.attr("class") = "POSIXct";
+    return res;
+  }
   return cpp11::as_sexp("Unsupported type");
 }
 
@@ -48,6 +54,11 @@ SEXP JSValue_to_SEXP_vector(JSContext* ctx, const JSValue& val) {
       return cpp11::as_sexp(JSValue_to_Cpp<std::vector<bool>>(ctx, val));
     case Character:
       return cpp11::as_sexp(JSValue_to_Cpp<std::vector<std::string>>(ctx, val));
+    case Date: {
+      cpp11::writable::doubles res = cpp11::as_sexp(JSValue_to_Cpp<std::vector<double>>(ctx, val));
+      res.attr("class") = "POSIXct";
+      return res;
+    }
     case NumberArray: {
       std::vector<std::vector<double>> res = JSValue_to_Cpp<std::vector<std::vector<double>>>(ctx, val);
       // Check that the inner vectors are all the same length
