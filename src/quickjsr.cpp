@@ -25,7 +25,7 @@ extern "C" SEXP qjs_context_(SEXP stack_size_) {
 
   // Initialise a class which can be used for passing SEXP objects to JS
   // without needing conversion
-  JS_NewClass(rt.get(), js_sexp_class_id, &js_sexp_class_def);
+  JS_NewClass(rt.get(), quickjsr::js_sexp_class_id, &quickjsr::js_sexp_class_def);
 
   ContextXPtr ctx(JS_NewContext(rt.get()));
   js_std_add_helpers(ctx.get(), 0, (char**)"");
