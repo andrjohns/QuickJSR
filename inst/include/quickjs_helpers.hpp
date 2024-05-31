@@ -1,11 +1,12 @@
 #ifndef QUICKJS_HELPERS_HPP
 #define QUICKJS_HELPERS_HPP
 
+#include <cpp11.hpp>
 #include <cutils.h>
 #include <quickjs-libc.h>
 
 /**
- * These functions were extracted from the qjs.c file in the QuickJS source code.
+ * These functions were adapted from the qjs.c file in the QuickJS source code.
 */
 
 static int eval_buf(JSContext *ctx, const char* buf, int buf_len,
@@ -42,8 +43,7 @@ static int eval_file(JSContext *ctx, const char *filename, int module) {
 
   buf = (const char*)js_load_file(ctx, &buf_len, filename);
   if (!buf) {
-    perror(filename);
-    exit(1);
+    cpp11::stop("Could not load '%s'\n", filename);
   }
 
   if (module < 0) {
@@ -77,6 +77,5 @@ static JSContext *JS_NewCustomContext(JSRuntime *rt) {
   js_init_module_os(ctx, "os");
   return ctx;
 }
-
 
 #endif
