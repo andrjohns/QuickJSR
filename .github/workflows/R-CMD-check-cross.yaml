@@ -40,6 +40,6 @@ jobs:
           run: |
             R CMD build /quickjsr
             MAKEFLAGS="-j4" CC="clang-18" CXX="clang++-18" R CMD check \
-              --as-cran --no-manual --run-dontrun --run-donttest QuickJSR_*.tar.gz
+              --as-cran --no-manual QuickJSR_*.tar.gz
             MAKEFLAGS="-j4" CC="gcc-13" CXX="g++-13" R CMD check \
-              --as-cran --no-manual --run-dontrun --run-donttest QuickJSR_*.tar.gz
+              --as-cran --no-manual QuickJSR_*.tar.gz
