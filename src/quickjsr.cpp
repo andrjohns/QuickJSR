@@ -2,6 +2,7 @@
 #include <cpp11/declarations.hpp>
 #include <quickjs-libc.h>
 #include <quickjsr.hpp>
+#include <iostream>
 
 void JS_FreeRuntimeStdHandlers(JSRuntime* rt) {
   js_std_free_handlers(rt);
@@ -64,6 +65,21 @@ extern "C" SEXP qjs_validate_(SEXP ctx_ptr_, SEXP code_string_) {
   END_CPP11
 }
 
+JSValue get_property_recursive(JSContext* ctx, JSValue obj, const char* name) {
+  const char* dot = strchr(name, '.');
+  if (dot) {
+    // The name contains a ".", so we extract the first property and recurse on the rest of the name
+    std::string first_property_name(name, dot - name);
+    JSValue first_property = JS_GetPropertyStr(ctx, obj, first_property_name.c_str());
+    JSValue result = get_property_recursive(ctx, first_property, dot + 1);
+    JS_FreeValue(ctx, first_property);
+    return result;
+  } else {
+    // The name does not contain a ".", so we get the property from the object
+    return JS_GetPropertyStr(ctx, obj, name);
+  }
+}
+
 extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   BEGIN_CPP11
   JSContext* ctx = ContextXPtr(ctx_ptr_).get();
@@ -75,7 +91,7 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   }
 
   JSValue global = JS_GetGlobalObject(ctx);
-  JSValue fun = JS_GetPropertyStr(ctx, global, CHAR(STRING_ELT(fun_name_, 0)));
+  JSValue fun = get_property_recursive(ctx, global, CHAR(STRING_ELT(fun_name_, 0)));
   JSValue result_js = JS_Call(ctx, fun, global, args.size(), args.data());
 
   SEXP result;
