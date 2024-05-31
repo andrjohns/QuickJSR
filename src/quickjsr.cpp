@@ -2,7 +2,6 @@
 #include <cpp11/declarations.hpp>
 #include <quickjs-libc.h>
 #include <quickjsr.hpp>
-#include <iostream>
 
 void JS_FreeRuntimeStdHandlers(JSRuntime* rt) {
   js_std_free_handlers(rt);
