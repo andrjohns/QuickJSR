@@ -1,6 +1,7 @@
 #include <cpp11.hpp>
 #include <cpp11/declarations.hpp>
 #include <quickjs-libc.h>
+#include <quickjs_helpers.hpp>
 #include <quickjsr.hpp>
 
 void JS_FreeRuntimeStdHandlers(JSRuntime* rt) {
@@ -21,14 +22,26 @@ extern "C" SEXP qjs_context_(SEXP stack_size_) {
   if (stack_size != -1) {
     JS_SetMaxStackSize(rt.get(), 0);
   }
+  js_std_set_worker_new_context_func(JS_NewCustomContext);
   js_std_init_handlers(rt.get());
+
+  ContextXPtr ctx(JS_NewCustomContext(rt.get()));
 
   // Initialise a class which can be used for passing SEXP objects to JS
   // without needing conversion
   JS_NewClass(rt.get(), quickjsr::js_sexp_class_id, &quickjsr::js_sexp_class_def);
+  JS_SetModuleLoaderFunc(rt.get(), NULL, js_module_loader, NULL);
 
-  ContextXPtr ctx(JS_NewContext(rt.get()));
+  js_init_module_os(ctx.get(), "os");
+  js_init_module_std(ctx.get(), "std");
+
   js_std_add_helpers(ctx.get(), 0, (char**)"");
+
+  const char *str = "import * as std from 'std';\n"
+      "import * as os from 'os';\n"
+      "globalThis.std = std;\n"
+      "globalThis.os = os;\n";
+  eval_buf(ctx.get(), str, strlen(str), "<input>", JS_EVAL_TYPE_MODULE);
 
   cpp11::writable::list result;
   using cpp11::literals::operator""_nm;
@@ -39,17 +52,18 @@ extern "C" SEXP qjs_context_(SEXP stack_size_) {
   END_CPP11
 }
 
-extern "C" SEXP qjs_source_(SEXP ctx_ptr_, SEXP code_string_) {
+extern "C" SEXP qjs_source_(SEXP ctx_ptr_, SEXP input_, SEXP is_file_) {
   BEGIN_CPP11
   JSContext* ctx = ContextXPtr(ctx_ptr_).get();
-  std::string code_string = cpp11::as_cpp<std::string>(code_string_);
-  JSValue val = JS_Eval(ctx, code_string.c_str(), code_string.size(), "", 0);
-  bool failed = JS_IsException(val);
-  if (failed) {
-    js_std_dump_error(ctx);
+  int ret;
+  if (cpp11::as_cpp<bool>(is_file_)) {
+    const char* input = cpp11::as_cpp<const char*>(input_);
+    ret = eval_file(ctx, input, -1);
+  } else {
+    const char* input = cpp11::as_cpp<const char*>(input_);
+    ret = eval_buf(ctx, input, strlen(input), "<input>", JS_EVAL_TYPE_GLOBAL);
   }
-  JS_FreeValue(ctx, val);
-  return cpp11::as_sexp(!failed);
+  return cpp11::as_sexp(!ret);
   END_CPP11
 }
 
