@@ -36,7 +36,10 @@ jobs:
       - uses: addnab/docker-run-action@v3
         with:
           image: andrjohns/quickjsr-cross-tests
-          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }} -e MAKEFLAGS=-j4
+          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
           run: |
             R CMD build /quickjsr
-            R CMD check --output=/quickjsr --as-cran --no-manual QuickJSR_*.tar.gz
+            MAKEFLAGS="-j4" CC="clang-18" CXX="clang++-18" R CMD check \
+              --as-cran --no-manual --run-dontrun --run-donttest QuickJSR_*.tar.gz
+            MAKEFLAGS="-j4" CC="gcc-13" CXX="g++-13" R CMD check \
+              --as-cran --no-manual --run-dontrun --run-donttest QuickJSR_*.tar.gz
