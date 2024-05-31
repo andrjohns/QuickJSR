@@ -1,7 +1,7 @@
 # QuickJSR 1.2.0
   - `Rcpp` dependency replaced with vendored `cpp11` headers
   - `R6` dependency removed
-  - `R` and `JS` interopability added, removing `jsonlite` dependency
+  - `R` and `JS` interoperability added, removing `jsonlite` dependency
   - Fixes for libatomic linking on 32-bit systems
   - Added `to_json` and `from_json` functions for testing `R`/`JS` interop
 

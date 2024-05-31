@@ -3,14 +3,11 @@
 
 #include <quickjsr/JSValue_Date.hpp>
 #include <quickjsr/JSValue_to_SEXP.hpp>
+#include <quickjsr/JS_SEXP.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 
 namespace quickjsr {
-  // Global tape to store JSValue objects that are created during conversion but
-  // but can't be immediately freed because they are needed
-  std::vector<JSValue> global_tape;
-
   // Forward declaration to allow for recursive calls
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int index);
@@ -83,9 +80,9 @@ namespace quickjsr {
 
   static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
                                 JSValueConst* argv, int magic, JSValue* data) {
-    int64_t ptr;
-    JS_ToBigInt64(ctx, &ptr, *data);
-    SEXP x = reinterpret_cast<SEXP>(ptr);
+    JSValue data_val = data[0];
+    SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(data_val, js_sexp_class_id));
+    JS_FreeValue(ctx, data_val);
     cpp11::writable::list args(argc);
     for (int i = 0; i < argc; i++) {
       args[i] = JSValue_to_SEXP(ctx, argv[i]);
@@ -97,11 +94,10 @@ namespace quickjsr {
   inline JSValue SEXP_to_JSValue_function(JSContext* ctx, const SEXP& x,
                                           bool auto_unbox_inp = false,
                                           bool auto_unbox = false) {
-    // Store the SEXP pointer as a 64-bit integer so that it can be
-    // passed to the JS C function
-    global_tape.push_back(JS_NewBigInt64(ctx, reinterpret_cast<int64_t>(x)));
+    JSValue obj = JS_NewObjectClass(ctx, js_sexp_class_id);
+    JS_SetOpaque(obj, reinterpret_cast<void*>(x));
     return JS_NewCFunctionData(ctx, js_fun_static, Rf_length(FORMALS(x)),
-                                JS_CFUNC_generic, 1, &global_tape[global_tape.size() - 1]);
+                                JS_CFUNC_generic, 1, &obj);
   }
 
   inline JSValue SEXP_to_JSValue_matrix(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
