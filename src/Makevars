@@ -64,7 +64,7 @@ build-static: $(QUICKJS_OBJECTS)
 	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a $(QUICKJS_OBJECTS)
 
 $(QUICKJS_OBJECTS): quickjs/%.o : quickjs/%.c
-	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DSTRICT_R_HEADERS -funsigned-char -fwrapv -std=c11 -c $< -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DFALSE=0 -DTRUE=1 -DSTRICT_R_HEADERS -funsigned-char -fwrapv -std=c11 -c $< -o $@
 
 clean:
 	$(RM) $(QUICKJS_OBJECTS) $(OBJECTS) ../inst/VERSION QuickJSR$(DLL)

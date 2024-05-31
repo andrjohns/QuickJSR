@@ -24,8 +24,8 @@ qjs_context <- function(stack_size) {
   .Call(`qjs_context_`, stack_size)
 }
 
-qjs_source <- function(ctx_ptr, code_string) {
-  .Call(`qjs_source_`, ctx_ptr, code_string)
+qjs_source <- function(ctx_ptr, input, is_file) {
+  .Call(`qjs_source_`, ctx_ptr, input, is_file)
 }
 
 qjs_call <- function(ctx_ptr, function_name, ...) {
