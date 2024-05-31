@@ -6,8 +6,8 @@
 namespace quickjsr {
   JSClassID js_sexp_class_id;
   JSClassDef js_sexp_class_def = {
-      "SEXP",
-      .finalizer = nullptr
+    "SEXP",
+    nullptr // finalized
   };
 }
 
