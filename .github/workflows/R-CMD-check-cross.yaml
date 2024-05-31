@@ -33,13 +33,24 @@ jobs:
         with:
           submodules: true
       - uses: docker/setup-qemu-action@master
-      - uses: addnab/docker-run-action@v3
+
+      - name: Check with clang-18
+        uses: addnab/docker-run-action@v3
         with:
           image: andrjohns/quickjsr-cross-tests
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
           run: |
             R CMD build /quickjsr
-            MAKEFLAGS="-j4" CC="clang-18" CXX="clang++-18" R CMD check \
-              --as-cran --no-manual QuickJSR_*.tar.gz
-            MAKEFLAGS="-j4" CC="gcc-13" CXX="g++-13" R CMD check \
-              --as-cran --no-manual QuickJSR_*.tar.gz
+            echo "CC=clang-18" >> /etc/R/Makeconf
+            echo "CXX=clang++-18" >> /etc/R/Makeconf
+            MAKEFLAGS="-j4" R CMD check --as-cran --no-manual QuickJSR_*.tar.gz
+
+      - name: Check with gcc-13
+        uses: addnab/docker-run-action@v3
+        with:
+          image: andrjohns/quickjsr-cross-tests
+          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
+          run: |
+            echo "CC=gcc-13" >> /etc/R/Makeconf
+            echo "CXX=g++-13" >> /etc/R/Makeconf
+            MAKEFLAGS="-j4" R CMD check --as-cran --no-manual QuickJSR_*.tar.gz
