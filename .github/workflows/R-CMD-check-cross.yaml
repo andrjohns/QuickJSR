@@ -51,6 +51,7 @@ jobs:
           image: andrjohns/quickjsr-cross-tests
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
           run: |
+            R CMD build /quickjsr
             echo "CC=gcc-13" >> /etc/R/Makeconf
             echo "CXX=g++-13" >> /etc/R/Makeconf
             MAKEFLAGS="-j4" R CMD check --as-cran --no-manual QuickJSR_*.tar.gz
