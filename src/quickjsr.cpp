@@ -30,6 +30,11 @@ extern "C" SEXP qjs_context_(SEXP stack_size_) {
   // Initialise a class which can be used for passing SEXP objects to JS
   // without needing conversion
   JS_NewClass(rt.get(), quickjsr::js_sexp_class_id, &quickjsr::js_sexp_class_def);
+  JS_NewClass(rt.get(), quickjsr::js_renv_class_id, &quickjsr::js_renv_class_def);
+
+  JSValue proto = JS_NewObject(ctx.get());
+  JS_SetClassProto(ctx.get(), quickjsr::js_renv_class_id, proto);
+
   JS_SetModuleLoaderFunc(rt.get(), NULL, js_module_loader, NULL);
 
   js_init_module_os(ctx.get(), "os");

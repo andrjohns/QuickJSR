@@ -21,5 +21,17 @@ expect_equal(jsc$call("fun_test", \(x, y){ x + y }, 1, 2), 3)
 # Test that closures/captures work
 a <- 3
 expect_equal(jsc$call("fun_test", \(x, y){ (x + y) * a }, 1, 2), 9)
-
 expect_equal(jsc$call("fun_test", \(x, y){ paste(x, y) }, "a", "b"), "a b")
+
+# Test that R environments can be passed to JS and values accessed
+jsc$source(code = "function env_test(env) { return env.a + env.b; }")
+env <- new.env()
+env$a <- 1
+env$b <- 2
+expect_equal(jsc$call("env_test", env), 3)
+
+# Test JS functions can update values in R environments
+jsc$source(code = "function env_update(env) { env.a = 10; env.b = 20; }")
+jsc$call("env_update", env)
+expect_equal(env$a, 10)
+expect_equal(env$b, 20)

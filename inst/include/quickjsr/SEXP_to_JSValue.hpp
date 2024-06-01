@@ -100,6 +100,13 @@ namespace quickjsr {
                                 JS_CFUNC_generic, 1, &obj);
   }
 
+  inline JSValue SEXP_to_JSValue_env(JSContext* ctx, const SEXP& x) {
+    JSValue obj = JS_NewObjectClass(ctx, js_renv_class_id);
+    JS_SetOpaque(obj, reinterpret_cast<void*>(x));
+    return obj;
+  }
+
+
   inline JSValue SEXP_to_JSValue_matrix(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
     int nrow = Rf_nrows(x);
     int ncol = Rf_ncols(x);
@@ -148,6 +155,8 @@ namespace quickjsr {
         return SEXP_to_JSValue(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
       case CLOSXP:
         return SEXP_to_JSValue_function(ctx, x, auto_unbox, auto_unbox_curr);
+      case ENVSXP:
+        return SEXP_to_JSValue_env(ctx, x);
       case NILSXP:
         return JS_UNDEFINED;
       default:
