@@ -12,18 +12,18 @@ namespace quickjsr {
 
   template <typename T, typename = void>
   struct value_type {
-    using type = typename std::decay_t<T>;
+    using type = typename std::decay<T>::type;
   };
 
   template <typename T>
-  struct value_type<T, std::enable_if_t<is_std_vector<T>::value>> {
-    using type = typename std::decay_t<T>::value_type;
+  struct value_type<T, typename std::enable_if<is_std_vector<T>::value>::type> {
+    using type = typename std::decay<T>::type::value_type;
   };
 
   template <typename T>
   using value_type_t = typename value_type<T>::type;
 
   template <typename GoalT, typename InT>
-  using enable_if_type_t = std::enable_if_t<std::is_same<GoalT, InT>::value>;
+  using enable_if_type_t = typename std::enable_if<std::is_same<GoalT, InT>::value>::type;
 } // namespace quickjsr
 #endif
