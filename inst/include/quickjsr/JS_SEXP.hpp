@@ -69,8 +69,7 @@ namespace quickjsr {
   };
 
   static JSValue create_r_object(JSContext *ctx) {
-    JSValue r_obj = JS_NewObject
-    (ctx);
+    JSValue r_obj = JS_NewObject(ctx);
     if (JS_IsException(r_obj)) {
       return r_obj;
     }
