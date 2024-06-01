@@ -37,5 +37,5 @@ expect_equal(env$a, 10)
 expect_equal(env$b, 20)
 
 # Test that JS can call functions in R packages using the R object
-jsc$source(code = "function r_fun_test() { return R.package(\"QuickJSR\")[\"get_tz_offset_seconds\"]() }")
-expect_equal(jsc$call("r_fun_test"), as.POSIXlt(Sys.time())$gmtoff)
+jsc$source(code = 'function r_fun_test() { return R.package("base")["Sys.Date"]() }')
+expect_equal(jsc$call("r_fun_test"), Sys.Date())

@@ -140,7 +140,7 @@ SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
   if (JS_IsArray(ctx, val)) {
     return JSValue_to_SEXP_vector(ctx, val);
   }
-  if (JS_IsObject(val)) {
+  if (JS_IsObject(val) && !JS_IsDate(ctx, val)) {
     return JSValue_to_SEXP_list(ctx, val);
   }
   return JSValue_to_SEXP_scalar(ctx, val);
