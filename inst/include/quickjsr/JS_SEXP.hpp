@@ -17,6 +17,7 @@ namespace quickjsr {
 
   static JSValue js_renv_get_property(JSContext *ctx, JSValueConst this_val, JSAtom atom, JSValueConst receiver) {
     const char *property_name = JS_AtomToCString(ctx, atom);
+    JS_FreeCString(ctx, property_name);
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(this_val, js_renv_class_id));
     cpp11::environment env(x);
     SEXP fun = env[property_name];
