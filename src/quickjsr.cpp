@@ -17,36 +17,8 @@ extern "C" SEXP qjs_context_(SEXP stack_size_) {
   BEGIN_CPP11
   int stack_size = cpp11::as_cpp<int>(stack_size_);
 
-  RuntimeXPtr rt(JS_NewRuntime());
-  // Workaround for RStan stack overflow until they update
-  if (stack_size != -1) {
-    JS_SetMaxStackSize(rt.get(), 0);
-  }
-  js_std_set_worker_new_context_func(JS_NewCustomContext);
-  js_std_init_handlers(rt.get());
-
+  RuntimeXPtr rt(JS_NewCustomRuntime(stack_size));
   ContextXPtr ctx(JS_NewCustomContext(rt.get()));
-
-  // Initialise a class which can be used for passing SEXP objects to JS
-  // without needing conversion
-  JS_NewClass(rt.get(), quickjsr::js_sexp_class_id, &quickjsr::js_sexp_class_def);
-  JS_NewClass(rt.get(), quickjsr::js_renv_class_id, &quickjsr::js_renv_class_def);
-
-  JSValue proto = JS_NewObject(ctx.get());
-  JS_SetClassProto(ctx.get(), quickjsr::js_renv_class_id, proto);
-
-  JS_SetModuleLoaderFunc(rt.get(), NULL, js_module_loader, NULL);
-
-  js_init_module_os(ctx.get(), "os");
-  js_init_module_std(ctx.get(), "std");
-
-  js_std_add_helpers(ctx.get(), 0, (char**)"");
-
-  const char *str = "import * as std from 'std';\n"
-      "import * as os from 'os';\n"
-      "globalThis.std = std;\n"
-      "globalThis.os = os;\n";
-  eval_buf(ctx.get(), str, strlen(str), "<input>", JS_EVAL_TYPE_MODULE);
 
   cpp11::writable::list result;
   using cpp11::literals::operator""_nm;
@@ -134,8 +106,8 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
 extern "C" SEXP qjs_eval_(SEXP eval_string_) {
   BEGIN_CPP11
   std::string eval_string = cpp11::as_cpp<std::string>(eval_string_);
-  JSRuntime* rt = JS_NewRuntime();
-  JSContext* ctx = JS_NewContext(rt);
+  JSRuntime* rt = JS_NewCustomRuntime(0);
+  JSContext* ctx = JS_NewCustomContext(rt);
 
   JSValue val = JS_Eval(ctx, eval_string.c_str(), eval_string.size(), "", 0);
   SEXP result;
@@ -156,8 +128,8 @@ extern "C" SEXP qjs_eval_(SEXP eval_string_) {
 
 extern "C" SEXP to_json_(SEXP arg_, SEXP auto_unbox_) {
   BEGIN_CPP11
-  JSRuntime* rt = JS_NewRuntime();
-  JSContext* ctx = JS_NewContext(rt);
+  JSRuntime* rt = JS_NewCustomRuntime(0);
+  JSContext* ctx = JS_NewCustomContext(rt);
 
   JSValue arg = quickjsr::SEXP_to_JSValue(ctx, arg_,
                                           cpp11::as_cpp<bool>(auto_unbox_));
@@ -173,8 +145,8 @@ extern "C" SEXP to_json_(SEXP arg_, SEXP auto_unbox_) {
 
 extern "C" SEXP from_json_(SEXP json_) {
   BEGIN_CPP11
-  JSRuntime* rt = JS_NewRuntime();
-  JSContext* ctx = JS_NewContext(rt);
+  JSRuntime* rt = JS_NewCustomRuntime(0);
+  JSContext* ctx = JS_NewCustomContext(rt);
 
   std::string json = cpp11::as_cpp<std::string>(json_);
   JSValue result = quickjsr::JSON_to_JSValue(ctx, json);

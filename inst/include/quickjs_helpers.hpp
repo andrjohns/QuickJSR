@@ -4,6 +4,7 @@
 #include <cpp11.hpp>
 #include <cutils.h>
 #include <quickjs-libc.h>
+#include <quickjsr/JS_SEXP.hpp>
 
 /**
  * These functions were adapted from the qjs.c file in the QuickJS source code.
@@ -60,7 +61,7 @@ static int eval_file(JSContext *ctx, const char *filename, int module) {
 }
 
 /* also used to initialize the worker context */
-static JSContext *JS_NewCustomContext(JSRuntime *rt) {
+static JSContext* JS_NewCustomContext(JSRuntime *rt) {
   JSContext *ctx;
   ctx = JS_NewContext(rt);
   if (!ctx){
@@ -75,7 +76,45 @@ static JSContext *JS_NewCustomContext(JSRuntime *rt) {
   /* system modules */
   js_init_module_std(ctx, "std");
   js_init_module_os(ctx, "os");
+
+  JSValue proto = JS_NewObject(ctx);
+  JS_SetClassProto(ctx, quickjsr::js_renv_class_id, proto);
+
+  JS_SetModuleLoaderFunc(rt, NULL, js_module_loader, NULL);
+
+  js_init_module_os(ctx, "os");
+  js_init_module_std(ctx, "std");
+
+  js_std_add_helpers(ctx, 0, (char**)"");
+
+  const char *str = "import * as std from 'std';\n"
+      "import * as os from 'os';\n"
+      "globalThis.std = std;\n"
+      "globalThis.os = os;\n";
+  eval_buf(ctx, str, strlen(str), "<input>", JS_EVAL_TYPE_MODULE);
+
   return ctx;
+}
+
+JSRuntime* JS_NewCustomRuntime(int stack_size) {
+  JSRuntime *rt;
+  rt = JS_NewRuntime();
+  if (!rt){
+      return NULL;
+  }
+
+  // Workaround for RStan stack overflow until they update
+  if (stack_size != -1) {
+    JS_SetMaxStackSize(rt, 0);
+  }
+  js_std_set_worker_new_context_func(JS_NewCustomContext);
+  js_std_init_handlers(rt);
+  // Initialise a class which can be used for passing SEXP objects to JS
+  // without needing conversion
+  JS_NewClass(rt, quickjsr::js_sexp_class_id, &quickjsr::js_sexp_class_def);
+  JS_NewClass(rt, quickjsr::js_renv_class_id, &quickjsr::js_renv_class_def);
+
+  return rt;
 }
 
 #endif
