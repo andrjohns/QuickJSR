@@ -65,7 +65,6 @@ class package {
   }
   function operator[](const std::string& name) { return operator[](name.c_str()); }
 
- private:
   static SEXP get_namespace(const char* name) {
     if (strcmp(name, "base") == 0) {
       return R_BaseEnv;
@@ -73,6 +72,7 @@ class package {
     sexp name_sexp = safe[Rf_install](name);
     return safe[Rf_findVarInFrame](R_NamespaceRegistry, name_sexp);
   }
+ private:
 
   SEXP data_;
 };

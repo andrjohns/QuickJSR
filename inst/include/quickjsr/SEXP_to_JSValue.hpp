@@ -160,7 +160,8 @@ namespace quickjsr {
       case NILSXP:
         return JS_UNDEFINED;
       default:
-        cpp11::stop("Unsupported type for conversion to JSValue");
+        cpp11::stop("Conversions for type %s to JSValue are not yet implemented",
+                    Rf_type2char(TYPEOF(x)));
     }
   }
 
@@ -183,8 +184,6 @@ namespace quickjsr {
       }
     }
     return SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox_curr, 0);
-
-    cpp11::stop("Unsupported type for conversion to JSValue");
   }
 } // namespace quickjsr
 

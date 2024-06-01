@@ -93,6 +93,11 @@ static JSContext* JS_NewCustomContext(JSRuntime *rt) {
       "globalThis.os = os;\n";
   eval_buf(ctx, str, strlen(str), "<input>", JS_EVAL_TYPE_MODULE);
 
+  JSValue global_obj = JS_GetGlobalObject(ctx);
+  JSValue r_obj = quickjsr::create_r_object(ctx);
+  JS_SetPropertyStr(ctx, global_obj, "R", r_obj);
+  JS_FreeValue(ctx, global_obj);
+
   return ctx;
 }
 

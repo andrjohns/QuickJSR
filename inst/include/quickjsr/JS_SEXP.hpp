@@ -49,6 +49,34 @@ namespace quickjsr {
     nullptr,
     &js_renv_exotic_methods
   };
+
+  static JSValue js_r_package(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc != 1) {
+      return JS_ThrowTypeError(ctx, "R.package requires one argument");
+    }
+
+    const char *package_name = JS_ToCString(ctx, argv[0]);
+    JS_FreeCString(ctx, package_name);
+    if (!package_name) {
+        return JS_EXCEPTION;
+    }
+    SEXP pkg = cpp11::package::get_namespace(package_name);
+    return SEXP_to_JSValue(ctx, pkg, true, true);
+  }
+
+  static const JSCFunctionListEntry js_r_funcs[] = {
+    JS_CFUNC_DEF("package", 1, js_r_package),
+  };
+
+  static JSValue create_r_object(JSContext *ctx) {
+    JSValue r_obj = JS_NewObject
+    (ctx);
+    if (JS_IsException(r_obj)) {
+      return r_obj;
+    }
+    JS_SetPropertyFunctionList(ctx, r_obj, js_r_funcs, countof(js_r_funcs));
+    return r_obj;
+  }
 }
 
 #endif
