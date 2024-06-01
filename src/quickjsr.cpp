@@ -120,7 +120,7 @@ extern "C" SEXP qjs_eval_(SEXP eval_string_) {
 
   JS_FreeValue(ctx, val);
   JS_FreeContext(ctx);
-  JS_FreeRuntime(rt);
+  JS_FreeRuntimeStdHandlers(rt);
 
   return result;
   END_CPP11
@@ -137,7 +137,7 @@ extern "C" SEXP to_json_(SEXP arg_, SEXP auto_unbox_) {
 
   JS_FreeValue(ctx, arg);
   JS_FreeContext(ctx);
-  JS_FreeRuntime(rt);
+  JS_FreeRuntimeStdHandlers(rt);
 
   return cpp11::as_sexp(result);
   END_CPP11
@@ -154,7 +154,7 @@ extern "C" SEXP from_json_(SEXP json_) {
 
   JS_FreeValue(ctx, result);
   JS_FreeContext(ctx);
-  JS_FreeRuntime(rt);
+  JS_FreeRuntimeStdHandlers(rt);
 
   return rtn;
   END_CPP11
