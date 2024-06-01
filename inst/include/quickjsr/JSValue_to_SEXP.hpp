@@ -69,7 +69,7 @@ SEXP JSValue_to_SEXP_vector(JSContext* ctx, const JSValue& val) {
       // Check that the inner vectors are all the same length
       size_t len = res[0].size();
       bool allSameSize = std::all_of(res.begin() + 1, res.end(),
-                                    [len](auto&& vec) { return vec.size() == len; });
+                                    [len](const std::vector<double>& vec) { return vec.size() == len; });
       if (allSameSize) {
         cpp11::writable::doubles_matrix<cpp11::by_column> out(res.size(), len);
         for (size_t i = 0; i < res.size(); i++) {

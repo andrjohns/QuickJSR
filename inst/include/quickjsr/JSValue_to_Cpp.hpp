@@ -44,7 +44,7 @@ namespace quickjsr {
     return result == "true" ? "TRUE" : result == "false" ? "FALSE" : result;
   }
 
-  template <typename T, std::enable_if_t<is_std_vector<T>::value>* = nullptr>
+  template <typename T, typename std::enable_if<is_std_vector<T>::value>::type* = nullptr>
   T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
     T res;
     uint32_t len;
