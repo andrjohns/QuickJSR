@@ -83,6 +83,9 @@ namespace quickjsr {
     JSValue data_val = data[0];
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(data_val, js_sexp_class_id));
     JS_FreeValue(ctx, data_val);
+    if (argc == 0) {
+      return SEXP_to_JSValue(ctx, cpp11::function(x)(), true, true);
+    }
     cpp11::writable::list args(argc);
     for (int i = 0; i < argc; i++) {
       args[i] = JSValue_to_SEXP(ctx, argv[i]);
@@ -160,7 +163,8 @@ namespace quickjsr {
       case NILSXP:
         return JS_UNDEFINED;
       default:
-        cpp11::stop("Unsupported type for conversion to JSValue");
+        cpp11::stop("Conversions for type %s to JSValue are not yet implemented",
+                    Rf_type2char(TYPEOF(x)));
     }
   }
 
@@ -183,8 +187,6 @@ namespace quickjsr {
       }
     }
     return SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox_curr, 0);
-
-    cpp11::stop("Unsupported type for conversion to JSValue");
   }
 } // namespace quickjsr
 
