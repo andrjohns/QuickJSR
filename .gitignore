@@ -7,3 +7,4 @@ inst/include/quickjs
 ^check$
 .vscode
 *.DS_Store
+inst/doc

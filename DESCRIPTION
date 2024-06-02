@@ -16,6 +16,8 @@ License: MIT + file LICENSE
 URL: https://github.com/andrjohns/QuickJSR, https://bellard.org/quickjs/
 BugReports: https://github.com/andrjohns/QuickJSR/issues
 Suggests:
+    knitr,
+    rmarkdown,
     tinytest
 Encoding: UTF-8
 Language: en-AU
@@ -23,3 +25,4 @@ NeedsCompilation: yes
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
 SystemRequirements: GNU make
+VignetteBuilder: knitr
