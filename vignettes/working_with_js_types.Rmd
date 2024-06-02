@@ -66,7 +66,7 @@ df <- data.frame(a = 1:3, b = c("x", "y", "z"))
 cat(to_json(df))
 ```
 
-Note that the `to_json()` function operates by converting R objects to their JS equivalents, and then calling `JSON.stringify()` on the result. This allows you explore how different types are being converted to JS.
+Note that the `to_json()` function operates by converting R objects to their JS equivalents, and then calling `JSON.stringify()` on the result. This allows you to explore how different types are being converted to JS.
 
 ### Functions and Closures
 
@@ -98,7 +98,6 @@ ctx$call("env_test", env)
 Values in the environment can also updated from JS code:
 
 ```{r}
-# Test JS functions can update values in R environments
 ctx$source(code = "function env_update(env) { env.a = 10; env.b = 20; }")
 ctx$call("env_update", env)
 env$a
