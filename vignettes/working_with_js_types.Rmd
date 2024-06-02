@@ -95,7 +95,7 @@ env$b <- 2
 ctx$call("env_test", env)
 ```
 
-Values in the environment can also updated from JS code:
+Values in the environment can also be updated from JS code:
 
 ```{r}
 ctx$source(code = "function env_update(env) { env.a = 10; env.b = 20; }")
@@ -109,6 +109,5 @@ env$b
 `QuickJSR` automatically adds a global object `R` to each context, which can be used to access the namespaces of installed packages - and subsequently extract and use functions and objects from them. 
 
 ```{r}
-ctx$source(code = 'function getwd() { return R.package("base").getwd() }')
-ctx$call("getwd")
+qjs_eval('R.package("base").getwd()')
 ```
