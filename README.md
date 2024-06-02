@@ -53,7 +53,7 @@ qjs_eval("1 + 1")
 
 ``` r
 qjs_eval("Math.random()")
-#> [1] 0.9898961
+#> [1] 0.2562018
 ```
 
 For more complex interactions, you can create a QuickJS context and
@@ -87,8 +87,14 @@ ctx$call("subtract", 5, 3)
 #> [1] 2
 ```
 
-You can also pass R functions to be evaluated using JavaScript
-arguments:
+### Interacting with R objects, environments, and functions
+
+As QuickJSR uses the respective C APIs of R and QuickJS to pass values
+between the two, this allows for more complex data structures to be
+passed between R and JavaScript.
+
+For example, you can also pass R functions to be evaluated using
+JavaScript arguments:
 
 ``` r
 ctx$source(code = "function callRFunction(f, x, y) { return f(x, y); }")
@@ -99,4 +105,39 @@ ctx$call("callRFunction", function(x, y) x + y, 1, 2)
 ``` r
 ctx$call("callRFunction", function(x, y) paste0(x, ",", y), "a", "b")
 #> [1] "a,b"
+```
+
+You can pass R environments to JavaScript, and both access and update
+their contents:
+
+``` r
+env <- new.env()
+env$x <- 1
+env$y <- 2
+
+ctx$source(code = "function accessEnv(env) { return env.x + env.y; }")
+ctx$call("accessEnv", env)
+#> [1] 3
+```
+
+``` r
+
+ctx$source(code = "function updateEnv(env) { env.z = env.x * env.y; return env.z;}")
+ctx$call("updateEnv", env)
+#> [1] 2
+```
+
+``` r
+
+env$z
+#> [1] 2
+```
+
+QuickJSR also provides a global `R` object, which you can use to access
+objects and functions from various R packages:
+
+``` r
+ctx$source(code = 'function callRFunctionFromPackage() { return R.package("base")["Sys.Date"](); }')
+ctx$call("callRFunctionFromPackage")
+#> [1] "2024-06-02 03:00:00 EEST"
 ```
