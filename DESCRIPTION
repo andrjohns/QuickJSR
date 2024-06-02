@@ -4,9 +4,9 @@ Version: 1.2.0.9000
 Authors@R: c(
     person(c("Andrew", "R."), "Johnson", , "andrew.johnson@arjohnsonau.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7000-8065")),
-    person("Fabrice", "Bellard", role = c("ctb", "cph"),
+    person("Fabrice", "Bellard", role = c("cph"),
            comment = "Author of QuickJS sources and headers"),
-    person("Charlie", "Gordon", role = c("ctb", "cph"),
+    person("Charlie", "Gordon", role = c("cph"),
            comment = "Author of QuickJS sources and headers")
   )
 Description: An 'R' interface to the 'QuickJS' portable 'JavaScript'
