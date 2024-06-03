@@ -36,6 +36,15 @@ qjs_validate <- function(ctx_ptr, function_name) {
   .Call(`qjs_validate_`, ctx_ptr, function_name)
 }
 
+qjs_get <- function(ctx_ptr, var_name) {
+  .Call(`qjs_get_`, ctx_ptr, var_name)
+}
+
+qjs_assign <- function(ctx_ptr, var_name, value) {
+  res <- .Call(`qjs_assign_`, ctx_ptr, var_name, value)
+  invisible(NULL)
+}
+
 #' to_json
 #'
 #' Use the QuickJS C API to convert an R object to a JSON string

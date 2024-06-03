@@ -65,6 +65,49 @@ source <- NULL
 #' }
 call <- NULL
 
+#' Get a variable from the current context
+#' 
+#' @name JSContext-method-get
+#' @aliases get
+#' 
+#' @usage get(var_name)
+#' 
+#' @description
+#' Get the value of a variable from the current context
+#' 
+#' @param var_name The name of the variable to retrieve
+#' @return The value of the variable
+#' 
+#' @examples
+#' \dontrun{
+#' ctx <- JSContext$new()
+#' ctx$source(code = "var a = 1;")
+#' ctx$get("a")
+#' }
+get <- NULL
+
+#' Assign a value to a variable in the current context
+#' 
+#' @name JSContext-method-assign
+#' @aliases assign
+#' 
+#' @usage assign(var_name, value)
+#'
+#' @description
+#' Assign a value to a variable in the current context
+#' 
+#' @param var_name The name of the variable to assign
+#' @param value The value to assign to the variable
+#' @return No return value, called for side effects
+#' 
+#' @examples
+#' \dontrun{
+#' ctx <- JSContext$new()
+#' ctx$assign("a", 1)
+#' ctx$get("a")
+#' }
+assign <- NULL
+
 new_JSContext <- function(stack_size = NULL) {
   stack_size_int = ifelse(is.null(stack_size), -1, stack_size)
   rt_and_ctx = qjs_context(stack_size_int)
@@ -99,6 +142,12 @@ new_JSContext <- function(stack_size = NULL) {
   }
   ContextList$call <- function(function_name, ...) {
     qjs_call(ContextList$context, function_name, ...)
+  }
+  ContextList$get <- function(var_name) {
+    qjs_get(ContextList$context, var_name)
+  }
+  ContextList$assign <- function(var_name, value) {
+    qjs_assign(ContextList$context, var_name, value)
   }
   structure(
     class = "JSContext",
