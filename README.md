@@ -8,8 +8,9 @@
 [![R-CMD-check](https://github.com/andrjohns/QuickJSR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/andrjohns/QuickJSR/actions/workflows/R-CMD-check.yaml)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/QuickJSR)](https://CRAN.R-project.org/package=QuickJSR)
-[![:name status
-badge](https://andrjohns.r-universe.dev/badges/:name)](https://andrjohns.r-universe.dev/)
+[![Downloads](https://cranlogs.r-pkg.org/badges/QuickJSR?color=blue)](https://cran.rstudio.com/package=QuickJSR)
+[![Research software
+impact](http://depsy.org/api/package/cran/QuickJSR/badge.svg)](https://depsy.org/package/r/QuickJSR)
 [![QuickJSR status
 badge](https://andrjohns.r-universe.dev/badges/QuickJSR)](https://andrjohns.r-universe.dev/QuickJSR)
 <!-- badges: end -->
@@ -53,7 +54,7 @@ qjs_eval("1 + 1")
 
 ``` r
 qjs_eval("Math.random()")
-#> [1] 0.2562018
+#> [1] 0.7978077
 ```
 
 For more complex interactions, you can create a QuickJS context and
@@ -139,5 +140,5 @@ objects and functions from various R packages:
 ``` r
 ctx$source(code = 'function callRFunctionFromPackage() { return R.package("base")["Sys.Date"](); }')
 ctx$call("callRFunctionFromPackage")
-#> [1] "2024-06-02 03:00:00 EEST"
+#> [1] "2024-06-03 03:00:00 EEST"
 ```
