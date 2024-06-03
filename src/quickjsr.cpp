@@ -88,6 +88,32 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   END_CPP11
 }
 
+extern "C" SEXP qjs_get_(SEXP ctx_ptr_, SEXP js_obj_name) {
+  BEGIN_CPP11
+  JSContext* ctx = ContextXPtr(ctx_ptr_).get();
+  JSValue global = JS_GetGlobalObject(ctx);
+  JSValue result = quickjsr::JS_GetPropertyRecursive(ctx, global, CHAR(STRING_ELT(js_obj_name, 0)));
+  SEXP rtn = quickjsr::JSValue_to_SEXP(ctx, result);
+
+  JS_FreeValue(ctx, result);
+  JS_FreeValue(ctx, global);
+
+  return rtn;
+  END_CPP11
+}
+
+extern "C" SEXP qjs_assign_(SEXP ctx_ptr_, SEXP js_obj_name_, SEXP value_) {
+  BEGIN_CPP11
+  JSContext* ctx = ContextXPtr(ctx_ptr_).get();
+  JSValue global = JS_GetGlobalObject(ctx);
+  JSValue value = quickjsr::SEXP_to_JSValue(ctx, value_, true);
+  int result = quickjsr::JS_SetPropertyRecursive(ctx, global, CHAR(STRING_ELT(js_obj_name_, 0)), value);
+  JS_FreeValue(ctx, global);
+
+  return cpp11::as_sexp(result);
+  END_CPP11
+}
+
 extern "C" SEXP qjs_eval_(SEXP eval_string_) {
   BEGIN_CPP11
   std::string eval_string = cpp11::as_cpp<std::string>(eval_string_);
