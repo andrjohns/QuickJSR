@@ -7,5 +7,6 @@
 #include <quickjsr/JSValue_to_JSON.hpp>
 #include <quickjsr/JSON_to_JSValue.hpp>
 #include <quickjsr/type_traits.hpp>
+#include <quickjsr/JS_GetPropertyRecursive.hpp>
 
 #endif
