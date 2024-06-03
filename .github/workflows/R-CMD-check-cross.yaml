@@ -40,10 +40,10 @@ jobs:
           image: andrjohns/quickjsr-cross-tests
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
           run: |
-            R CMD build /quickjsr
+            R CMD build --no-build-vignettes /quickjsr
             echo "CC=clang-18" >> /etc/R/Makeconf
             echo "CXX=clang++-18" >> /etc/R/Makeconf
-            MAKEFLAGS="-j4" R CMD check --as-cran --no-manual QuickJSR_*.tar.gz
+            MAKEFLAGS="-j4" R CMD check --as-cran --no-manual --no-vignettes QuickJSR_*.tar.gz
 
       - name: Check with gcc-13
         uses: addnab/docker-run-action@v3
@@ -51,7 +51,7 @@ jobs:
           image: andrjohns/quickjsr-cross-tests
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
           run: |
-            R CMD build /quickjsr
+            R CMD build --no-build-vignettes /quickjsr
             echo "CC=gcc-13" >> /etc/R/Makeconf
             echo "CXX=g++-13" >> /etc/R/Makeconf
-            MAKEFLAGS="-j4" R CMD check --as-cran --no-manual QuickJSR_*.tar.gz
+            MAKEFLAGS="-j4" R CMD check --as-cran --no-manual --no-vignettes QuickJSR_*.tar.gz
