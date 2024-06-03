@@ -17,8 +17,8 @@ extern "C" SEXP qjs_context_(SEXP stack_size_) {
   BEGIN_CPP11
   int stack_size = cpp11::as_cpp<int>(stack_size_);
 
-  RuntimeXPtr rt(JS_NewCustomRuntime(stack_size));
-  ContextXPtr ctx(JS_NewCustomContext(rt.get()));
+  RuntimeXPtr rt(quickjsr::JS_NewCustomRuntime(stack_size));
+  ContextXPtr ctx(quickjsr::JS_NewCustomContext(rt.get()));
 
   cpp11::writable::list result;
   using cpp11::literals::operator""_nm;
@@ -35,10 +35,10 @@ extern "C" SEXP qjs_source_(SEXP ctx_ptr_, SEXP input_, SEXP is_file_) {
   int ret;
   if (cpp11::as_cpp<bool>(is_file_)) {
     const char* input = cpp11::as_cpp<const char*>(input_);
-    ret = eval_file(ctx, input, -1);
+    ret = quickjsr::eval_file(ctx, input, -1);
   } else {
     const char* input = cpp11::as_cpp<const char*>(input_);
-    ret = eval_buf(ctx, input, strlen(input), "<input>", JS_EVAL_TYPE_GLOBAL);
+    ret = quickjsr::eval_buf(ctx, input, strlen(input), "<input>", JS_EVAL_TYPE_GLOBAL);
   }
   return cpp11::as_sexp(!ret);
   END_CPP11
@@ -55,21 +55,6 @@ extern "C" SEXP qjs_validate_(SEXP ctx_ptr_, SEXP code_string_) {
   END_CPP11
 }
 
-JSValue get_property_recursive(JSContext* ctx, JSValue obj, const char* name) {
-  const char* dot = strchr(name, '.');
-  if (dot) {
-    // The name contains a ".", so we extract the first property and recurse on the rest of the name
-    std::string first_property_name(name, dot - name);
-    JSValue first_property = JS_GetPropertyStr(ctx, obj, first_property_name.c_str());
-    JSValue result = get_property_recursive(ctx, first_property, dot + 1);
-    JS_FreeValue(ctx, first_property);
-    return result;
-  } else {
-    // The name does not contain a ".", so we get the property from the object
-    return JS_GetPropertyStr(ctx, obj, name);
-  }
-}
-
 extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   BEGIN_CPP11
   JSContext* ctx = ContextXPtr(ctx_ptr_).get();
@@ -81,7 +66,7 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   }
 
   JSValue global = JS_GetGlobalObject(ctx);
-  JSValue fun = get_property_recursive(ctx, global, CHAR(STRING_ELT(fun_name_, 0)));
+  JSValue fun = quickjsr::JS_GetPropertyRecursive(ctx, global, CHAR(STRING_ELT(fun_name_, 0)));
   JSValue result_js = JS_Call(ctx, fun, global, args.size(), args.data());
 
   SEXP result;
@@ -106,8 +91,8 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
 extern "C" SEXP qjs_eval_(SEXP eval_string_) {
   BEGIN_CPP11
   std::string eval_string = cpp11::as_cpp<std::string>(eval_string_);
-  JSRuntime* rt = JS_NewCustomRuntime(0);
-  JSContext* ctx = JS_NewCustomContext(rt);
+  JSRuntime* rt = quickjsr::JS_NewCustomRuntime(0);
+  JSContext* ctx = quickjsr::JS_NewCustomContext(rt);
 
   JSValue val = JS_Eval(ctx, eval_string.c_str(), eval_string.size(), "", 0);
   SEXP result;
@@ -128,8 +113,8 @@ extern "C" SEXP qjs_eval_(SEXP eval_string_) {
 
 extern "C" SEXP to_json_(SEXP arg_, SEXP auto_unbox_) {
   BEGIN_CPP11
-  JSRuntime* rt = JS_NewCustomRuntime(0);
-  JSContext* ctx = JS_NewCustomContext(rt);
+  JSRuntime* rt = quickjsr::JS_NewCustomRuntime(0);
+  JSContext* ctx = quickjsr::JS_NewCustomContext(rt);
 
   JSValue arg = quickjsr::SEXP_to_JSValue(ctx, arg_,
                                           cpp11::as_cpp<bool>(auto_unbox_));
@@ -145,8 +130,8 @@ extern "C" SEXP to_json_(SEXP arg_, SEXP auto_unbox_) {
 
 extern "C" SEXP from_json_(SEXP json_) {
   BEGIN_CPP11
-  JSRuntime* rt = JS_NewCustomRuntime(0);
-  JSContext* ctx = JS_NewCustomContext(rt);
+  JSRuntime* rt = quickjsr::JS_NewCustomRuntime(0);
+  JSContext* ctx = quickjsr::JS_NewCustomContext(rt);
 
   std::string json = cpp11::as_cpp<std::string>(json_);
   JSValue result = quickjsr::JSON_to_JSValue(ctx, json);
