@@ -9,8 +9,6 @@
 [![CRAN
 status](https://www.r-pkg.org/badges/version/QuickJSR)](https://CRAN.R-project.org/package=QuickJSR)
 [![Downloads](https://cranlogs.r-pkg.org/badges/QuickJSR?color=blue)](https://cran.rstudio.com/package=QuickJSR)
-[![Research software
-impact](http://depsy.org/api/package/cran/QuickJSR/badge.svg)](https://depsy.org/package/r/QuickJSR)
 [![QuickJSR status
 badge](https://andrjohns.r-universe.dev/badges/QuickJSR)](https://andrjohns.r-universe.dev/QuickJSR)
 <!-- badges: end -->
