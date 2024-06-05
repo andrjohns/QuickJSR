@@ -23,6 +23,7 @@ jobs:
           -  { platform: linux/ppc64le }
           -  { platform: linux/riscv64 }
           -  { platform: linux/s390x }
+          -  { platform: FreeBSD }
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -32,9 +33,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - uses: docker/setup-qemu-action@master
+          
+      - name: Setup QEMU
+        if: matrix.config.platform != 'FreeBSD'
+        uses: docker/setup-qemu-action@master
 
       - name: Check with clang-18
+        if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
           image: andrjohns/quickjsr-cross-tests
@@ -46,6 +51,7 @@ jobs:
             MAKEFLAGS="-j4" _R_CHECK_FORCE_SUGGESTS_="false" R CMD check --as-cran --no-manual --no-vignettes QuickJSR_*.tar.gz
 
       - name: Check with gcc-13
+        if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
           image: andrjohns/quickjsr-cross-tests
@@ -55,3 +61,16 @@ jobs:
             echo "CC=gcc-13" >> /etc/R/Makeconf
             echo "CXX=g++-13" >> /etc/R/Makeconf
             MAKEFLAGS="-j4" _R_CHECK_FORCE_SUGGESTS_="false" R CMD check --as-cran --no-manual --no-vignettes QuickJSR_*.tar.gz
+
+      - name: Test in FreeBSD
+        if: matrix.config.platform == 'FreeBSD'
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg install -y R
+
+          run: |
+            R CMD build --no-build-vignettes /root/work/QuickJSR/QuickJSR
+            _R_CHECK_FORCE_SUGGESTS_="false" R CMD check --as-cran --no-manual --no-vignettes /root/work/QuickJSR/QuickJSR/QuickJSR_*.tar.gz
+      
