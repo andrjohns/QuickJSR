@@ -71,5 +71,6 @@ jobs:
             pkg install -y R
 
           run: |
+            Rscript -e 'install.packages("tinytest", repos="https://cloud.r-project.org")'
             R CMD build --no-build-vignettes /root/work/QuickJSR/QuickJSR
             _R_CHECK_FORCE_SUGGESTS_="false" R CMD check --as-cran --no-manual --no-vignettes /root/work/QuickJSR/QuickJSR/QuickJSR_*.tar.gz
