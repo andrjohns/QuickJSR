@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-          
+
       - name: Setup QEMU
         if: matrix.config.platform != 'FreeBSD'
         uses: docker/setup-qemu-action@master
@@ -73,4 +73,3 @@ jobs:
           run: |
             R CMD build --no-build-vignettes /root/work/QuickJSR/QuickJSR
             _R_CHECK_FORCE_SUGGESTS_="false" R CMD check --as-cran --no-manual --no-vignettes /root/work/QuickJSR/QuickJSR/QuickJSR_*.tar.gz
-      
