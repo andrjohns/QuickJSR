@@ -8,7 +8,7 @@
 [![R-CMD-check](https://github.com/andrjohns/QuickJSR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/andrjohns/QuickJSR/actions/workflows/R-CMD-check.yaml)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/QuickJSR)](https://CRAN.R-project.org/package=QuickJSR)
-[![Downloads](https://cranlogs.r-pkg.org/badges/QuickJSR?color=blue)](https://cran.rstudio.com/package=QuickJSR)
+[![Downloads](https://cranlogs.r-pkg.org/badges/QuickJSR?color=blue)](https://CRAN.R-project.org/package=QuickJSR)
 [![QuickJSR status
 badge](https://andrjohns.r-universe.dev/badges/QuickJSR)](https://andrjohns.r-universe.dev/QuickJSR)
 <!-- badges: end -->
@@ -52,7 +52,7 @@ qjs_eval("1 + 1")
 
 ``` r
 qjs_eval("Math.random()")
-#> [1] 0.7978077
+#> [1] 0.5193045
 ```
 
 For more complex interactions, you can create a QuickJS context and
@@ -69,8 +69,9 @@ Use the `$source()` method to load JavaScript code into the context:
 ctx$source(code = "function add(a, b) { return a + b; }")
 
 # Or read from a file
-writeLines("function subtract(a, b) { return a - b; }", "subtract.js")
-ctx$source(file = "subtract.js")
+subtract_js <- tempfile(fileext = ".js")
+writeLines("function subtract(a, b) { return a - b; }", subtract_js)
+ctx$source(file = subtract_js)
 ```
 
 Then use the `$call()` method to call a specified function with
@@ -136,7 +137,6 @@ QuickJSR also provides a global `R` object, which you can use to access
 objects and functions from various R packages:
 
 ``` r
-ctx$source(code = 'function callRFunctionFromPackage() { return R.package("base")["Sys.Date"](); }')
-ctx$call("callRFunctionFromPackage")
-#> [1] "2024-06-03 03:00:00 EEST"
+qjs_eval('R.package("base")["Sys.Date"]()')
+#> [1] "2024-06-07 03:00:00 EEST"
 ```

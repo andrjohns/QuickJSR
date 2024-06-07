@@ -1,4 +1,7 @@
-# QuickJSR 1.2.0
+# QuickJSR 1.2.2
+  - Fix non-canonical CRAN URL in READMEE
+
+# QuickJSR 1.2.1
   - Fix installation under C++11
   - Fix installation for FreeBSD
   - Fix detection of atomics support under Windows and ARM64
