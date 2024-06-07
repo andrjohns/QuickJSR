@@ -9,10 +9,13 @@ else
 	DLL := .so
 endif
 
-CC_VERSION :=  $(shell $(CXX) -dumpfullversion -dumpversion 2>&1)
+R_CC := $(shell R CMD config CC)
+R_CXX := $(shell R CMD config CXX)
+
+CC_VERSION :=  $(shell $(R_CXX) -dumpfullversion -dumpversion 2>&1)
 CC_MAJOR := $(word 1,$(subst ., ,$(CC_VERSION)))
 
-CLANG_CHECK := $(shell echo | $(CXX) -dM -E - | grep -i __clang__)
+CLANG_CHECK := $(shell echo | $(R_CC) -dM -E - | grep -i __clang__)
 
 # Older versions of gcc and clang don't provide the stdatomic.h header
 ifneq (,$(CLANG_CHECK))
@@ -21,7 +24,7 @@ ifneq (,$(CLANG_CHECK))
 	endif
 # Clang on armel needs libatomic
 	ifeq ($(shell uname -m), armv7l)
-	  CC_TARGET := $(shell $(CXX) -v 2>&1 | grep Target | cut -d ' ' -f 2)
+	  CC_TARGET := $(shell $(R_CXX) -v 2>&1 | grep Target | cut -d ' ' -f 2)
 		ifeq ($(findstring gnueabihf,$(CC_TARGET)),)
 			PKG_LIBS += -latomic
 		endif
@@ -64,7 +67,7 @@ build-static: $(QUICKJS_OBJECTS)
 	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a $(QUICKJS_OBJECTS)
 
 $(QUICKJS_OBJECTS): quickjs/%.o : quickjs/%.c
-	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DFALSE=0 -DTRUE=1 -DSTRICT_R_HEADERS -funsigned-char -fwrapv -std=gnu11 -c $< -o $@
+	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DFALSE=0 -DTRUE=1 -DSTRICT_R_HEADERS -funsigned-char -fwrapv -std=gnu11 -c $< -o $@
 
 clean:
 	$(RM) $(QUICKJS_OBJECTS) $(OBJECTS) ../inst/VERSION QuickJSR$(DLL)
