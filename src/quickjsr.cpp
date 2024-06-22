@@ -170,3 +170,9 @@ extern "C" SEXP from_json_(SEXP json_) {
   return rtn;
   END_CPP11
 }
+
+extern "C" SEXP qjs_version_() {
+  BEGIN_CPP11
+  return cpp11::as_sexp(JS_GetVersion());
+  END_CPP11
+}
