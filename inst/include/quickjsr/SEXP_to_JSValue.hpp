@@ -145,9 +145,12 @@ namespace quickjsr {
       }
       case REALSXP: {
         if (Rf_inherits(x, "POSIXct")) {
-          return JS_NewDate(ctx, REAL_ELT(x, index), true);
+          static constexpr double milliseconds_second = 1000;
+          double tz_offset_seconds = get_tz_offset_seconds();
+          return JS_NewDate(ctx, (REAL_ELT(x, index) + tz_offset_seconds) * milliseconds_second);
         } else if (Rf_inherits(x, "Date")) {
-          return JS_NewDate(ctx, REAL_ELT(x, index));
+          static constexpr double milliseconds_day = 86400000;
+          return JS_NewDate(ctx, REAL_ELT(x, index) * milliseconds_day);
         } else {
           return JS_NewFloat64(ctx, REAL_ELT(x, index));
         }

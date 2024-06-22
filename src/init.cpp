@@ -14,6 +14,7 @@ extern "C" {
   SEXP qjs_eval_(SEXP eval_string_);
   SEXP to_json_(SEXP arg_, SEXP auto_unbox_);
   SEXP from_json_(SEXP json_);
+  SEXP qjs_version_();
 
 
   static const R_CallMethodDef CallEntries[] = {
@@ -26,6 +27,7 @@ extern "C" {
     {"qjs_assign_",   (DL_FUNC) &qjs_assign_,   3},
     {"to_json_", (DL_FUNC) &to_json_, 2},
     {"from_json_", (DL_FUNC) &from_json_, 1},
+    {"qjs_version_", (DL_FUNC) &qjs_version_, 0},
     {NULL, NULL, 0}
   };
 

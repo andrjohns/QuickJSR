@@ -69,11 +69,6 @@ namespace quickjsr {
         return NULL;
     }
 
-    JS_AddIntrinsicBigFloat(ctx);
-    JS_AddIntrinsicBigDecimal(ctx);
-    JS_AddIntrinsicOperators(ctx);
-    JS_EnableBignumExt(ctx, TRUE);
-
     /* system modules */
     js_init_module_std(ctx, "std");
     js_init_module_os(ctx, "os");

@@ -69,3 +69,11 @@ to_json <- function(arg, auto_unbox = FALSE) {
 from_json <- function(json) {
   .Call(`from_json_`, json)
 }
+
+#' Get the version of the bundled QuickJS library
+#'
+#' @return Character string of the version of the bundled QuickJS library
+#' @export
+quickjs_version <- function() {
+  .Call(`qjs_version_`)
+}
