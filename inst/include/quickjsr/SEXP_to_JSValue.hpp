@@ -46,7 +46,6 @@ namespace quickjsr {
     }
   }
 
-  // For a dataframe with the first column of type list and the second column of type data.frame
   inline JSValue SEXP_to_JSValue_df(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
     SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
     SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);

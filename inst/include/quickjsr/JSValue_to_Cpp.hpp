@@ -47,12 +47,10 @@ namespace quickjsr {
   template <typename T, typename std::enable_if<is_std_vector<T>::value>::type* = nullptr>
   T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
     T res;
-    uint32_t len;
-    JSValue arr_len = JS_GetPropertyStr(ctx, val, "length");
-    JS_ToUint32(ctx, &len, arr_len);
-    JS_FreeValue(ctx, arr_len);
-    for (uint32_t i = 0; i < len; i++) {
-      JSValue elem = JS_GetPropertyUint32(ctx, val, i);
+    int64_t len;
+    JS_GetLength(ctx, val, &len);
+    for (int64_t i = 0; i < len; i++) {
+      JSValue elem = JS_GetPropertyInt64(ctx, val, i);
       res.push_back(JSValue_to_Cpp<value_type_t<T>>(ctx, elem));
       JS_FreeValue(ctx, elem);
     }

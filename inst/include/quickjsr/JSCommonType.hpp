@@ -104,20 +104,18 @@ JSCommonType JS_UpdateCommonType(JSCommonType current, JSContext* ctx, const JSV
 }
 
 JSCommonType JS_ArrayCommonType(JSContext* ctx, const JSValue& val) {
-  JSValue elem = JS_GetPropertyUint32(ctx, val, 0);
+  JSValue elem = JS_GetPropertyInt64(ctx, val, 0);
   JSCommonType common_type = JS_GetCommonType(ctx, elem);
   JS_FreeValue(ctx, elem);
   if (common_type == Unknown || common_type == Object) {
     return common_type;
   }
 
-  uint32_t len;
-  JSValue arr_len = JS_GetPropertyStr(ctx, val, "length");
-  JS_ToUint32(ctx, &len, arr_len);
-  JS_FreeValue(ctx, arr_len);
+  int64_t len;
+  JS_GetLength(ctx, val, &len);
 
-  for (uint32_t i = 1; i < len; i++) {
-    elem = JS_GetPropertyUint32(ctx, val, i);
+  for (int64_t i = 1; i < len; i++) {
+    elem = JS_GetPropertyInt64(ctx, val, i);
     common_type = JS_UpdateCommonType(common_type, ctx, elem);
     JS_FreeValue(ctx, elem);
 
