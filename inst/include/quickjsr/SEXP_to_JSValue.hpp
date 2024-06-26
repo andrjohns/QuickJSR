@@ -7,6 +7,11 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 
+#if R_VERSION < R_Version(4, 5, 0)
+# define R_ClosureFormals(x) FORMALS(x)
+# define Rf_isDataFrame(x) Rf_isFrame(x)
+#endif
+
 namespace quickjsr {
   // Forward declaration to allow for recursive calls
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
@@ -52,7 +57,7 @@ namespace quickjsr {
 
       for (int j = 0; j < Rf_length(x); j++) {
         SEXP col = VECTOR_ELT(x, j);
-        if (Rf_isFrame(col)) {
+        if (Rf_isDataFrame(col)) {
           JSValue df_obj = JS_NewObject(ctx);
           SEXP df_names = Rf_getAttrib(col, R_NamesSymbol);
           for (int k = 0; k < Rf_length(col); k++) {
@@ -99,7 +104,7 @@ namespace quickjsr {
                                           bool auto_unbox = false) {
     JSValue obj = JS_NewObjectClass(ctx, js_sexp_class_id);
     JS_SetOpaque(obj, reinterpret_cast<void*>(x));
-    return JS_NewCFunctionData(ctx, js_fun_static, Rf_length(FORMALS(x)),
+    return JS_NewCFunctionData(ctx, js_fun_static, Rf_length(R_ClosureFormals(x)),
                                 JS_CFUNC_generic, 1, &obj);
   }
 
@@ -126,7 +131,7 @@ namespace quickjsr {
   }
 
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int index) {
-    if (Rf_isFrame(x)) {
+    if (Rf_isDataFrame(x)) {
       return SEXP_to_JSValue_df(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
     }
     if (Rf_isNewList(x)) {
@@ -175,7 +180,7 @@ namespace quickjsr {
                           bool auto_unbox_inp = false,
                           bool auto_unbox = false) {
     bool auto_unbox_curr = static_cast<bool>(Rf_inherits(x, "AsIs")) ? false : auto_unbox_inp;
-    if (Rf_isFrame(x)) {
+    if (Rf_isDataFrame(x)) {
       return SEXP_to_JSValue_df(ctx, x, auto_unbox_inp, auto_unbox_curr);
     }
     if (Rf_isNewList(x)) {
