@@ -59,9 +59,9 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   BEGIN_CPP11
   JSContext* ctx = ContextXPtr(ctx_ptr_).get();
 
-  int n_args = Rf_length(args_list_);
+  int64_t n_args = Rf_xlength(args_list_);
   std::vector<JSValue> args(n_args);
-  for (int i = 0; i < n_args; i++) {
+  for (int64_t i = 0; i < n_args; i++) {
     args[i] = quickjsr::SEXP_to_JSValue(ctx, VECTOR_ELT(args_list_, i), true);
   }
 
