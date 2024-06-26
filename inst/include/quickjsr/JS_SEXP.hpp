@@ -5,6 +5,13 @@
 #include <quickjs-libc.h>
 #include <quickjsr/JSValue_to_SEXP.hpp>
 
+// Need to redefine the JS_CFUNC_DEF macro as it uses C features
+// (designated initializers) which are not supported in C++ (until C++20)
+#define JS_CFUNC_DEF_CPP(name, length, func1) { \
+  name, JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE, JS_DEF_CFUNC, 0, \
+  { { length, JS_CFUNC_generic, { func1 } } } \
+  }
+
 namespace quickjsr {
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox,
                                   bool auto_unbox_curr);
@@ -76,7 +83,7 @@ namespace quickjsr {
   }
 
   static const JSCFunctionListEntry js_r_funcs[] = {
-    JS_CFUNC_DEF("package", 1, js_r_package),
+    JS_CFUNC_DEF_CPP("package", 1, js_r_package),
   };
 
   static JSValue create_r_object(JSContext *ctx) {
