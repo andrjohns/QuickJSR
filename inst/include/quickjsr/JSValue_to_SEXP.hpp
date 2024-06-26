@@ -9,17 +9,6 @@
 
 namespace quickjsr {
 
-// Used internally in QuickJS, but not exposed in the public API, so redefine it here
-static void js_free_prop_enum(JSContext *ctx, JSPropertyEnum *tab, uint32_t len) {
-  uint32_t i;
-  if (tab) {
-    for (i = 0; i < len; i++) {
-      JS_FreeAtom(ctx, tab[i].atom);
-    }
-    js_free(ctx, tab);
-  }
-}
-
 // Forward declaration to allow for recursive calls
 SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val);
 
@@ -126,7 +115,7 @@ SEXP JSValue_to_SEXP_list(JSContext* ctx, const JSValue& val) {
     JS_FreeValue(ctx, elem);
     JS_FreeCString(ctx, key);
   }
-  js_free_prop_enum(ctx, tab, len);
+  JS_FreePropertyEnum(ctx, tab, len);
   out.attr("names") = keys;
   return out;
 }
