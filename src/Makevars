@@ -1,6 +1,6 @@
 PKG_CPPFLAGS = -I"../inst/include/" -I"../inst/include/quickjs"
-PKG_CPPFLAGS += -D_GNU_SOURCE -DCONFIG_BIGNUM
-PKG_LIBS = ../inst/lib/$(R_ARCH)/libquickjs.a
+PKG_CPPFLAGS += -D_GNU_SOURCE -DCONFIG_BIGNUM -flto
+PKG_LIBS = -flto
 
 ifeq ($(OS),Windows_NT)
   DLL := .dll
@@ -53,7 +53,7 @@ QUICKJS_SOURCES = $(QUICKJS_C_FILES:%=quickjs/%)
 QUICKJS_OBJECTS = $(QUICKJS_SOURCES:.c=.o)
 
 SOURCES = quickjsr.cpp init.cpp
-OBJECTS = quickjsr.o init.o
+OBJECTS = quickjsr.o init.o $(QUICKJS_OBJECTS)
 
 .PHONY: all package-quickjs build-static
 
@@ -67,7 +67,7 @@ package-quickjs:
 
 build-static: $(QUICKJS_OBJECTS)
 	@mkdir -p ../inst/lib/$(R_ARCH)
-	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a $(QUICKJS_OBJECTS)
+	$(AR) -rcs ../inst/lib/$(R_ARCH)/libquickjs.a $(QUICKJS_OBJECTS)
 
 $(QUICKJS_OBJECTS): quickjs/%.o : quickjs/%.c
 	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DFALSE=0 -DTRUE=1 -DSTRICT_R_HEADERS -funsigned-char -fwrapv -std=gnu11 -c $< -o $@
