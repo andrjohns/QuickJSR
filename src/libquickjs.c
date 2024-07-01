@@ -1,0 +1,6 @@
+#include "quickjs/cutils.c"
+#include "quickjs/libbf.c"
+#include "quickjs/libregexp.c"
+#include "quickjs/libunicode.c"
+#include "quickjs/quickjs.c"
+#include "quickjs/quickjs-libc.c"
