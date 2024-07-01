@@ -1,4 +1,4 @@
-PKG_CPPFLAGS = -I"../inst/include/" -I"../inst/include/quickjs"
+PKG_CPPFLAGS = -I"../inst/include/" -I"./quickjs"
 PKG_CPPFLAGS += -D_GNU_SOURCE -DCONFIG_BIGNUM
 PKG_LIBS = ../inst/lib/$(R_ARCH)/libquickjs.a
 
@@ -44,16 +44,12 @@ else
 	endif
 endif
 
-QUICKJS_C_FILES = cutils.c libbf.c libregexp.c libunicode.c quickjs.c quickjs-libc.c
-QUICKJS_C_HEADERS = $(QUICKJS_C_FILES:.c=.h) \
-					libregexp-opcode.h libunicode-table.h list.h \
+QUICKJS_C_HEADERS = cutils.h libbf.h libregexp.h libunicode.h quickjs.h \
+					quickjs-libc.h libregexp-opcode.h libunicode-table.h list.h \
 					quickjs-atom.h quickjs-opcode.h quickjs-c-atomics.h
 
-QUICKJS_SOURCES = $(QUICKJS_C_FILES:%=quickjs/%)
-QUICKJS_OBJECTS = $(QUICKJS_SOURCES:.c=.o)
-
-SOURCES = quickjsr.cpp init.cpp
-OBJECTS = quickjsr.o init.o
+SOURCES = quickjsr.cpp init.cpp libquickjs.c
+OBJECTS = quickjsr.o init.o libquickjs.o
 
 .PHONY: all package-quickjs build-static
 
@@ -65,13 +61,14 @@ package-quickjs:
 	@mkdir -p ../inst/include/quickjs
 	@cp $(QUICKJS_C_HEADERS:%=quickjs/%) ../inst/include/quickjs
 
-build-static: $(QUICKJS_OBJECTS)
+build-static: libquickjs.o
 	@mkdir -p ../inst/lib/$(R_ARCH)
-	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a $(QUICKJS_OBJECTS)
+	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a libquickjs.o
 
-$(QUICKJS_OBJECTS): quickjs/%.o : quickjs/%.c
-	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DFALSE=0 -DTRUE=1 -DSTRICT_R_HEADERS -funsigned-char -fwrapv -std=gnu11 -c $< -o $@
+#libquickjs.o:
+#	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DFALSE=0 -DTRUE=1 -DSTRICT_R_HEADERS \
+		-funsigned-char -std=gnu11 -c libquickjs.c -o libquickjs.o
 
 clean:
-	$(RM) $(QUICKJS_OBJECTS) $(OBJECTS) ../inst/VERSION QuickJSR$(DLL)
+	$(RM) libquickjs.o $(OBJECTS) QuickJSR$(DLL)
 	$(RM) -r ../inst/lib ../inst/include/quickjs
