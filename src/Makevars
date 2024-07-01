@@ -48,8 +48,8 @@ QUICKJS_C_HEADERS = cutils.h libbf.h libregexp.h libunicode.h quickjs.h \
 					quickjs-libc.h libregexp-opcode.h libunicode-table.h list.h \
 					quickjs-atom.h quickjs-opcode.h quickjs-c-atomics.h
 
-SOURCES = quickjsr.cpp init.cpp libquickjs.c
-OBJECTS = quickjsr.o init.o libquickjs.o
+SOURCES = quickjsr.cpp init.cpp
+OBJECTS = quickjsr.o init.o
 
 .PHONY: all package-quickjs build-static
 
@@ -65,8 +65,8 @@ build-static: libquickjs.o
 	@mkdir -p ../inst/lib/$(R_ARCH)
 	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a libquickjs.o
 
-#libquickjs.o:
-#	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DFALSE=0 -DTRUE=1 -DSTRICT_R_HEADERS \
+libquickjs.o:
+	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DFALSE=0 -DTRUE=1 -DSTRICT_R_HEADERS \
 		-funsigned-char -std=gnu11 -c libquickjs.c -o libquickjs.o
 
 clean:
