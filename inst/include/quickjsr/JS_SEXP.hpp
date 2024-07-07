@@ -12,6 +12,10 @@
   { { length, JS_CFUNC_generic, { func1 } } } \
   }
 
+#ifndef countof
+#define countof(x) (sizeof(x) / sizeof((x)[0]))
+#endif
+
 namespace quickjsr {
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox,
                                   bool auto_unbox_curr);

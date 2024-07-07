@@ -31,10 +31,7 @@ cxxflags <- function(to_console = FALSE) {
   pkg_cxxflags <- paste(
     paste0("-I", shQuote(incdir)),
     paste0("-I", shQuote(file.path(incdir, "quickjs"))),
-    "-D_GNU_SOURCE",
-    paste0("-DCONFIG_VERSION=\"", quickjs_version(), "\""),
-    "-DSTRICT_R_HEADERS",
-    "-DCONFIG_BIGNUM"
+    "-D_GNU_SOURCE"
   )
   if (isTRUE(to_console)) {
     cat(pkg_cxxflags, " ")

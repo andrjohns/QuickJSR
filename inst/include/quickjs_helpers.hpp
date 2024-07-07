@@ -2,13 +2,16 @@
 #define QUICKJS_HELPERS_HPP
 
 #include <cpp11.hpp>
-#include <cutils.h>
 #include <quickjs-libc.h>
 #include <quickjsr/JS_SEXP.hpp>
 
 /**
  * These functions were adapted from the qjs.c file in the QuickJS source code.
 */
+extern "C" int has_suffix(const char *str, const char *suffix);
+#ifndef countof
+#define countof(x) (sizeof(x) / sizeof((x)[0]))
+#endif
 
 namespace quickjsr {
   static int eval_buf(JSContext *ctx, const char* buf, int buf_len,
