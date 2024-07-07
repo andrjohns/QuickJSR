@@ -44,11 +44,17 @@ jobs:
         with:
           image: andrjohns/quickjsr-cross-${{ matrix.config.tag }}
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
+          shell: Rscript
           run: |
-            R CMD build /quickjsr
-            echo "CC=clang-18" >> /etc/R/Makeconf
-            echo "CXX=clang++-18" >> /etc/R/Makeconf
-            MAKEFLAGS="-j4" R CMD check --as-cran --no-manual QuickJSR_*.tar.gz
+            setwd("/quickjsr")
+            options(crayon.enabled = TRUE)
+            cat("LOGNAME=", Sys.info()[["user"]], "\n", sep = "", file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+            if (Sys.getenv("_R_CHECK_FORCE_SUGGESTS_", "") == "") Sys.setenv("_R_CHECK_FORCE_SUGGESTS_" = "false")
+            if (Sys.getenv("_R_CHECK_CRAN_INCOMING_", "") == "") Sys.setenv("_R_CHECK_CRAN_INCOMING_" = "false")
+            cat("check-dir-path=", file.path(getwd(), ("check-clang18")), "\n", file = Sys.getenv("GITHUB_OUTPUT"), sep = "", append = TRUE)
+            cat("CC=clang-18", file = "/etc/R/Makeconf", sep = "\n", append = TRUE)
+            cat("CXX=clang++-18", file = "/etc/R/Makeconf", sep = "\n", append = TRUE)
+            check_results <- rcmdcheck::rcmdcheck(args = c("--as-cran","--no-manual"), build_args = "--no-manual", error_on = "warning", check_dir = "check-clang18")
 
       - name: Check with gcc-14
         if: matrix.config.platform != 'FreeBSD'
@@ -56,11 +62,17 @@ jobs:
         with:
           image: andrjohns/quickjsr-cross-${{ matrix.config.tag }}
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
+          shell: Rscript
           run: |
-            R CMD build /quickjsr
-            echo "CC=gcc-14" >> /etc/R/Makeconf
-            echo "CXX=g++-14" >> /etc/R/Makeconf
-            MAKEFLAGS="-j4" R CMD check --as-cran --no-manual QuickJSR_*.tar.gz
+            setwd("/quickjsr")
+            options(crayon.enabled = TRUE)
+            cat("LOGNAME=", Sys.info()[["user"]], "\n", sep = "", file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+            if (Sys.getenv("_R_CHECK_FORCE_SUGGESTS_", "") == "") Sys.setenv("_R_CHECK_FORCE_SUGGESTS_" = "false")
+            if (Sys.getenv("_R_CHECK_CRAN_INCOMING_", "") == "") Sys.setenv("_R_CHECK_CRAN_INCOMING_" = "false")
+            cat("check-dir-path=", file.path(getwd(), ("check-gcc14")), "\n", file = Sys.getenv("GITHUB_OUTPUT"), sep = "", append = TRUE)
+            cat("CC=clang-18", file = "/etc/R/Makeconf", sep = "\n", append = TRUE)
+            cat("CXX=clang++-18", file = "/etc/R/Makeconf", sep = "\n", append = TRUE)
+            check_results <- rcmdcheck::rcmdcheck(args = c("--as-cran","--no-manual"), build_args = "--no-manual", error_on = "warning", check_dir = "check-gcc14")
 
       - name: Test in FreeBSD
         if: matrix.config.platform == 'FreeBSD'
