@@ -44,7 +44,7 @@ jobs:
         with:
           image: andrjohns/quickjsr-cross-${{ matrix.config.tag }}
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
-          shell: Rscript
+          shell: Rscript {0}
           run: |
             setwd("/quickjsr")
             options(crayon.enabled = TRUE)
@@ -58,7 +58,7 @@ jobs:
         with:
           image: andrjohns/quickjsr-cross-${{ matrix.config.tag }}
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
-          shell: Rscript
+          shell: Rscript {0}
           run: |
             setwd("/quickjsr")
             options(crayon.enabled = TRUE)
