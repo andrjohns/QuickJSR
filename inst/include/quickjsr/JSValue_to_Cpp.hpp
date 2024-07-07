@@ -50,18 +50,17 @@ namespace quickjsr {
     return static_cast<bool>(JS_ToBool(ctx, val));
   }
 
-  template <typename T, enable_if_type_t<const char*, T>* = nullptr>
-  T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
-    const char* res_str = JS_ToCString(ctx, val);
-    const char* result = (strcmp(res_str, "true") == 0) ? "TRUE"
-                          : ((strcmp(res_str, "false") == 0) ? "FALSE" : strdup(res_str));
-    JS_FreeCString(ctx, res_str);
-    return result;
-  }
-
   template <typename T, enable_if_type_t<std::string, T>* = nullptr>
   T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
-    return JSValue_to_Cpp<const char*>(ctx, val);
+    const char* res_str = JS_ToCString(ctx, val);
+    std::string result = res_str;
+    JS_FreeCString(ctx, res_str);
+    return result == "true" ? "TRUE" : result == "false" ? "FALSE" : result;
+  }
+
+  template <typename T, enable_if_type_t<const char*, T>* = nullptr>
+  T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
+    return JSValue_to_Cpp<std::string>(ctx, val).c_str();
   }
 
   template <typename T, typename std::enable_if<is_std_vector<T>::value>::type* = nullptr>
