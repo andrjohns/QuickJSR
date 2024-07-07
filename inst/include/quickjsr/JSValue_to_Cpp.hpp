@@ -54,7 +54,7 @@ namespace quickjsr {
   T JSValue_to_Cpp(JSContext* ctx, JSValue val) {
     const char* res_str = JS_ToCString(ctx, val);
     const char* result = (strcmp(res_str, "true") == 0) ? "TRUE"
-                          : ((strcmp(res_str, "false") == 0) ? "FALSE" : res_str);
+                          : ((strcmp(res_str, "false") == 0) ? "FALSE" : strdup(res_str));
     JS_FreeCString(ctx, res_str);
     return result;
   }
