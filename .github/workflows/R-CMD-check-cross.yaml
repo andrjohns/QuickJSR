@@ -16,13 +16,13 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          -  { platform: 386 }
-          -  { platform: armel }
-          -  { platform: armhf }
-          -  { platform: mips64le }
-          -  { platform: ppc64le }
-          -  { platform: riscv64 }
-          -  { platform: s390x }
+          -  { platform: linux/386, tag: 386 }
+          -  { platform: linux/arm/v5, tag: armel }
+          -  { platform: linux/arm/v7, tag: armhf }
+          -  { platform: linux/mips64le, tag: mips64le }
+          -  { platform: linux/ppc64le, tag: ppc64le }
+          -  { platform: linux/riscv64, tag: riscv64 }
+          -  { platform: linux/s390x, tag: s390x }
           -  { platform: FreeBSD }
 
     env:
@@ -42,8 +42,8 @@ jobs:
         if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
-          image: andrjohns/quickjsr-cross-${{ matrix.config.platform }}
-          options: -v ${{ github.workspace }}:/quickjsr
+          image: andrjohns/quickjsr-cross-${{ matrix.config.tag }}
+          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
           run: |
             R CMD build /quickjsr
             echo "CC=clang-18" >> /etc/R/Makeconf
@@ -54,8 +54,8 @@ jobs:
         if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
-          image: andrjohns/quickjsr-cross-${{ matrix.config.platform }}
-          options: -v ${{ github.workspace }}:/quickjsr
+          image: andrjohns/quickjsr-cross-${{ matrix.config.tag }}
+          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
           run: |
             R CMD build /quickjsr
             echo "CC=gcc-14" >> /etc/R/Makeconf
