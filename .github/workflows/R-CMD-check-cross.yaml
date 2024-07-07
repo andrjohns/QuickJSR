@@ -16,13 +16,13 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          -  { platform: linux/386 }
-          -  { platform: linux/arm/v5 }
-          -  { platform: linux/arm/v7 }
-          -  { platform: linux/mips64le }
-          -  { platform: linux/ppc64le }
-          -  { platform: linux/riscv64 }
-          -  { platform: linux/s390x }
+          -  { platform: 386 }
+          -  { platform: armel }
+          -  { platform: armhf }
+          -  { platform: mips64le }
+          -  { platform: ppc64le }
+          -  { platform: riscv64 }
+          -  { platform: s390x }
           -  { platform: FreeBSD }
 
     env:
@@ -42,25 +42,25 @@ jobs:
         if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
-          image: andrjohns/quickjsr-cross-tests
-          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
+          image: andrjohns/quickjsr-cross-${{ matrix.config.platform }}
+          options: -v ${{ github.workspace }}:/quickjsr
           run: |
-            R CMD build --no-build-vignettes /quickjsr
+            R CMD build /quickjsr
             echo "CC=clang-18" >> /etc/R/Makeconf
             echo "CXX=clang++-18" >> /etc/R/Makeconf
-            MAKEFLAGS="-j4" _R_CHECK_FORCE_SUGGESTS_="false" R CMD check --as-cran --no-manual --no-vignettes QuickJSR_*.tar.gz
+            MAKEFLAGS="-j4" R CMD check --as-cran --no-manual QuickJSR_*.tar.gz
 
-      - name: Check with gcc-13
+      - name: Check with gcc-14
         if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
-          image: andrjohns/quickjsr-cross-tests
-          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
+          image: andrjohns/quickjsr-cross-${{ matrix.config.platform }}
+          options: -v ${{ github.workspace }}:/quickjsr
           run: |
-            R CMD build --no-build-vignettes /quickjsr
-            echo "CC=gcc-13" >> /etc/R/Makeconf
-            echo "CXX=g++-13" >> /etc/R/Makeconf
-            MAKEFLAGS="-j4" _R_CHECK_FORCE_SUGGESTS_="false" R CMD check --as-cran --no-manual --no-vignettes QuickJSR_*.tar.gz
+            R CMD build /quickjsr
+            echo "CC=gcc-14" >> /etc/R/Makeconf
+            echo "CXX=g++-14" >> /etc/R/Makeconf
+            MAKEFLAGS="-j4" R CMD check --as-cran --no-manual QuickJSR_*.tar.gz
 
       - name: Test in FreeBSD
         if: matrix.config.platform == 'FreeBSD'
