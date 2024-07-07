@@ -17,13 +17,13 @@ jobs:
       matrix:
         config:
           -  { platform: linux/386, tag: 386 }
-          #-  { platform: linux/arm/v5, tag: armel }
+          -  { platform: linux/arm/v5, tag: armel }
           -  { platform: linux/arm/v7, tag: armhf }
-          #-  { platform: linux/mips64le, tag: mips64le }
-          #-  { platform: linux/ppc64le, tag: ppc64le }
-          #-  { platform: linux/riscv64, tag: riscv64 }
-          #-  { platform: linux/s390x, tag: s390x }
-          #-  { platform: FreeBSD }
+          -  { platform: linux/mips64le, tag: mips64le }
+          -  { platform: linux/ppc64le, tag: ppc64le }
+          -  { platform: linux/riscv64, tag: riscv64 }
+          -  { platform: linux/s390x, tag: s390x }
+          -  { platform: FreeBSD }
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -44,13 +44,10 @@ jobs:
         with:
           image: andrjohns/quickjsr-cross-${{ matrix.config.tag }}
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
-          shell: Rscript {0}
           run: |
-            setwd("/quickjsr")
-            options(crayon.enabled = TRUE)
-            cat("CC=clang-18", file = "/etc/R/Makeconf", sep = "\n", append = TRUE)
-            cat("CXX=clang++-18", file = "/etc/R/Makeconf", sep = "\n", append = TRUE)
-            check_results <- rcmdcheck::rcmdcheck(args = c("--as-cran","--no-manual"), build_args = "--no-manual", error_on = "warning", check_dir = "check-clang18")
+            echo "CC=clang-18" >> /etc/R/Makeconf
+            echo "CXX=clang++-18" >> /etc/R/Makeconf
+            Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran"))'
 
       - name: Check with gcc-14
         if: matrix.config.platform != 'FreeBSD'
@@ -58,13 +55,10 @@ jobs:
         with:
           image: andrjohns/quickjsr-cross-${{ matrix.config.tag }}
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
-          shell: Rscript {0}
           run: |
-            setwd("/quickjsr")
-            options(crayon.enabled = TRUE)
-            cat("CC=clang-18", file = "/etc/R/Makeconf", sep = "\n", append = TRUE)
-            cat("CXX=clang++-18", file = "/etc/R/Makeconf", sep = "\n", append = TRUE)
-            check_results <- rcmdcheck::rcmdcheck(args = c("--as-cran","--no-manual"), build_args = "--no-manual", error_on = "warning", check_dir = "check-gcc14")
+            echo "CC=gcc-14" >> /etc/R/Makeconf
+            echo "CXX=g++-14" >> /etc/R/Makeconf
+            Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran"))'
 
       - name: Test in FreeBSD
         if: matrix.config.platform == 'FreeBSD'
