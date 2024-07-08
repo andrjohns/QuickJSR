@@ -8,6 +8,7 @@
 ^cran-comments\.md$
 ^src/quickjs/\.github$
 ^src/quickjs/\.git$
+^src/quickjs/test262$
 semicolon_delimited_script
 Makefile
 ^README\.Rmd$

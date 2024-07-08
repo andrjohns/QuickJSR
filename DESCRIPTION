@@ -1,6 +1,6 @@
 Package: QuickJSR
 Title: Interface for the 'QuickJS' Lightweight 'JavaScript' Engine
-Version: 1.3.0
+Version: 1.3.0.9999
 Authors@R: c(
     person(c("Andrew", "R."), "Johnson", , "andrew.johnson@arjohnsonau.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7000-8065")),
