@@ -61,8 +61,7 @@ jobs:
             echo "CC=${{ matrix.config.cc }}" >> /etc/R/Makeconf
             echo "CXX=${{ matrix.config.cxx }}" >> /etc/R/Makeconf
             if [ "${{ matrix.config.platform }}" = "ppc64le" ]; then
-              Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran", "--no-vignettes"), \
-                                                build_args = c("--no-build-vignettes"), check_dir = "/quickjsr/check")'
+              Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran", "--no-vignettes"), build_args = c("--no-build-vignettes"), check_dir = "/quickjsr/check")'
             else
               Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran"), check_dir = "/quickjsr/check")'
             fi
