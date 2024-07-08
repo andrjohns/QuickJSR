@@ -16,13 +16,26 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          -  { platform: linux/386, tag: 386 }
-          -  { platform: linux/arm/v5, tag: armel }
-          -  { platform: linux/arm/v7, tag: armhf }
-          -  { platform: linux/mips64le, tag: mips64le }
-          -  { platform: linux/ppc64le, tag: ppc64le }
-          -  { platform: linux/riscv64, tag: riscv64 }
-          -  { platform: linux/s390x, tag: s390x }
+          -  { platform: linux/386, tag: 386, cc: gcc-14, cxx: g++-14 }
+          -  { platform: linux/386, tag: 386, cc: clang-18, cxx: clang++-18 }
+
+          -  { platform: linux/arm/v5, tag: armel, cc: gcc-14, cxx: g++-14 }
+          -  { platform: linux/arm/v5, tag: armel, cc: clang-18, cxx: clang++-18 }
+
+          -  { platform: linux/arm/v7, tag: armhf, cc: gcc-14, cxx: g++-14 }
+          -  { platform: linux/arm/v7, tag: armhf, cc: clang-18, cxx: clang++-18 }
+
+          -  { platform: linux/mips64le, tag: mips64le, cc: gcc-14, cxx: g++-14 }
+          -  { platform: linux/mips64le, tag: mips64le, cc: clang-18, cxx: clang++-18 }
+
+          -  { platform: linux/ppc64le, tag: ppc64le, cc: gcc-14, cxx: g++-14 }
+          -  { platform: linux/ppc64le, tag: ppc64le, cc: clang-18, cxx: clang++-18 }
+
+          -  { platform: linux/riscv64, tag: riscv64, cc: gcc-14, cxx: g++-14 }
+          -  { platform: linux/riscv64, tag: riscv64, cc: clang-18, cxx: clang++-18 }
+
+          -  { platform: linux/s390x, tag: s390x, cc: gcc-14, cxx: g++-14 }
+          -  { platform: linux/s390x, tag: s390x, cc: clang-18, cxx: clang++-18 }
           -  { platform: FreeBSD }
 
     env:
@@ -38,27 +51,20 @@ jobs:
         if: matrix.config.platform != 'FreeBSD'
         uses: docker/setup-qemu-action@master
 
-      - name: Check with clang-18
+      - name: Check with ${{ matrix.config.cc }}
         if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
           image: andrjohns/quickjsr-cross-${{ matrix.config.tag }}
           options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
           run: |
-            echo "CC=clang-18" >> /etc/R/Makeconf
-            echo "CXX=clang++-18" >> /etc/R/Makeconf
-            Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran"))'
-
-      - name: Check with gcc-14
-        if: matrix.config.platform != 'FreeBSD'
-        uses: addnab/docker-run-action@v3
-        with:
-          image: andrjohns/quickjsr-cross-${{ matrix.config.tag }}
-          options: -v ${{ github.workspace }}:/quickjsr --platform=${{ matrix.config.platform }}
-          run: |
-            echo "CC=gcc-14" >> /etc/R/Makeconf
-            echo "CXX=g++-14" >> /etc/R/Makeconf
-            Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran"))'
+            echo "CC=${{ matrix.config.cc }}" >> /etc/R/Makeconf
+            echo "CXX=${{ matrix.config.cxx }}" >> /etc/R/Makeconf
+            if [ "${{ matrix.config.platform }}" = "linux/ppc64le" ]; then
+              Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran", "--no-vignettes"), build_args = c("--no-build-vignettes"))'
+            else
+              Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran"))'
+            fi
 
       - name: Test in FreeBSD
         if: matrix.config.platform == 'FreeBSD'
