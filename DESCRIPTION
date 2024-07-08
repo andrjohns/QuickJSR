@@ -1,13 +1,15 @@
 Package: QuickJSR
 Title: Interface for the 'QuickJS' Lightweight 'JavaScript' Engine
-Version: 1.2.2.9000
+Version: 1.3.0
 Authors@R: c(
     person(c("Andrew", "R."), "Johnson", , "andrew.johnson@arjohnsonau.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7000-8065")),
     person("Fabrice", "Bellard", role = c("cph"),
            comment = "Author of QuickJS sources and headers"),
     person("Charlie", "Gordon", role = c("cph"),
-           comment = "Author of QuickJS sources and headers")
+           comment = "Author of QuickJS sources and headers"),
+    person("QuickJS-NG", "Authors", role = c("cph"),
+           comment = "QuickJS-NG sources and headers")
   )
 Description: An 'R' interface to the 'QuickJS' portable 'JavaScript'
     engine.  The engine and all 'R' to 'JavaScript' interoperability is bundled
