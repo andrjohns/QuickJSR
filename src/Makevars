@@ -15,16 +15,9 @@ else
 	R_CXX := $(CXX)
 endif
 
-CC_VERSION :=  $(shell $(R_CXX) -dumpfullversion -dumpversion 2>&1)
-CC_MAJOR := $(word 1,$(subst ., ,$(CC_VERSION)))
-
 CLANG_CHECK := $(shell echo | $(R_CC) -dM -E - | grep -i __clang__)
 
-# Older versions of gcc and clang don't provide the stdatomic.h header
 ifneq (,$(CLANG_CHECK))
-	ifeq ($(shell expr $(CC_MAJOR) \< 4), 1)
-		PKG_CPPFLAGS += -DDISABLE_ATOMICS
-	endif
 # Clang on armel needs libatomic
 	ifeq ($(shell uname -m), armv7l)
 	  CC_TARGET := $(shell $(R_CXX) -v 2>&1 | grep Target | cut -d ' ' -f 2)
@@ -33,18 +26,14 @@ ifneq (,$(CLANG_CHECK))
 		endif
 	endif
 else
-	ifeq ($(shell expr $(CC_MAJOR) \< 5), 1)
-		PKG_CPPFLAGS += -DDISABLE_ATOMICS
-	else
 # Explicit -latomic is needed for 32-bit builds only on GCC
-		ifeq ($(shell getconf LONG_BIT), 32)
-			PKG_LIBS += -latomic
-		endif
+	ifeq ($(shell getconf LONG_BIT), 32)
+		PKG_LIBS += -latomic
 	endif
 endif
 
 SOURCES = quickjsr.cpp init.cpp
-OBJECTS = quickjsr.o init.o
+OBJECTS = $(SOURCES:.cpp=.o)
 
 $(SHLIB): $(OBJECTS)
 $(OBJECTS): build-static
