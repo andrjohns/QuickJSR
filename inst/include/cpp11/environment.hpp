@@ -48,7 +48,12 @@ class environment {
   proxy operator[](const std::string& name) const { return operator[](name.c_str()); }
 
   bool exists(SEXP name) const {
+#if R_VERSION >= R_Version(4, 2, 0)
     return safe[R_existsVarInFrame](env_, name);
+#else
+    SEXP res = safe[Rf_findVarInFrame3](env_, name, FALSE);
+    return res != R_UnboundValue;
+#endif
   }
   bool exists(const char* name) const { return exists(safe[Rf_install](name)); }
 
