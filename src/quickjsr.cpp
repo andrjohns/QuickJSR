@@ -66,7 +66,7 @@ extern "C" SEXP qjs_call_(SEXP ctx_ptr_, SEXP fun_name_, SEXP args_list_) {
   }
 
   JSValue global = JS_GetGlobalObject(ctx);
-  JSValue fun = quickjsr::JS_GetPropertyRecursive(ctx, global, CHAR(STRING_ELT(fun_name_, 0)));
+  JSValue fun = quickjsr::JS_GetPropertyRecursive(ctx, global, Rf_translateCharUTF8(STRING_ELT(fun_name_, 0)));
   JSValue result_js = JS_Call(ctx, fun, global, args.size(), args.data());
 
   SEXP result;

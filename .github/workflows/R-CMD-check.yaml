@@ -30,7 +30,8 @@ jobs:
           - {os: ubuntu-latest,   r: 'release'}
           - {os: ubuntu-latest,   r: 'oldrel'}
           - {os: ubuntu-latest,   r: '4.1'}
-#          - {os: ubuntu-latest,   r: '3.6'}
+          - {os: ubuntu-latest,   r: '4.0'}
+          - {os: ubuntu-latest,   r: '3.6', deps: 'evaluate=url::https://cran.r-project.org/src/contrib/Archive/evaluate/evaluate_0.23.tar.gz'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -53,7 +54,9 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: |
+            any::rcmdcheck
+            ${{ matrix.config.deps }}
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
