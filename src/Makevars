@@ -32,7 +32,7 @@ else
 	endif
 endif
 
-SOURCES = quickjsr.cpp init.cpp
+SOURCES = init.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 
 $(SHLIB): $(OBJECTS)
