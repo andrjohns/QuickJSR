@@ -1,9 +1,7 @@
-#include <cpp11.hpp>
+#include <Rinternals.h>
 #include <R_ext/Visibility.h>
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
   SEXP qjs_context_(SEXP stack_size_);
   SEXP qjs_source_(SEXP ctx_ptr_, SEXP input_, SEXP is_file_);
@@ -31,12 +29,9 @@ extern "C" {
     {NULL, NULL, 0}
   };
 
-#ifdef __cplusplus
-}
-#endif
-
-extern "C" attribute_visible void R_init_QuickJSR(DllInfo* dll){
-  R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
-  R_useDynamicSymbols(dll, FALSE);
-  R_forceSymbols(dll, TRUE);
+  attribute_visible void R_init_QuickJSR(DllInfo* dll){
+    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+    R_useDynamicSymbols(dll, FALSE);
+    R_forceSymbols(dll, TRUE);
+  }
 }
