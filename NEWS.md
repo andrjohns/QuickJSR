@@ -1,4 +1,7 @@
 # QuickJSR 1.3.0
+  * Fix installation under R < 4.2
+
+# QuickJSR 1.3.0
   * Bundled QuickJS engine updated to the QuickJS-NG fork, which is under more
     active development than the original QuickJS engine
   * Several Non-API R calls fixed
