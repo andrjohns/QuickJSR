@@ -68,15 +68,9 @@ jobs:
         with:
           usesh: true
           prepare: |
-            pkg install -y R
-
+            pkg install -y R R-cran-tinytest R-cran-rcmdcheck R-cran-knitr R-cran-rmarkdown
           run: |
-            Rscript -e 'install.packages("tinytest", repos="https://cloud.r-project.org")'
-            R CMD build --no-build-vignettes /root/work/QuickJSR/QuickJSR
-            _R_CHECK_FORCE_SUGGESTS_="false" \
-              R CMD check --as-cran --no-manual --no-vignettes --output=/root/work/QuickJSR/QuickJSR \
-                /root/work/QuickJSR/QuickJSR/QuickJSR_*.tar.gz
-            mv /root/work/QuickJSR/QuickJSR/QuickJSR.Rcheck /root/work/QuickJSR/QuickJSR/check
+            Rscript -e 'rcmdcheck::rcmdcheck("/root/work/QuickJSR/QuickJSR", args = c("--no-manual", "--as-cran"), check_dir = "/root/work/QuickJSR/QuickJSR/check")'
 
       - name: Upload check results
         uses: actions/upload-artifact@v4
