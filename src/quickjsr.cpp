@@ -16,7 +16,7 @@ using RuntimeXPtr = cpp11::external_pointer<JSRuntime, JS_FreeRuntimeStdHandlers
 extern "C" {
   SEXP qjs_context_(SEXP stack_size_) {
     BEGIN_CPP11
-    int stack_size = cpp11::as_cpp<int>(stack_size_);
+    int stack_size = INTEGER_ELT(stack_size_, 0);
 
     RuntimeXPtr rt(quickjsr::JS_NewCustomRuntime(stack_size));
     ContextXPtr ctx(quickjsr::JS_NewCustomContext(rt.get()));
@@ -34,11 +34,10 @@ extern "C" {
     BEGIN_CPP11
     JSContext* ctx = ContextXPtr(ctx_ptr_).get();
     int ret;
-    if (cpp11::as_cpp<bool>(is_file_)) {
-      const char* input = cpp11::as_cpp<const char*>(input_);
+    const char* input = Rf_translateCharUTF8(STRING_ELT(input_, 0));
+    if (LOGICAL_ELT(is_file_, 0)) {
       ret = quickjsr::eval_file(ctx, input, -1);
     } else {
-      const char* input = cpp11::as_cpp<const char*>(input_);
       ret = quickjsr::eval_buf(ctx, input, strlen(input), "<input>", JS_EVAL_TYPE_GLOBAL);
     }
     return cpp11::as_sexp(!ret);
@@ -48,8 +47,8 @@ extern "C" {
   SEXP qjs_validate_(SEXP ctx_ptr_, SEXP code_string_) {
     BEGIN_CPP11
     JSContext* ctx = ContextXPtr(ctx_ptr_).get();
-    std::string code_string = cpp11::as_cpp<std::string>(code_string_);
-    JSValue val = JS_Eval(ctx, code_string.c_str(), code_string.size(), "", JS_EVAL_FLAG_COMPILE_ONLY);
+    const char* code_string = Rf_translateCharUTF8(STRING_ELT(code_string_, 0));
+    JSValue val = JS_Eval(ctx, code_string, strlen(code_string), "", JS_EVAL_FLAG_COMPILE_ONLY);
     bool failed = JS_IsException(val);
     JS_FreeValue(ctx, val);
     return cpp11::as_sexp(!failed);
@@ -70,13 +69,7 @@ extern "C" {
     JSValue fun = quickjsr::JS_GetPropertyRecursive(ctx, global, Rf_translateCharUTF8(STRING_ELT(fun_name_, 0)));
     JSValue result_js = JS_Call(ctx, fun, global, args.size(), args.data());
 
-    SEXP result;
-    if (JS_IsException(result_js)) {
-      js_std_dump_error(ctx);
-      result =  cpp11::as_sexp("Error!");
-    } else {
-      result = quickjsr::JSValue_to_SEXP(ctx, result_js);
-    }
+    SEXP result = quickjsr::JSValue_to_SEXP(ctx, result_js);
 
     JS_FreeValue(ctx, result_js);
     for (auto&& arg : args) {
@@ -117,18 +110,12 @@ extern "C" {
 
   SEXP qjs_eval_(SEXP eval_string_) {
     BEGIN_CPP11
-    std::string eval_string = cpp11::as_cpp<std::string>(eval_string_);
+    const char* eval_string = Rf_translateCharUTF8(STRING_ELT(eval_string_, 0));
     JSRuntime* rt = quickjsr::JS_NewCustomRuntime(0);
     JSContext* ctx = quickjsr::JS_NewCustomContext(rt);
 
-    JSValue val = JS_Eval(ctx, eval_string.c_str(), eval_string.size(), "", 0);
-    SEXP result;
-    if (JS_IsException(val)) {
-      js_std_dump_error(ctx);
-      result =  cpp11::as_sexp("Error!");
-    } else {
-      result = quickjsr::JSValue_to_SEXP(ctx, val);
-    }
+    JSValue val = JS_Eval(ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL);
+    SEXP result = quickjsr::JSValue_to_SEXP(ctx, val);
 
     JS_FreeValue(ctx, val);
     JS_FreeContext(ctx);
@@ -143,8 +130,7 @@ extern "C" {
     JSRuntime* rt = quickjsr::JS_NewCustomRuntime(0);
     JSContext* ctx = quickjsr::JS_NewCustomContext(rt);
 
-    JSValue arg = quickjsr::SEXP_to_JSValue(ctx, arg_,
-                                            cpp11::as_cpp<bool>(auto_unbox_));
+    JSValue arg = quickjsr::SEXP_to_JSValue(ctx, arg_, LOGICAL_ELT(auto_unbox_, 0));
     std::string result = quickjsr::JSValue_to_JSON(ctx, arg);
 
     JS_FreeValue(ctx, arg);
@@ -160,8 +146,8 @@ extern "C" {
     JSRuntime* rt = quickjsr::JS_NewCustomRuntime(0);
     JSContext* ctx = quickjsr::JS_NewCustomContext(rt);
 
-    std::string json = cpp11::as_cpp<std::string>(json_);
-    JSValue result = quickjsr::JSON_to_JSValue(ctx, json);
+    const char* json = Rf_translateCharUTF8(STRING_ELT(json_, 0));
+    JSValue result = JS_ParseJSON(ctx, json, strlen(json), "<input>");
     SEXP rtn = quickjsr::JSValue_to_SEXP(ctx, result);
 
     JS_FreeValue(ctx, result);
