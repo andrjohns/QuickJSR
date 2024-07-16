@@ -121,6 +121,10 @@ SEXP JSValue_to_SEXP_list(JSContext* ctx, const JSValue& val) {
 }
 
 SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
+  if (JS_IsException(val)) {
+    js_std_dump_error(ctx);
+    return cpp11::as_sexp("Error!");
+  }
   if (JS_IsUndefined(val)) {
     return R_NilValue;
   }

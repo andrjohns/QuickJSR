@@ -3,6 +3,7 @@ inst/VERSION
 inst/include/quickjs
 *.o
 *.so
+*.dll
 *.a
 ^check$
 .vscode
