@@ -16,7 +16,8 @@ using RuntimeXPtr = cpp11::external_pointer<JSRuntime, JS_FreeRuntimeStdHandlers
 extern "C" {
   SEXP qjs_context_(SEXP stack_size_) {
     BEGIN_CPP11
-    int stack_size = INTEGER_ELT(stack_size_, 0);
+    int stack_size = Rf_isInteger(stack_size_) ? INTEGER_ELT(stack_size_, 0)
+                                               : static_cast<int>(REAL_ELT(stack_size_, 0));
 
     RuntimeXPtr rt(quickjsr::JS_NewCustomRuntime(stack_size));
     ContextXPtr ctx(quickjsr::JS_NewCustomContext(rt.get()));
