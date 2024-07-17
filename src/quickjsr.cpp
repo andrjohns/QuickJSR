@@ -13,7 +13,8 @@ extern "C" {
     BEGIN_CPP11
     int stack_size = Rf_isInteger(stack_size_) ? INTEGER_ELT(stack_size_, 0)
                                                : static_cast<int>(REAL_ELT(stack_size_, 0));
-    return RtCtxXPtr(new JS_RtCtxContainer(stack_size));
+    RtCtxXPtr rt(new JS_RtCtxContainer(stack_size));
+    return cpp11::as_sexp(rt);
     END_CPP11
   }
 

@@ -22,15 +22,14 @@ struct JS_RtCtxContainer {
     }
 };
 
-
 using RtCtxXPtr = cpp11::external_pointer<JS_RtCtxContainer>;
 
-template <typename JSValT>
 struct JS_ValContainer {
   public:
     RtCtxXPtr rt_ctx;
-    JSValT val;
+    JSValue val;
 
+    template <typename JSValT>
     JS_ValContainer(RtCtxXPtr in_rt_ctx, JSValT&& in_val)
       : rt_ctx(in_rt_ctx), val(std::forward<JSValT>(in_val)) {}
 
