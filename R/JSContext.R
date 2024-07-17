@@ -110,7 +110,6 @@ assign <- NULL
 
 new_JSContext <- function(stack_size = NULL) {
   stack_size_int = ifelse(is.null(stack_size), -1, stack_size)
-  rt_ctx = qjs_context(stack_size_int)
   ContextList = list(
     runtime_context_ptr = qjs_context(stack_size_int)
   )
