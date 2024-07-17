@@ -6,17 +6,14 @@
 
 using quickjsr::JS_RtCtxContainer;
 using quickjsr::JS_ValContainer;
-using RtCtxXPtr = cpp11::external_pointer<JS_RtCtxContainer>;
+using quickjsr::RtCtxXPtr;
 
 extern "C" {
   SEXP qjs_context_(SEXP stack_size_) {
     BEGIN_CPP11
     int stack_size = Rf_isInteger(stack_size_) ? INTEGER_ELT(stack_size_, 0)
                                                : static_cast<int>(REAL_ELT(stack_size_, 0));
-
-    RtCtxXPtr rt(new JS_RtCtxContainer(stack_size));
-
-    return cpp11::as_sexp(rt);
+    return RtCtxXPtr(new JS_RtCtxContainer(stack_size));
     END_CPP11
   }
 
@@ -38,10 +35,8 @@ extern "C" {
     BEGIN_CPP11
     RtCtxXPtr rt_ctx(ctx_ptr_);
     const char* code_string = Rf_translateCharUTF8(STRING_ELT(code_string_, 0));
-    JSValue val = JS_Eval(rt_ctx->ctx, code_string, strlen(code_string), "", JS_EVAL_FLAG_COMPILE_ONLY);
-    bool failed = JS_IsException(val);
-    JS_FreeValue(rt_ctx->ctx, val);
-    return cpp11::as_sexp(!failed);
+    JS_ValContainer val(rt_ctx, JS_Eval(rt_ctx->ctx, code_string, strlen(code_string), "", JS_EVAL_FLAG_COMPILE_ONLY));
+    return cpp11::as_sexp(!JS_IsException(val.val));
     END_CPP11
   }
 
@@ -55,43 +50,29 @@ extern "C" {
       args[i] = quickjsr::SEXP_to_JSValue(rt_ctx->ctx, VECTOR_ELT(args_list_, i), true);
     }
 
-    JSValue global = JS_GetGlobalObject(rt_ctx->ctx);
-    JSValue fun = quickjsr::JS_GetPropertyRecursive(rt_ctx->ctx, global, Rf_translateCharUTF8(STRING_ELT(fun_name_, 0)));
-    JS_ValContainer result_js(rt_ctx, JS_Call(rt_ctx->ctx, fun, global, args.size(), args.data()));
+    JS_ValContainer global(rt_ctx, JS_GetGlobalObject(rt_ctx->ctx));
+    JS_ValContainer fun(rt_ctx, quickjsr::JS_GetPropertyRecursive(rt_ctx->ctx, global.val, Rf_translateCharUTF8(STRING_ELT(fun_name_, 0))));
+    JS_ValContainer result_js(rt_ctx, JS_Call(rt_ctx->ctx, fun.val, global.val, args.size(), args.data()));
 
-    SEXP result = quickjsr::JSValue_to_SEXP(rt_ctx->ctx, result_js.val);
-
-    for (auto&& arg : args) {
-      JS_FreeValue(rt_ctx->ctx, arg);
-    }
-    JS_FreeValue(rt_ctx->ctx, fun);
-    JS_FreeValue(rt_ctx->ctx, global);
-
-    return result;
+    return quickjsr::JSValue_to_SEXP(rt_ctx->ctx, result_js.val);
     END_CPP11
   }
 
   SEXP qjs_get_(SEXP ctx_ptr_, SEXP js_obj_name) {
     BEGIN_CPP11
     RtCtxXPtr rt_ctx(ctx_ptr_);
-    JSValue global = JS_GetGlobalObject(rt_ctx->ctx);
-    JSValue result = quickjsr::JS_GetPropertyRecursive(rt_ctx->ctx, global, Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0)));
-    SEXP rtn = quickjsr::JSValue_to_SEXP(rt_ctx->ctx, result);
-
-    JS_FreeValue(rt_ctx->ctx, result);
-    JS_FreeValue(rt_ctx->ctx, global);
-
-    return rtn;
+    JS_ValContainer global(rt_ctx, JS_GetGlobalObject(rt_ctx->ctx));
+    JS_ValContainer result(rt_ctx, quickjsr::JS_GetPropertyRecursive(rt_ctx->ctx, global.val, Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0))));
+    return quickjsr::JSValue_to_SEXP(rt_ctx->ctx, result.val);
     END_CPP11
   }
 
   SEXP qjs_assign_(SEXP ctx_ptr_, SEXP js_obj_name_, SEXP value_) {
     BEGIN_CPP11
     RtCtxXPtr rt_ctx(ctx_ptr_);
-    JSValue global = JS_GetGlobalObject(rt_ctx->ctx);
+    JS_ValContainer global(rt_ctx, JS_GetGlobalObject(rt_ctx->ctx));
     JSValue value = quickjsr::SEXP_to_JSValue(rt_ctx->ctx, value_, true);
-    int result = quickjsr::JS_SetPropertyRecursive(rt_ctx->ctx, global, Rf_translateCharUTF8(STRING_ELT(js_obj_name_, 0)), value);
-    JS_FreeValue(rt_ctx->ctx, global);
+    int result = quickjsr::JS_SetPropertyRecursive(rt_ctx->ctx, global.val, Rf_translateCharUTF8(STRING_ELT(js_obj_name_, 0)), value);
 
     return cpp11::as_sexp(result);
     END_CPP11
@@ -100,41 +81,27 @@ extern "C" {
   SEXP qjs_eval_(SEXP eval_string_) {
     BEGIN_CPP11
     const char* eval_string = Rf_translateCharUTF8(STRING_ELT(eval_string_, 0));
-    JS_RtCtxContainer rt_ctx;
-
-    JSValue val = JS_Eval(rt_ctx.ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL);
-    SEXP result = quickjsr::JSValue_to_SEXP(rt_ctx.ctx, val);
-
-    JS_FreeValue(rt_ctx.ctx, val);
-
-    return result;
+    RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
+    JS_ValContainer val(rt_ctx, JS_Eval(rt_ctx->ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL));
+    return quickjsr::JSValue_to_SEXP(rt_ctx->ctx, val.val);
     END_CPP11
   }
 
   SEXP to_json_(SEXP arg_, SEXP auto_unbox_) {
     BEGIN_CPP11
-    JS_RtCtxContainer rt_ctx;
-
-    JSValue arg = quickjsr::SEXP_to_JSValue(rt_ctx.ctx, arg_, LOGICAL_ELT(auto_unbox_, 0));
-    std::string result = quickjsr::JSValue_to_JSON(rt_ctx.ctx, arg);
-
-    JS_FreeValue(rt_ctx.ctx, arg);
-
-    return cpp11::as_sexp(result);
+    RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
+    JS_ValContainer arg(rt_ctx, quickjsr::SEXP_to_JSValue(rt_ctx->ctx, arg_, LOGICAL_ELT(auto_unbox_, 0)));
+    return cpp11::as_sexp(quickjsr::JSValue_to_JSON(rt_ctx->ctx, arg.val));
     END_CPP11
   }
 
   SEXP from_json_(SEXP json_) {
     BEGIN_CPP11
-    JS_RtCtxContainer rt_ctx;
+    RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
 
     const char* json = Rf_translateCharUTF8(STRING_ELT(json_, 0));
-    JSValue result = JS_ParseJSON(rt_ctx.ctx, json, strlen(json), "<input>");
-    SEXP rtn = quickjsr::JSValue_to_SEXP(rt_ctx.ctx, result);
-
-    JS_FreeValue(rt_ctx.ctx, result);
-
-    return rtn;
+    JS_ValContainer result(rt_ctx, JS_ParseJSON(rt_ctx->ctx, json, strlen(json), "<input>"));
+    return quickjsr::JSValue_to_SEXP(rt_ctx->ctx, result.val);
     END_CPP11
   }
 
