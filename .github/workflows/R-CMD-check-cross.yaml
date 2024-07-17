@@ -56,12 +56,14 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: debian:sid-slim
-          options: -v ${{ github.workspace }}:/quickjsr --platform=linux/${{ matrix.config.platform }}
+          options: -v ${{ github.workspace }}:/quickjsr --platform=linux/${{ matrix.config.platform }} -e DEBIAN_FRONTEND=noninteractive -e TZ=Etc/UTC -e LANG=en_AU.UTF-8
           run: |
             apt-get update
             apt-get install --no-install-recommends -y ${{ matrix.config.cc }} g++-14 \
               r-base-core locales pandoc qpdf r-cran-tinytest r-cran-rmarkdown \
               r-cran-knitr r-cran-rcmdcheck make
+            echo "en_AU.UTF-8 UTF-8" >> /etc/locale.gen
+            locale-gen en_AU.UTF-8
             echo "CC=${{ matrix.config.cc }}" >> /etc/R/Makeconf
             echo "CXX=${{ matrix.config.cxx }}" >> /etc/R/Makeconf
             # PPC64LE pandoc does not support lua filters (breaking vignettes)
