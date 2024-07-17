@@ -5,6 +5,7 @@
 #include <quickjsr.hpp>
 
 using quickjsr::JS_RtCtxContainer;
+using quickjsr::JS_ValContainer;
 using RtCtxXPtr = cpp11::external_pointer<JS_RtCtxContainer>;
 
 extern "C" {
@@ -56,11 +57,10 @@ extern "C" {
 
     JSValue global = JS_GetGlobalObject(rt_ctx->ctx);
     JSValue fun = quickjsr::JS_GetPropertyRecursive(rt_ctx->ctx, global, Rf_translateCharUTF8(STRING_ELT(fun_name_, 0)));
-    JSValue result_js = JS_Call(rt_ctx->ctx, fun, global, args.size(), args.data());
+    JS_ValContainer result_js(rt_ctx, JS_Call(rt_ctx->ctx, fun, global, args.size(), args.data()));
 
-    SEXP result = quickjsr::JSValue_to_SEXP(rt_ctx->ctx, result_js);
+    SEXP result = quickjsr::JSValue_to_SEXP(rt_ctx->ctx, result_js.val);
 
-    JS_FreeValue(rt_ctx->ctx, result_js);
     for (auto&& arg : args) {
       JS_FreeValue(rt_ctx->ctx, arg);
     }
