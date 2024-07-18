@@ -22,7 +22,13 @@ struct JS_RtCtxContainer {
     }
 };
 
-using RtCtxXPtr = cpp11::external_pointer<JS_RtCtxContainer>;
+struct RtCtxXPtr : cpp11::external_pointer<JS_RtCtxContainer> {
+  using cpp11::external_pointer<JS_RtCtxContainer>::external_pointer;
+
+  operator JSContext*() const {
+    return get()->ctx;
+  }
+};
 
 struct JS_ValContainer {
   public:
@@ -35,6 +41,10 @@ struct JS_ValContainer {
 
     ~JS_ValContainer() {
       JS_FreeValue(rt_ctx->ctx, val);
+    }
+
+    operator JSValue() const {
+      return val;
     }
 };
 
