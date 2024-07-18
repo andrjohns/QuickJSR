@@ -1,6 +1,7 @@
 #ifndef QUICKJSR_HPP
 #define QUICKJSR_HPP
 
+#include <quickjsr/utilities.hpp>
 #include <quickjsr/JS_SEXP.hpp>
 #include <quickjsr/SEXP_to_JSValue.hpp>
 #include <quickjsr/JSValue_to_SEXP.hpp>
