@@ -25,8 +25,8 @@ jobs:
           -  { platform: armhf, cc: gcc-14, cxx: g++-14 }
           -  { platform: armhf, cc: clang-18, cxx: clang++-18 }
 
-          -  { platform: mips64le, cc: gcc-14, cxx: g++-14 }
-          -  { platform: mips64le, cc: clang-18, cxx: clang++-18 }
+          -  { platform: linux/arm64/v8, cc: gcc-14, cxx: g++-14 }
+          -  { platform: linux/arm64/v8, cc: clang-18, cxx: clang++-18 }
 
           -  { platform: ppc64le, cc: gcc-14, cxx: g++-14 }
           -  { platform: ppc64le, cc: clang-18, cxx: clang++-18 }
@@ -34,8 +34,8 @@ jobs:
           -  { platform: riscv64, cc: gcc-14, cxx: g++-14 }
           -  { platform: riscv64, cc: clang-18, cxx: clang++-18 }
 
-          #-  { platform: s390x, cc: gcc-14, cxx: g++-14 }
-          #-  { platform: s390x, cc: clang-18, cxx: clang++-18 }
+          -  { platform: s390x, cc: gcc-14, cxx: g++-14 }
+          -  { platform: s390x, cc: clang-18, cxx: clang++-18 }
           -  { platform: FreeBSD, cc: default, cxx: default }
 
     env:
