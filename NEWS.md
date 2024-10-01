@@ -1,4 +1,7 @@
-# QuickJSR 1.3.0
+# QuickJSR 1.4.0
+  * Update bundled QuickJS-NG engine to v0.6.1 (see https://github.com/quickjs-ng/quickjs/releases for release notes)
+
+# QuickJSR 1.3.1
   * Fix installation under R < 4.2
 
 # QuickJSR 1.3.0
