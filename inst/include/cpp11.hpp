@@ -1,5 +1,5 @@
-// cpp11 version: 0.4.7
-// vendored on: 2024-05-11
+// cpp11 version: 0.5.1
+// vendored on: 2024-12-26
 #pragma once
 
 #include "cpp11/R.hpp"
