@@ -20,8 +20,8 @@ namespace quickjsr {
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox,
                                   bool auto_unbox_curr);
 
-  JSClassID js_sexp_class_id;
-  JSClassID js_renv_class_id;
+  JSClassID js_sexp_class_id = 100;
+  JSClassID js_renv_class_id = 101;
   JSClassDef js_sexp_class_def = {
     "SEXP",
     nullptr // finalized

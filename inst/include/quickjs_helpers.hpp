@@ -8,7 +8,7 @@
 /**
  * These functions were adapted from the qjs.c file in the QuickJS source code.
 */
-extern "C" int has_suffix(const char *str, const char *suffix);
+extern "C" int js__has_suffix(const char *str, const char *suffix);
 #ifndef countof
 #define countof(x) (sizeof(x) / sizeof((x)[0]))
 #endif
@@ -52,14 +52,14 @@ namespace quickjsr {
     }
 
     if (module < 0) {
-      module = (has_suffix(filename, ".mjs") || JS_DetectModule((const char *)buf, buf_len));
+      module = js__has_suffix(filename, ".mjs");
     }
     if (module) {
       eval_flags = JS_EVAL_TYPE_MODULE;
     } else {
       eval_flags = JS_EVAL_TYPE_GLOBAL;
     }
-    ret = eval_buf(ctx, buf, buf_len, filename, eval_flags);
+    ret = eval_buf(ctx, buf, buf_len, "<input>", eval_flags);
     js_free(ctx, (void*)buf);
     return ret;
   }
