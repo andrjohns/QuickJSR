@@ -38,7 +38,7 @@ extern "C" {
     RtCtxXPtr rt_ctx(ctx_ptr_);
     const char* code_string = to_cstring(code_string_);
     JS_ValContainer val(rt_ctx, JS_Eval(rt_ctx, code_string, strlen(code_string), "", JS_EVAL_FLAG_COMPILE_ONLY));
-    return cpp11::as_sexp(!JS_IsException(val));
+    return cpp11::sexp(cpp11::as_sexp(!JS_IsException(val)));
     END_CPP11
   }
 
@@ -60,7 +60,7 @@ extern "C" {
       JS_FreeValue(rt_ctx, arg);
     }
 
-    return quickjsr::JSValue_to_SEXP(rt_ctx, result_js);
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result_js));
     END_CPP11
   }
 
@@ -69,7 +69,7 @@ extern "C" {
     RtCtxXPtr rt_ctx(ctx_ptr_);
     JS_ValContainer global(rt_ctx, JS_GetGlobalObject(rt_ctx));
     JS_ValContainer result(rt_ctx, quickjsr::JS_GetPropertyRecursive(rt_ctx, global, to_cstring(js_obj_name)));
-    return quickjsr::JSValue_to_SEXP(rt_ctx, result);
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result));
     END_CPP11
   }
 
@@ -80,7 +80,7 @@ extern "C" {
     JS_ValContainer value(rt_ctx, quickjsr::SEXP_to_JSValue(rt_ctx, value_, true));
     int result = quickjsr::JS_SetPropertyRecursive(rt_ctx, global, to_cstring(js_obj_name_), value);
 
-    return cpp11::as_sexp(result);
+    return cpp11::sexp(cpp11::as_sexp(result));
     END_CPP11
   }
 
@@ -89,7 +89,7 @@ extern "C" {
     const char* eval_string = to_cstring(eval_string_);
     RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
     JS_ValContainer val(rt_ctx, JS_Eval(rt_ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL));
-    return quickjsr::JSValue_to_SEXP(rt_ctx, val);
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, val));
     END_CPP11
   }
 
@@ -97,7 +97,7 @@ extern "C" {
     BEGIN_CPP11
     RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
     JS_ValContainer arg(rt_ctx, quickjsr::SEXP_to_JSValue(rt_ctx, arg_, LOGICAL_ELT(auto_unbox_, 0)));
-    return cpp11::as_sexp(quickjsr::JSValue_to_JSON(rt_ctx, arg));
+    return cpp11::sexp(cpp11::as_sexp(quickjsr::JSValue_to_JSON(rt_ctx, arg)));
     END_CPP11
   }
 
@@ -107,7 +107,7 @@ extern "C" {
 
     const char* json = to_cstring(json_);
     JS_ValContainer result(rt_ctx, JS_ParseJSON(rt_ctx, json, strlen(json), "<input>"));
-    return quickjsr::JSValue_to_SEXP(rt_ctx, result);
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result));
     END_CPP11
   }
 
