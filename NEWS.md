@@ -1,5 +1,6 @@
 # QuickJSR 1.5.0
   * Update bundled QuickJS-NG engine to v0.8.0 (see https://github.com/quickjs-ng/quickjs/releases for release notes)
+  * Update vendored cpp11 headers to 0.5.1
 
 # QuickJSR 1.4.0
   * Update bundled QuickJS-NG engine to v0.6.1 (see https://github.com/quickjs-ng/quickjs/releases for release notes)
