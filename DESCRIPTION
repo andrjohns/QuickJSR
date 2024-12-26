@@ -17,6 +17,8 @@ Description: An 'R' interface to the 'QuickJS' portable 'JavaScript'
 License: MIT + file LICENSE
 URL: https://github.com/andrjohns/QuickJSR, https://bellard.org/quickjs/
 BugReports: https://github.com/andrjohns/QuickJSR/issues
+Depends:
+    R (>= 4.0.0)
 Suggests:
     knitr,
     rmarkdown,
