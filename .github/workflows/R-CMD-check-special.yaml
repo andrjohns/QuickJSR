@@ -18,19 +18,17 @@ jobs:
         config:
           - { label: "clang-asan",
               name: "clang-asan",
-              container: "ghcr.io/r-hub/containers/clang-asan:latest",
-              git-install: apt-get update && apt-get install -y git }
+              container: "ghcr.io/r-hub/containers/clang-asan:latest"}
           - { label: "valgrind",
               name: "valgrind",
-              container: "ghcr.io/r-hub/containers/valgrind:latest",
-              git-install: dnf check-update && dnf install -y git }
+              container: "ghcr.io/r-hub/containers/valgrind:latest"}
+          - { label: "rchk",
+              name: "rchk",
+              container: "ghcr.io/r-hub/containers/rchk:latest"}
 
     env:
       MAKEFLAGS: -j4
     steps:
-      - name: Install git
-        run: ${{ matrix.config.git-install }}
-
       - uses: r-hub/actions/checkout@main
         with:
           submodules: true

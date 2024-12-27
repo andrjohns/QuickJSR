@@ -1,11 +1,11 @@
-// cpp11 version: 0.4.7
-// vendored on: 2024-05-11
+// cpp11 version: 0.5.1
+// vendored on: 2024-12-26
 #pragma once
 
 #include <string>  // for string, basic_string
 
 #include "Rversion.h"         // for R_VERSION, R_Version
-#include "cpp11/R.hpp"        // for SEXP, SEXPREC, Rf_install, Rf_findVarIn...
+#include "cpp11/R.hpp"        // for SEXP, SEXPREC, Rf_install, r_env_get...
 #include "cpp11/as.hpp"       // for as_sexp
 #include "cpp11/protect.hpp"  // for protect, protect::function, safe, unwin...
 #include "cpp11/sexp.hpp"     // for sexp
@@ -13,7 +13,6 @@
 #if R_VERSION >= R_Version(4, 0, 0)
 #define HAS_REMOVE_VAR_FROM_FRAME
 #endif
-
 #ifndef HAS_REMOVE_VAR_FROM_FRAME
 #include "cpp11/function.hpp"
 #endif
@@ -36,7 +35,7 @@ class environment {
       safe[Rf_defineVar](name_, as_sexp(value), parent_);
       return *this;
     }
-    operator SEXP() const { return safe[Rf_findVarInFrame](parent_, name_); };
+    operator SEXP() const { return safe[detail::r_env_get](parent_, name_); };
     operator sexp() const { return SEXP(); };
   };
 
@@ -47,16 +46,8 @@ class environment {
   proxy operator[](const char* name) const { return operator[](safe[Rf_install](name)); }
   proxy operator[](const std::string& name) const { return operator[](name.c_str()); }
 
-  bool exists(SEXP name) const {
-#if R_VERSION >= R_Version(4, 2, 0)
-    return safe[R_existsVarInFrame](env_, name);
-#else
-    SEXP res = safe[Rf_findVarInFrame3](env_, name, FALSE);
-    return res != R_UnboundValue;
-#endif
-  }
+  bool exists(SEXP name) const { return safe[detail::r_env_has](env_, name); }
   bool exists(const char* name) const { return exists(safe[Rf_install](name)); }
-
   bool exists(const std::string& name) const { return exists(name.c_str()); }
 
   void remove(SEXP name) {

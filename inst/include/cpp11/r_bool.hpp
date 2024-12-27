@@ -1,5 +1,5 @@
-// cpp11 version: 0.4.7
-// vendored on: 2024-05-11
+// cpp11 version: 0.5.1
+// vendored on: 2024-12-26
 #pragma once
 
 #include <limits>  // for numeric_limits
@@ -9,7 +9,7 @@
 #include "R_ext/Boolean.h"    // for Rboolean
 #include "cpp11/R.hpp"        // for SEXP, SEXPREC, ...
 #include "cpp11/as.hpp"       // for as_sexp
-#include "cpp11/protect.hpp"  // for unwind_protect, preserved
+#include "cpp11/protect.hpp"  // for unwind_protect
 #include "cpp11/r_vector.hpp"
 #include "cpp11/sexp.hpp"  // for sexp
 
