@@ -1,3 +1,6 @@
+# QuickJSR 1.5.1
+  * Fix compilation under emscripten/WASM
+
 # QuickJSR 1.5.0
   * Update bundled QuickJS-NG engine to v0.8.0 (see https://github.com/quickjs-ng/quickjs/releases for release notes)
   * Update vendored cpp11 headers to 0.5.1
