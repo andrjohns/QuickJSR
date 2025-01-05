@@ -1,4 +1,4 @@
 [submodule "src/quickjs"]
 	path = src/quickjs
 	url = https://github.com/andrjohns/quickjs-ng
-  branch = v0.8.0-quickjsr
+  branch = quickjsr-v0.8.0
