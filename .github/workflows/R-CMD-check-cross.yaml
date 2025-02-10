@@ -17,22 +17,20 @@ jobs:
       matrix:
         config:
           -  { platform: 386, cc: gcc-14, cxx: g++-14 }
-          -  { platform: 386, cc: clang-18, cxx: clang++-18 }
+          -  { platform: 386, cc: clang-19, cxx: clang++-19 }
 
           -  { platform: armel, cc: gcc-14, cxx: g++-14 }
-          -  { platform: armel, cc: clang-18, cxx: clang++-18 }
+          -  { platform: armel, cc: clang-19, cxx: clang++-19 }
 
           -  { platform: armhf, cc: gcc-14, cxx: g++-14 }
-          -  { platform: armhf, cc: clang-18, cxx: clang++-18 }
+          -  { platform: armhf, cc: clang-19, cxx: clang++-19 }
 
           -  { platform: ppc64le, cc: gcc-14, cxx: g++-14 }
-          -  { platform: ppc64le, cc: clang-18, cxx: clang++-18 }
+          -  { platform: ppc64le, cc: clang-19, cxx: clang++-19 }
 
           -  { platform: riscv64, cc: gcc-14, cxx: g++-14 }
-          -  { platform: riscv64, cc: clang-18, cxx: clang++-18 }
+          -  { platform: riscv64, cc: clang-19, cxx: clang++-19 }
 
-          -  { platform: s390x, cc: gcc-14, cxx: g++-14 }
-          -  { platform: s390x, cc: clang-18, cxx: clang++-18 }
           -  { platform: FreeBSD, cc: default, cxx: default }
 
     env:
