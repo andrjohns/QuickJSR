@@ -1,17 +1,17 @@
 expect_equal(to_json(1), "[1]")
-expect_equal(to_json(1:3), "[1,2,3]")
-expect_equal(to_json(c(1.5, 2.5)), "[1.5,2.5]")
+expect_equal(to_json(c(NA, 1:3, NA)), "[null,1,2,3,null]")
+expect_equal(to_json(c(NA, 1.5, NA, 2.5)), "[null,1.5,null,2.5]")
 
 expect_equal(to_json("a"), "[\"a\"]")
-expect_equal(to_json(c("a", "b", "c")), "[\"a\",\"b\",\"c\"]")
+expect_equal(to_json(c("a", "b", NA, "c")), "[\"a\",\"b\",null,\"c\"]")
 
 expect_equal(to_json(TRUE), "[true]")
 expect_equal(to_json(FALSE), "[false]")
-expect_equal(to_json(c(TRUE, FALSE)), "[true,false]")
+expect_equal(to_json(c(TRUE, NA, FALSE)), "[true,null,false]")
 
-expect_equal(to_json(list(1, 2, 3)), "[[1],[2],[3]]")
-expect_equal(to_json(list(a = 1, b = 2, c = 3)),
-              "{\"a\":[1],\"b\":[2],\"c\":[3]}")
+expect_equal(to_json(list(1, 2, 3, NA)), "[[1],[2],[3],[null]]")
+expect_equal(to_json(list(a = 1, b = 2, c = NA, d = 3)),
+              "{\"a\":[1],\"b\":[2],\"c\":[null],\"d\":[3]}")
 expect_equal(to_json(list(a = "d", b = "e", c = "f")),
               "{\"a\":[\"d\"],\"b\":[\"e\"],\"c\":[\"f\"]}")
 
@@ -59,3 +59,14 @@ expect_equal(list(list(a = 1, b = 2), list(c = 3, d = 4)), from_json("[{\"a\":[1
 expect_equal(list(c("e", "f"), c("g", "h")), from_json("[[\"e\",\"f\"],[\"g\",\"h\"]]"))
 expect_equal(list(list("e", "f"), list("g", "h")), from_json("[[[\"e\"],[\"f\"]],[[\"g\"],[\"h\"]]]"))
 expect_equal(list(list(a = "e", b = "f"), list(c = "g", d = "h")), from_json("[{\"a\":[\"e\"],\"b\":[\"f\"]},{\"c\":[\"g\"],\"d\":[\"h\"]}]"))
+
+# NULL conversions
+expect_equal(NULL, from_json("null"))
+expect_equal(NA, from_json("[null]"))
+expect_equal(c(NA, 1), from_json("[null, 1]"))
+expect_equal(c(1, NA, 1), from_json("[1, null, 1]"))
+
+expect_equal("[null]", to_json(NULL))
+expect_equal("null", to_json(NULL, auto_unbox = TRUE))
+expect_equal("[null]", to_json(NA))
+expect_equal("null", to_json(NA, auto_unbox = TRUE))

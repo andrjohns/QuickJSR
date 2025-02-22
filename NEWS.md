@@ -1,5 +1,5 @@
-# QuickJSR 1.5.1
-  * Fix compilation under emscripten/WASM
+# QuickJSR 1.5.2
+  * Fix conversions of NULL/NA/undefined values between R and JS
 
 # QuickJSR 1.5.0
   * Update bundled QuickJS-NG engine to v0.8.0 (see https://github.com/quickjs-ng/quickjs/releases for release notes)

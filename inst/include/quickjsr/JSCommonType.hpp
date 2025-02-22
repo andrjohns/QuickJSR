@@ -21,7 +21,7 @@ enum JSCommonType {
 JSCommonType JS_ArrayCommonType(JSContext* ctx, const JSValue& val);
 
 JSCommonType JS_GetCommonType(JSContext* ctx, const JSValue& val) {
-  if (JS_IsUndefined(val)) {
+  if (JS_IsUndefined(val) || JS_IsNull(val)) {
     return Undefined;
   }
   if (JS_IsBool(val)) {
@@ -62,6 +62,9 @@ JSCommonType JS_UpdateCommonType(JSCommonType current, JSContext* ctx, const JSV
   }
   if (new_type == Undefined) {
     return current;
+  }
+  if (current == Undefined) {
+    return new_type;
   }
   // If one, but not both, types are NumberArray or Date (checked above), return Object
   if (new_type == NumberArray || current == NumberArray || new_type == Object
