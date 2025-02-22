@@ -7,7 +7,6 @@
 #include <quickjsr/JS_SEXP.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
-#include <iostream>
 
 #if R_VERSION < R_Version(4, 5, 0)
 # define R_ClosureFormals(x) FORMALS(x)
