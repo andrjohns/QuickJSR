@@ -138,10 +138,18 @@ namespace quickjsr {
       return SEXP_to_JSValue(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
     }
     switch (TYPEOF(x)) {
-      case LGLSXP:
+      case NILSXP:
+        return JS_NULL;
+      case LGLSXP: {
+        if (LOGICAL_ELT(x, index) == NA_LOGICAL) {
+          return JS_NULL;
+        }
         return JS_NewBool(ctx, LOGICAL_ELT(x, index));
+      }
       case INTSXP: {
-        if (Rf_inherits(x, "factor")) {
+        if (INTEGER_ELT(x, index) == NA_INTEGER) {
+          return JS_NULL;
+        } else if (Rf_inherits(x, "factor")) {
           SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
           return JS_NewString(ctx, to_cstring(levels, INTEGER_ELT(x, index) - 1));
         } else {
@@ -149,7 +157,9 @@ namespace quickjsr {
         }
       }
       case REALSXP: {
-        if (Rf_inherits(x, "POSIXct")) {
+        if (ISNA(REAL_ELT(x, index))) {
+          return JS_NULL;
+        } else if (Rf_inherits(x, "POSIXct")) {
           static constexpr double milliseconds_second = 1000;
           double tz_offset_seconds = get_tz_offset_seconds();
           return JS_NewDate(ctx, (REAL_ELT(x, index) + tz_offset_seconds) * milliseconds_second);
@@ -160,19 +170,31 @@ namespace quickjsr {
           return JS_NewFloat64(ctx, REAL_ELT(x, index));
         }
       }
-      case STRSXP:
+      case STRSXP: {
+        if (STRING_ELT(x, index) == NA_STRING) {
+          return JS_NULL;
+        }
         return JS_NewString(ctx, to_cstring(x, index));
+      }
       case VECSXP:
         return SEXP_to_JSValue(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
       case CLOSXP:
         return SEXP_to_JSValue_function(ctx, x, auto_unbox, auto_unbox_curr);
       case ENVSXP:
         return SEXP_to_JSValue_env(ctx, x);
-      case NILSXP:
-        return JS_UNDEFINED;
       default:
         cpp11::stop("Conversions for type %s to JSValue are not yet implemented",
                     Rf_type2char(TYPEOF(x)));
+    }
+  }
+
+  inline JSValue SEXP_to_JSValue_null(JSContext* ctx, bool auto_unbox) {
+    if (auto_unbox) {
+      return JS_NULL;
+    } else {
+      JSValue arr = JS_NewArray(ctx);
+      JS_SetPropertyInt64(ctx, arr, 0, JS_NULL);
+      return arr;
     }
   }
 
@@ -180,6 +202,10 @@ namespace quickjsr {
                           bool auto_unbox_inp = false,
                           bool auto_unbox = false) {
     bool auto_unbox_curr = static_cast<bool>(Rf_inherits(x, "AsIs")) ? false : auto_unbox_inp;
+    if (Rf_isNull(x)) {
+      return SEXP_to_JSValue_null(ctx, auto_unbox_curr);
+    }
+
     if (Rf_isDataFrame(x)) {
       return SEXP_to_JSValue_df(ctx, x, auto_unbox_inp, auto_unbox_curr);
     }

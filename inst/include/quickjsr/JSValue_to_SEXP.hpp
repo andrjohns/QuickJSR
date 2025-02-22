@@ -13,6 +13,9 @@ namespace quickjsr {
 SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val);
 
 SEXP JSValue_to_SEXP_scalar(JSContext* ctx, const JSValue& val) {
+  if (JS_IsNull(val)) {
+    return R_NilValue;
+  }
   if (JS_IsUndefined(val)) {
     return R_NilValue;
   }
@@ -37,19 +40,59 @@ SEXP JSValue_to_SEXP_scalar(JSContext* ctx, const JSValue& val) {
 }
 
 SEXP JSValue_to_SEXP_vector(JSContext* ctx, const JSValue& val) {
+  // Very inefficient workaround to identify null/undefined in array
+  // so that they can be replaced with NA of the appropriate type in SEXP conversion
+  std::vector<int64_t> null_idxs;
+  int64_t len;
+  JS_GetLength(ctx, val, &len);
+  for (int64_t i = 0; i < len; i++) {
+    JSValue elem = JS_GetPropertyInt64(ctx, val, i);
+    if (JS_IsNull(elem) || JS_IsUndefined(elem)) {
+      null_idxs.push_back(i);
+    }
+    JS_FreeValue(ctx, elem);
+  }
   switch (JS_ArrayCommonType(ctx, val)) {
-    case Integer:
-      return cpp11::as_sexp(JSValue_to_Cpp<std::vector<int>>(ctx, val));
-    case Double:
-      return cpp11::as_sexp(JSValue_to_Cpp<std::vector<double>>(ctx, val));
-    case Logical:
-      return cpp11::as_sexp(JSValue_to_Cpp<std::vector<bool>>(ctx, val));
-    case Character:
-      return cpp11::as_sexp(JSValue_to_Cpp<std::vector<std::string>>(ctx, val));
-    case Undefined:
-      return R_NilValue;
+    case Integer: {
+      SEXP int_sexp(cpp11::as_sexp(JSValue_to_Cpp<std::vector<int>>(ctx, val)));
+      for (int64_t idx : null_idxs) {
+        SET_INTEGER_ELT(int_sexp, idx, NA_INTEGER);
+      }
+      return int_sexp;
+    }
+    case Double: {
+      SEXP dbl_sexp(cpp11::as_sexp(JSValue_to_Cpp<std::vector<double>>(ctx, val)));
+      for (int64_t idx : null_idxs) {
+        SET_REAL_ELT(dbl_sexp, idx, NA_REAL);
+      }
+      return dbl_sexp;
+    }
+    case Logical: {
+      SEXP lgl_sexp(cpp11::as_sexp(JSValue_to_Cpp<std::vector<bool>>(ctx, val)));
+      for (int64_t idx : null_idxs) {
+        SET_LOGICAL_ELT(lgl_sexp, idx, NA_LOGICAL);
+      }
+      return lgl_sexp;
+    }
+    case Character: {
+      SEXP chr_sexp(cpp11::as_sexp(JSValue_to_Cpp<std::vector<std::string>>(ctx, val)));
+      for (int64_t idx : null_idxs) {
+        SET_STRING_ELT(chr_sexp, idx, NA_STRING);
+      }
+      return chr_sexp;
+    }
+    case Undefined: {
+      cpp11::writable::logicals res(len);
+      for (int64_t i = 0; i < len; i++) {
+        res[static_cast<R_xlen_t>(i)] = NA_LOGICAL;
+      }
+      return res;
+    }
     case Date: {
       cpp11::writable::doubles res = cpp11::as_sexp(JSValue_to_Cpp<std::vector<double>>(ctx, val));
+      for (int64_t idx : null_idxs) {
+        SET_REAL_ELT(res, idx, NA_REAL);
+      }
       res.attr("class") = "POSIXct";
       return res;
     }
@@ -125,7 +168,7 @@ SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
     js_std_dump_error(ctx);
     return cpp11::as_sexp("Error!");
   }
-  if (JS_IsUndefined(val)) {
+  if (JS_IsUndefined(val) || JS_IsNull(val)) {
     return R_NilValue;
   }
   if (JS_IsArray(ctx, val)) {

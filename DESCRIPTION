@@ -1,13 +1,11 @@
 Package: QuickJSR
 Title: Interface for the 'QuickJS' Lightweight 'JavaScript' Engine
-Version: 1.5.1
+Version: 1.5.2
 Authors@R: c(
     person(c("Andrew", "R."), "Johnson", , "andrew.johnson@arjohnsonau.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7000-8065")),
-    person("Fabrice", "Bellard", role = c("cph"),
-           comment = "Author of QuickJS sources and headers"),
-    person("Charlie", "Gordon", role = c("cph"),
-           comment = "Author of QuickJS sources and headers"),
+    person("QuickJS", "Authors", role = c("cph"),
+           comment = "QuickJS sources and headers"),
     person("QuickJS-NG", "Authors", role = c("cph"),
            comment = "QuickJS-NG sources and headers")
   )

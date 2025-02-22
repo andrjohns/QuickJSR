@@ -1,3 +1,6 @@
+# QuickJSR 1.5.2
+  * Fix conversions of NULL/NA/undefined values between R and JS
+
 # QuickJSR 1.5.1
   * Fix compilation under emscripten/WASM
 
