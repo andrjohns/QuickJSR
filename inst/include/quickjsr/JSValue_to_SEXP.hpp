@@ -84,7 +84,7 @@ SEXP JSValue_to_SEXP_vector(JSContext* ctx, const JSValue& val) {
     case Undefined: {
       cpp11::writable::logicals res(len);
       for (int64_t i = 0; i < len; i++) {
-        res[i] = NA_LOGICAL;
+        res[static_cast<R_xlen_t>(i)] = NA_LOGICAL;
       }
       return res;
     }
