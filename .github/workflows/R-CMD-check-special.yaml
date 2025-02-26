@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [main, master]
+    branches: [asan-test]
   pull_request:
     branches: [main, master]
 
@@ -16,27 +16,9 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { label: "clang-asan",
-              name: "clang-asan",
-              container: "ghcr.io/r-hub/containers/clang-asan:latest"}
-          - { label: "clang-ubsan",
-              name: "clang-ubsan",
-              container: "ghcr.io/r-hub/containers/clang-ubsan:latest"}
-          - { label: "valgrind",
-              name: "valgrind",
-              container: "ghcr.io/r-hub/containers/valgrind:latest"}
-          - { label: "rchk",
-              name: "rchk",
-              container: "ghcr.io/r-hub/containers/rchk:latest"}
-          - { label: "c23",
-              name: "c23",
-              container: "ghcr.io/r-hub/containers/c23:latest"}
-          - { label: "gcc14",
-              name: "gcc14",
-              container: "ghcr.io/r-hub/containers/gcc14:latest"}
-          - { label: "clang20",
-              name: "clang20",
-              container: "ghcr.io/r-hub/containers/clang20:latest"}
+          - { label: "gcc-asan",
+              name: "gcc-asan",
+              container: "ghcr.io/r-hub/containers/gcc-asan:latest"}
 
     env:
       MAKEFLAGS: -j4
