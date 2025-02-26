@@ -28,9 +28,9 @@ jobs:
           - { label: "c23",
               name: "c23",
               container: "ghcr.io/r-hub/containers/c23:latest"}
-          - { label: "gcc14",
-              name: "gcc14",
-              container: "ghcr.io/r-hub/containers/gcc14:latest"}
+          - { label: "gcc15",
+              name: "gcc15",
+              container: "ghcr.io/r-hub/containers/gcc15:latest"}
           - { label: "clang20",
               name: "clang20",
               container: "ghcr.io/r-hub/containers/clang20:latest"}
