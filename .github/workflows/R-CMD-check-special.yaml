@@ -19,9 +19,9 @@ jobs:
           - { label: "clang-asan",
               name: "clang-asan",
               container: "ghcr.io/r-hub/containers/clang-asan:latest"}
-          - { label: "clang-ubsan",
-              name: "clang-ubsan",
-              container: "ghcr.io/r-hub/containers/clang-ubsan:latest"}
+          - { label: "gcc-asan",
+              name: "gcc-asan",
+              container: "ghcr.io/r-hub/containers/gcc-asan:latest"}
           - { label: "valgrind",
               name: "valgrind",
               container: "ghcr.io/r-hub/containers/valgrind:latest"}
