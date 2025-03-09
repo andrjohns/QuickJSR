@@ -171,7 +171,7 @@ SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
   if (JS_IsUndefined(val) || JS_IsNull(val)) {
     return R_NilValue;
   }
-  if (JS_IsArray(ctx, val)) {
+  if (JS_IsArray(val)) {
     return JSValue_to_SEXP_vector(ctx, val);
   }
   if (JS_IsObject(val) && !JS_IsDate(ctx, val)) {

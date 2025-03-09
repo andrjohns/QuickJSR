@@ -39,7 +39,7 @@ JSCommonType JS_GetCommonType(JSContext* ctx, const JSValue& val) {
   if (JS_IsDate(ctx, val)) {
     return Date;
   }
-  if (JS_IsArray(ctx, val)) {
+  if (JS_IsArray(val)) {
     JSCommonType common_type = JS_ArrayCommonType(ctx, val);
     if (common_type == Integer || common_type == Double) {
       return NumberArray;
