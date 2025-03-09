@@ -1,3 +1,6 @@
+# QuickJSR 1.6.1
+  * Update bundled QuickJS-NG engine to v0.9.0 (see https://github.com/quickjs-ng/quickjs/releases for release notes)
+
 # QuickJSR 1.6.0
   * Sync bundled QuickJS-NG engine to 9d6e372 to address gcc-ubsan error
   * Patch bundled cpp11 headers for whitespace in literal operator declarations
