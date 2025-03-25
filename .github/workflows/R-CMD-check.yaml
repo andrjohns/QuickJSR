@@ -23,12 +23,12 @@ jobs:
           #- {os: macos-latest,   r: 'release'}
           #- {os: macos-latest,   r: 'oldrel'}
 
-          #- {os: windows-latest, r: 'devel'}
+          - {os: windows-latest, r: 'devel'}
           #- {os: windows-latest, r: 'release'}
           #- {os: windows-latest, r: 'oldrel'}
 
-          #- {os: ubuntu-24.04-arm,   r: 'devel'}
-          #- {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-24.04-arm,   r: 'devel'}
+          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           #- {os: ubuntu-latest,   r: 'release'}
           #- {os: ubuntu-latest,   r: 'oldrel'}
           #- {os: ubuntu-latest,   r: '4.1'}

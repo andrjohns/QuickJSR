@@ -33,9 +33,8 @@ else
 endif
 
 CPP_SOURCES = quickjsr.cpp init.cpp
-#C_SOURCES = mask.c quickjs_copy/cutils.c quickjs_copy/libbf.c quickjs_copy/libregexp.c quickjs_copy/libunicode.c quickjs_copy/quickjs.c #quickjs_copy/quickjs-libc.c
-SOURCES = $(CPP_SOURCES) #$(C_SOURCES)
-OBJECTS = $(CPP_SOURCES:.cpp=.o) #$(C_SOURCES:.c=.o)
+SOURCES = $(CPP_SOURCES)
+OBJECTS = $(CPP_SOURCES:.cpp=.o)
 
 $(SHLIB): $(OBJECTS)
 $(OBJECTS): build-static
