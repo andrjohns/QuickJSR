@@ -41,7 +41,7 @@ $(OBJECTS): build-static
 build-static:
 	@mkdir -p ../inst/include/quickjs
 	@cp $(wildcard quickjs/*.h) ../inst/include/quickjs
-	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -funsigned-char -std=gnu11 -c libquickjs.c
+	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DNDEBUG -funsigned-char -std=gnu11 -c libquickjs.c
 	@mkdir -p ../inst/lib/$(R_ARCH)
 	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a libquickjs.o
 
