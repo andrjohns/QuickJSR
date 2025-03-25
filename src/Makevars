@@ -38,14 +38,14 @@ SOURCES = $(CPP_SOURCES) $(C_SOURCES)
 OBJECTS = $(CPP_SOURCES:.cpp=.o) $(C_SOURCES:.c=.o)
 
 $(SHLIB): $(OBJECTS)
-#$(OBJECTS): build-static
+$(OBJECTS): build-static
 
 build-static:
 	@mkdir -p ../inst/include/quickjs
 	@cp $(wildcard quickjs/*.h) ../inst/include/quickjs
-	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DNDEBUG -funsigned-char -std=gnu11 -c libquickjs.c
-	@mkdir -p ../inst/lib/$(R_ARCH)
-	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a libquickjs.o
+#	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -DNDEBUG -funsigned-char -std=gnu11 -c libquickjs.c
+#	@mkdir -p ../inst/lib/$(R_ARCH)
+#	$(AR) -rs ../inst/lib/$(R_ARCH)/libquickjs.a libquickjs.o
 
 clean:
 	$(RM) libquickjs.o $(OBJECTS) QuickJSR$(DLL)
