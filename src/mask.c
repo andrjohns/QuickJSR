@@ -1,3 +1,4 @@
+#include <stdio.h>
 void Rf_error(const char *, ...);
 void Rprintf(const char *, ...);
 void Rf_abort(void) {
@@ -8,4 +9,12 @@ void Rf_exit(int status) {
 }
 void Rf_putchar(int c) {
   Rprintf("%c", c);
+}
+
+FILE* get_con(int which) {
+  if (which == 0) {
+    return stdout;
+  } else {
+    return stderr;
+  }
 }
