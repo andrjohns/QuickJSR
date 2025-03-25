@@ -17,6 +17,7 @@ void Rf_putchar(int c) {
 #define _putchar Rf_putchar
 #define exit Rf_exit
 #define _exit Rf_exit
+#define printf Rprintf
 
 #include "quickjs/cutils.c"
 #include "quickjs/libbf.c"
