@@ -1,4 +1,4 @@
-PKG_CPPFLAGS = -I"../inst/include/" -I"../inst/include/quickjs" -D_GNU_SOURCE
+PKG_CPPFLAGS = -DNDEBUG -I"../inst/include/" -I"../inst/include/quickjs" -D_GNU_SOURCE
 #PKG_LIBS = ../inst/lib/$(R_ARCH)/libquickjs.a
 
 ifeq ($(OS),Windows_NT)
