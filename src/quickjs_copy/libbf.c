@@ -735,9 +735,9 @@ void bf_print_str(const char *str, const bf_t *a)
         printf("NaN");
     } else {
         if (a->sign)
-        Rf_putchar('-');
+        putchar('-');
         if (a->expn == BF_EXP_ZERO) {
-            Rf_putchar('0');
+            putchar('0');
         } else if (a->expn == BF_EXP_INF) {
             printf("Inf");
         } else {
@@ -6279,9 +6279,9 @@ void bfdec_print_str(const char *str, const bfdec_t *a)
         printf("NaN");
     } else {
         if (a->sign)
-        Rf_putchar('-');
+        putchar('-');
         if (a->expn == BF_EXP_ZERO) {
-            Rf_putchar('0');
+            putchar('0');
         } else if (a->expn == BF_EXP_INF) {
             printf("Inf");
         } else {
