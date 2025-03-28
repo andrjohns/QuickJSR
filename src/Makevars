@@ -35,7 +35,7 @@ endif
 SOURCES = quickjsr.cpp init.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 
-all: $(SHLIB) clean
+all: clean
 $(SHLIB): $(OBJECTS)
 $(OBJECTS): build-static
 
