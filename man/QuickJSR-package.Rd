@@ -22,8 +22,8 @@ Useful links:
 
 Other contributors:
 \itemize{
-  \item Fabrice Bellard (Author of QuickJS sources and headers) [copyright holder]
-  \item Charlie Gordon (Author of QuickJS sources and headers) [copyright holder]
+  \item QuickJS Authors (QuickJS sources and headers) [copyright holder]
+  \item QuickJS-NG Authors (QuickJS-NG sources and headers) [copyright holder]
 }
 
 }
