@@ -68,14 +68,22 @@ jobs:
           }
 
           echo "C:/rtools45-aarch64/usr/bin;C:/rtools45-aarch64/aarch64-w64-mingw32.static.posix/bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+      - name: Install dependencies & Check Package (ARM64)
+        if: matrix.config.os == 'windows-11-arm'
+        run: |
+          install.packages(c("tinytest", "rmarkdown", "knitr", "rcmdcheck"), repos = c(CRAN = "https://cran.rstudio.com"))
+          rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"))
+        shell: C:\Program Files\R-aarch64\R-4.5.0\bin\Rscript.exe {0}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
+        if: matrix.config.os != 'windows-11-arm'
         with:
           extra-packages: |
             any::rcmdcheck
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
+        if: matrix.config.os != 'windows-11-arm'
         with:
           upload-snapshots: true
           check-dir: '"check"'
