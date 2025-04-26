@@ -64,7 +64,7 @@ jobs:
             Invoke-WebRequest `
                 -Uri https://github.com/r-hub/rtools45/releases/download/latest/rtools45-aarch64.exe `
                 -OutFile "rtools45-aarch64.exe"
-            Start-Process -FilePath "rtools45-aarch64S.exe" -ArgumentList "/INSTALL /VERYSILENT /SUPPRESSMSGBOXES" -Wait
+            Start-Process -FilePath "rtools45-aarch64.exe" -ArgumentList "/INSTALL /VERYSILENT /SUPPRESSMSGBOXES" -Wait
           }
 
           echo "C:/rtools45-aarch64/usr/bin;C:/rtools45-aarch64/aarch64-w64-mingw32.static.posix/bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
