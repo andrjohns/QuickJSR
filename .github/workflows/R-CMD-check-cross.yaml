@@ -44,7 +44,7 @@ jobs:
         if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
-          image: debian:experimental-slim
+          image: debian:experimental
           options: -v ${{ github.workspace }}:/quickjsr --platform=linux/${{ matrix.config.platform }} -e DEBIAN_FRONTEND=noninteractive -e TZ=Etc/UTC -e LANG=en_AU.UTF-8
           run: |
             apt-get update
