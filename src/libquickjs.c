@@ -13,7 +13,7 @@ void Rf_exit(int status) {
 #define exit Rf_exit
 
 #include "quickjs/cutils.c"
-#include "quickjs/libbf.c"
+#include "quickjs/xsum.c"
 #include "quickjs/libregexp.c"
 #include "quickjs/libunicode.c"
 #include "quickjs/quickjs.c"

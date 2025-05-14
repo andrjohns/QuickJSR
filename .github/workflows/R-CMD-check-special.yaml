@@ -48,6 +48,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           job-config: ${{ toJson(matrix.config) }}
+      - name: Install awk for gcc15
+        if: matrix.config.label == 'gcc15'
+        run: |
+          dnf update -y && dnf install -y awk
       - uses: r-hub/actions/setup-deps@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

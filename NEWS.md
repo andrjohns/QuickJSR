@@ -1,3 +1,6 @@
+# QuickJSR 1.6.1
+  * Update bundled QuickJS-NG engine to v0.10.1 (see https://github.com/quickjs-ng/quickjs/releases for release notes)
+
 # QuickJSR 1.7.0
   * Remove usage of disallowed entrypoints in compiled code
 
