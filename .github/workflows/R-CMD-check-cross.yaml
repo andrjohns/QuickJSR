@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, comps]
   pull_request:
     branches: [main, master]
 
@@ -16,14 +16,14 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          -  { platform: 386, cc: gcc-14, cxx: g++-14 }
-          -  { platform: 386, cc: clang-18, cxx: clang++-18 }
+          -  { platform: 386, cc: gcc-15, cxx: g++-15 }
+          -  { platform: 386, cc: clang-20, cxx: clang++-20 }
 
-          -  { platform: armel, cc: gcc-14, cxx: g++-14 }
-          -  { platform: armel, cc: clang-18, cxx: clang++-18 }
+          -  { platform: armel, cc: gcc-15, cxx: g++-15 }
+          -  { platform: armel, cc: clang-20, cxx: clang++-20 }
 
-          -  { platform: armhf, cc: gcc-14, cxx: g++-14 }
-          -  { platform: armhf, cc: clang-18, cxx: clang++-18 }
+          -  { platform: armhf, cc: gcc-15, cxx: g++-15 }
+          -  { platform: armhf, cc: clang-20, cxx: clang++-20 }
 
           -  { platform: FreeBSD, cc: default, cxx: default }
 
@@ -44,11 +44,11 @@ jobs:
         if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
-          image: debian:sid-slim
+          image: debian:experimental-slim
           options: -v ${{ github.workspace }}:/quickjsr --platform=linux/${{ matrix.config.platform }} -e DEBIAN_FRONTEND=noninteractive -e TZ=Etc/UTC -e LANG=en_AU.UTF-8
           run: |
             apt-get update
-            apt-get install --no-install-recommends -y ${{ matrix.config.cc }} g++-14 \
+            apt-get install --no-install-recommends -y ${{ matrix.config.cc }} g++-15 \
               r-base-core locales pandoc qpdf r-cran-tinytest r-cran-rmarkdown \
               r-cran-knitr r-cran-rcmdcheck make
             echo "en_AU.UTF-8 UTF-8" >> /etc/locale.gen
