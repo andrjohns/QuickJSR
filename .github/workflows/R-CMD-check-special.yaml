@@ -51,7 +51,7 @@ jobs:
       - name: Install awk for gcc15
         if: matrix.config.label == 'gcc15'
         run: |
-          dnf update -y && install -y awk
+          dnf update -y && dnf install -y awk
       - uses: r-hub/actions/setup-deps@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
