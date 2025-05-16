@@ -41,28 +41,37 @@ jobs:
       MAKEFLAGS: -j4
 
     steps:
+      - name: Cache R
+        id: cache-r
+        uses: actions/cache@v4
+        with:
+          path: |
+            "C:\\Program Files\\R-aarch64\\R-4.5.0"
+            "C:\\rtools45-aarch64"
+          key: winarm64-r
+
       - name: Install R & RTools (ARM64)
-        if: matrix.config.os == 'windows-11-arm'
+        if: matrix.config.os == 'windows-11-arm' && steps.cache-r.outputs.cache-hit != 'true'
         run: |
           $url = "https://www.r-project.org/nosvn/winutf8/aarch64/R-4-signed/R-4.5.0-aarch64.exe"
-          Invoke-WebRequest -Uri "$url" -OutFile R-4.5.0-aarch64.exe -UseBasicParsing -UserAgent "NativeHost"
-          Start-Process -FilePath R-4.5.0-aarch64.exe -ArgumentList "/install /norestart /verysilent /SUPPRESSMSGBOXES" -NoNewWindow -Wait
-          # Installation will hang if the toolchain is already installed
-          if (-Not $(Test-Path -Path "C:/rtools45-aarch64")) {
-            Invoke-WebRequest `
-                -Uri https://github.com/r-hub/rtools45/releases/download/latest/rtools45-aarch64.exe `
-                -OutFile "rtools45-aarch64.exe"
-            Start-Process -FilePath "rtools45-aarch64.exe" -ArgumentList "/INSTALL /VERYSILENT /SUPPRESSMSGBOXES" -Wait
-          }
+          Invoke-WebRequest `
+              -Uri https://www.r-project.org/nosvn/winutf8/aarch64/R-4-signed/R-4.5.0-aarch64.exe `
+              -OutFile R-4.5.0-aarch64.exe
+          Start-Process `
+              -FilePath R-4.5.0-aarch64.exe `
+              -ArgumentList "/INSTALL /VERYSILENT /SUPPRESSMSGBOXES" -Wait
+
+          Invoke-WebRequest `
+              -Uri https://github.com/r-hub/rtools45/releases/download/latest/rtools45-aarch64.exe `
+              -OutFile "rtools45-aarch64.exe"
+          Start-Process `
+              -FilePath "rtools45-aarch64.exe" `
+              -ArgumentList "/INSTALL /VERYSILENT /SUPPRESSMSGBOXES" -Wait
 
           echo "C:/rtools45-aarch64/usr/bin;C:/rtools45-aarch64/aarch64-w64-mingw32.static.posix/bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
           echo "C:\Program Files\R-aarch64\R-4.5.0\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
-      - name: Get current R path
-        if: matrix.config.os == 'windows-11-arm'
-        run: which R
-        shell: sh
 
       - name: Install dependencies & Check Package (ARM64)
         if: matrix.config.os == 'windows-11-arm'
-        run: sessionInfo()
+        run: install.packages(c("tinytest", "rmarkdown", "knitr", "rcmdcheck"))
         shell: Rscript {0}
