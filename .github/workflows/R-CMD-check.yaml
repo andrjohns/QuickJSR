@@ -56,19 +56,8 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - name: Cache R
-        if: matrix.config.os == 'windows-11-arm'
-        id: cache-r
-        uses: actions/cache@v4
-        with:
-          path: |
-            C:/Program Files/R-aarch64/R-4.5.0
-            C:/rtools45-aarch64
-          key: winarm64-r
-          save-always: true
-
       - name: Install R & RTools (ARM64)
-        if: matrix.config.os == 'windows-11-arm' && steps.cache-r.outputs.cache-hit != 'true'
+        if: matrix.config.os == 'windows-11-arm'
         run: |
           $url = "https://www.r-project.org/nosvn/winutf8/aarch64/R-4-signed/R-4.5.0-aarch64.exe"
           Invoke-WebRequest `
@@ -85,9 +74,6 @@ jobs:
               -FilePath "rtools45-aarch64.exe" `
               -ArgumentList "/INSTALL /VERYSILENT /SUPPRESSMSGBOXES" -Wait
 
-      - name: Add R & RTools to Path (ARM64)
-        if: matrix.config.os == 'windows-11-arm' && steps.cache-r.outputs.cache-hit != 'true'
-        run: |
           echo "C:/rtools45-aarch64/usr/bin;C:/rtools45-aarch64/aarch64-w64-mingw32.static.posix/bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
           echo "C:\Program Files\R-aarch64\R-4.5.0\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
@@ -97,7 +83,7 @@ jobs:
           install.packages(c("tinytest", "knitr", "rmarkdown", "rcmdcheck"),
                            repos = c(CRAN = "https://cloud.r-project.org"),
                            Ncpus = 4);
-          rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), check_dir = "check")
+#          rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), check_dir = "check")
         shell: Rscript {0}
 
 #      - name: Install dependencies & Check Package (ARM64)
@@ -113,7 +99,7 @@ jobs:
 #            any::rcmdcheck
 #          needs: check
 #
-#      - uses: r-lib/actions/check-r-package@v2
-#        with:
-#          upload-snapshots: true
-#          check-dir: '"check"'
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          check-dir: '"check"'
