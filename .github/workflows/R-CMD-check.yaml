@@ -90,10 +90,10 @@ jobs:
           echo "C:/rtools45-aarch64/usr/bin;C:/rtools45-aarch64/aarch64-w64-mingw32.static.posix/bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
           echo "C:\Program Files\R-aarch64\R-4.5.0\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
-      - name: Install pak (ARM64)
+      - name: Install Dependencies (ARM64)
         if: matrix.config.os == 'windows-11-arm'
         run: |
-          install.packages("pak", repos = c(CRAN = "https://cloud.r-project.org"))
+          install.packages(c("tinytest", "knitr", "rmarkdown", "rcmdcheck"), repos = c(CRAN = "https://cloud.r-project.org"))
         shell: Rscript {0}
 
 #      - name: Install dependencies & Check Package (ARM64)
