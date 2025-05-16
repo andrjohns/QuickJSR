@@ -65,6 +65,7 @@ jobs:
             C:/Program Files/R-aarch64/R-4.5.0
             C:/rtools45-aarch64
           key: winarm64-r
+          save-always: true
 
       - name: Install R & RTools (ARM64)
         if: matrix.config.os == 'windows-11-arm' && steps.cache-r.outputs.cache-hit != 'true'
@@ -93,7 +94,10 @@ jobs:
       - name: Install Dependencies (ARM64)
         if: matrix.config.os == 'windows-11-arm'
         run: |
-          install.packages(c("tinytest", "knitr", "rmarkdown", "rcmdcheck"), repos = c(CRAN = "https://cloud.r-project.org"))
+          install.packages(c("tinytest", "knitr", "rmarkdown", "rcmdcheck"),
+                           repos = c(CRAN = "https://cloud.r-project.org"),
+                           Ncpus = 4);
+          rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), check_dir = "check")
         shell: Rscript {0}
 
 #      - name: Install dependencies & Check Package (ARM64)
