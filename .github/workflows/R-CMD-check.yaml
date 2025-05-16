@@ -81,7 +81,7 @@ jobs:
         if: matrix.config.os == 'windows-11-arm'
         run: |
           install.packages(c("tinytest", "knitr", "rmarkdown", "rcmdcheck"),
-                           repos = c(CRAN = "https://cloud.r-project.org"),
+                           repos = c("https://r-lib.r-universe.dev", "https://cloud.r-project.org"),
                            Ncpus = 4);
 #          rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), check_dir = "check")
         shell: Rscript {0}
