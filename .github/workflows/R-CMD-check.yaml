@@ -64,5 +64,5 @@ jobs:
 
       - name: Install dependencies & Check Package (ARM64)
         if: matrix.config.os == 'windows-11-arm'
-        run: |
-          & 'C:\Program Files\R-aarch64\R-4.5.0\bin\Rscript.exe' -e "install.packages('pkgbuild', repos = c(CRAN = 'https://cloud.r-project.org'))"
+        run: sessionInfo()
+        shell: Rscript {0}
