@@ -62,8 +62,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            "C:\\Program Files\\R-aarch64\\R-4.5.0"
-            "C:\\rtools45-aarch64"
+            C:/Program Files/R-aarch64/R-4.5.0
+            C:/rtools45-aarch64
           key: winarm64-r
 
       - name: Install R & RTools (ARM64)
