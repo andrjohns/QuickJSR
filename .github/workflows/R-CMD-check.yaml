@@ -75,6 +75,8 @@ jobs:
 
           echo "C:/rtools45-aarch64/usr/bin;C:/rtools45-aarch64/aarch64-w64-mingw32.static.posix/bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
           echo "C:\Program Files\R-aarch64\R-4.5.0\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+          Remove-Item -Path "R-4.5.0-aarch64.exe"
+          Remove-Item -Path "rtools45-aarch64.exe"
 
       - name: Install Dependencies (ARM64)
         if: matrix.config.os == 'windows-11-arm'
