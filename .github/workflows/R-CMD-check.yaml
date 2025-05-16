@@ -2,7 +2,7 @@
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, winarm-ci]
   pull_request:
     branches: [main, master]
 
@@ -18,21 +18,22 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: macos-latest,   r: 'devel'}
-          - {os: macos-latest,   r: 'release'}
-          - {os: macos-latest,   r: 'oldrel'}
+          #- {os: macos-latest,   r: 'devel'}
+          #- {os: macos-latest,   r: 'release'}
+          #- {os: macos-latest,   r: 'oldrel'}
 
-          - {os: windows-latest, r: 'devel'}
-          - {os: windows-latest, r: 'release'}
-          - {os: windows-latest, r: 'oldrel'}
+          - {os: windows-11-arm }
+          #- {os: windows-latest, r: 'devel'}
+          #- {os: windows-latest, r: 'release'}
+          #- {os: windows-latest, r: 'oldrel'}
 
-          - {os: ubuntu-24.04-arm,   r: 'devel'}
-          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
-          - {os: ubuntu-latest,   r: 'release'}
-          - {os: ubuntu-latest,   r: 'oldrel'}
-          - {os: ubuntu-latest,   r: '4.1'}
-          - {os: ubuntu-latest,   r: '4.0'}
-          - {os: ubuntu-latest,   r: '3.6'}
+          #- {os: ubuntu-24.04-arm,   r: 'devel'}
+          #- {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
+          #- {os: ubuntu-latest,   r: 'release'}
+          #- {os: ubuntu-latest,   r: 'oldrel'}
+          #- {os: ubuntu-latest,   r: '4.1'}
+          #- {os: ubuntu-latest,   r: '4.0'}
+          #- {os: ubuntu-latest,   r: '3.6'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -45,13 +46,56 @@ jobs:
           submodules: true
 
       - uses: r-lib/actions/setup-pandoc@v2
+        if: matrix.config.os != 'windows-11-arm'
 
       - uses: r-lib/actions/setup-r@v2
+        if: matrix.config.os != 'windows-11-arm'
         with:
           r-version: ${{ matrix.config.r }}
           rtools-version: ${{ matrix.config.rtools }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
+
+      - name: Cache R
+        if: matrix.config.os == 'windows-11-arm'
+        id: cache-r
+        uses: actions/cache@v4
+        with:
+          path: |
+            "C:\\Program Files\\R-aarch64\\R-4.5.0"
+            "C:\\rtools45-aarch64"
+          key: winarm64-r
+
+      - name: Install R & RTools (ARM64)
+        if: matrix.config.os == 'windows-11-arm' && steps.cache-r.outputs.cache-hit != 'true'
+        run: |
+          $url = "https://www.r-project.org/nosvn/winutf8/aarch64/R-4-signed/R-4.5.0-aarch64.exe"
+          Invoke-WebRequest `
+              -Uri https://www.r-project.org/nosvn/winutf8/aarch64/R-4-signed/R-4.5.0-aarch64.exe `
+              -OutFile R-4.5.0-aarch64.exe
+          Start-Process `
+              -FilePath R-4.5.0-aarch64.exe `
+              -ArgumentList "/INSTALL /VERYSILENT /SUPPRESSMSGBOXES" -Wait
+
+          Invoke-WebRequest `
+              -Uri https://github.com/r-hub/rtools45/releases/download/latest/rtools45-aarch64.exe `
+              -OutFile "rtools45-aarch64.exe"
+          Start-Process `
+              -FilePath "rtools45-aarch64.exe" `
+              -ArgumentList "/INSTALL /VERYSILENT /SUPPRESSMSGBOXES" -Wait
+
+      - name: Add R & RTools to Path (ARM64)
+        if: matrix.config.os == 'windows-11-arm' && steps.cache-r.outputs.cache-hit != 'true'
+        run: |
+          echo "C:/rtools45-aarch64/usr/bin;C:/rtools45-aarch64/aarch64-w64-mingw32.static.posix/bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+          echo "C:\Program Files\R-aarch64\R-4.5.0\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
+#      - name: Install dependencies & Check Package (ARM64)
+#        if: matrix.config.os == 'windows-11-arm'
+#        run: install.packages(c("tinytest", "rmarkdown", "knitr", "rcmdcheck"),
+#                              repos = c(CRAN = "https://cloud.r-project.org"))
+#        shell: Rscript {0}
+
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
