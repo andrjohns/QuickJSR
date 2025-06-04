@@ -78,19 +78,23 @@ jobs:
           Remove-Item -Path "R-4.5.0-aarch64.exe"
           Remove-Item -Path "rtools45-aarch64.exe"
 
-      - name: Install Dependencies (ARM64)
+      - name: Install pak on Windows ARM
         if: matrix.config.os == 'windows-11-arm'
         run: |
-          install.packages(c("tinytest", "knitr", "rmarkdown", "rcmdcheck"),
+          libsdir <- file.path(Sys.getenv("TMP"), "Library")
+          dir.create(libsdir, recursive = TRUE, showWarnings = FALSE)
+          cat(sprintf("R_LIB_FOR_PAK=%s\n", libsdir), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+          cat(sprintf("R_LIBS_USER=%s\n", libsdir), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+          install.packages("pak", lib = libsdir,
                            repos = c("https://r-lib.r-universe.dev", "https://cloud.r-project.org"),
                            Ncpus = 4);
         shell: Rscript {0}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
-        if: matrix.config.os != 'windows-11-arm'
         with:
           extra-packages: any::rcmdcheck
           needs: check
+          pak-version: ${{ matrix.config.os == 'windows-11-arm' && 'none' || 'stable' }}
 
       - uses: r-lib/actions/check-r-package@v2
         with:
