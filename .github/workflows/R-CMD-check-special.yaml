@@ -37,10 +37,26 @@ jobs:
           - { label: "clang20",
               name: "clang20",
               container: "ghcr.io/r-hub/containers/clang20:latest"}
+          - { label: "rhel9",
+              name: "rhel9",
+              container: "ghcr.io/r-hub/containers/rhel9:latest" }
 
     env:
       MAKEFLAGS: -j4
     steps:
+      - uses: r-hub/actions/register-redhat@main
+        if: matrix.config.label == 'rhel9'
+        env:
+          REDHAT_ORG: ${{ secrets.REDHAT_ORG }}
+          REDHAT_KEY: ${{ secrets.REDHAT_KEY }}
+
+      - name: install git & qpdf for rhel9
+        if: matrix.config.label == 'rhel9'
+        run: |
+          subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms
+          dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y
+          yum --enablerepo=epel install -y git qpdf
+
       - uses: r-hub/actions/checkout@main
         with:
           submodules: true
