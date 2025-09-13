@@ -30,9 +30,7 @@
 #' terser(js_code, options)$code
 #' @export
 terser <- function(code, options = list()) {
-  if (!.ctx_terser$get("terserLoaded")) {
-    .ctx_terser$source(system.file("js", "terser.5.44.0.js", package = "QuickJSR"))
-    .ctx_terser$assign("terserLoaded", TRUE)
-  }
-  .ctx_terser$call("terser.minify_sync", code, options)
+  ctx_terser <- JSContext$new()
+  ctx_terser$source(system.file("js", "terser.5.44.0.js", package = "QuickJSR"))
+  ctx_terser$call("terser.minify_sync", code, options)
 }

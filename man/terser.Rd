@@ -10,7 +10,7 @@ terser(code, options = list())
 \item{code}{A character string containing the JavaScript code to be minified.}
 
 \item{options}{A list of options to pass to Terser for minification.
-See the \href{https://terser.org/docs/api-reference#minify-options}{Terser documentation}
+See the \href{https://terser.org/docs/api-reference/#minify-options}{Terser documentation}
 for an up-to-date list of options and default values.}
 }
 \value{
