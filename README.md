@@ -8,7 +8,10 @@
 [![R-CMD-check](https://github.com/andrjohns/QuickJSR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/andrjohns/QuickJSR/actions/workflows/R-CMD-check.yaml)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/QuickJSR)](https://CRAN.R-project.org/package=QuickJSR)
-[![Downloads](https://cranlogs.r-pkg.org/badges/QuickJSR?color=blue)](https://CRAN.R-project.org/package=QuickJSR)
+[![Monthly
+Downloads](https://cranlogs.r-pkg.org/badges/QuickJSR?color=blue)](https://CRAN.R-project.org/package=QuickJSR)
+[![Total
+Downloads](https://cranlogs.r-pkg.org/badges/grand-total/QuickJSR)](https://cranlogs.r-pkg.org/badges/grand-total/QuickJSR)
 [![QuickJSR status
 badge](https://andrjohns.r-universe.dev/badges/QuickJSR)](https://andrjohns.r-universe.dev/QuickJSR)
 <!-- badges: end -->
@@ -48,11 +51,8 @@ library(QuickJSR)
 
 qjs_eval("1 + 1")
 #> [1] 2
-```
-
-``` r
 qjs_eval("Math.random()")
-#> [1] 0.5193045
+#> [1] 0.2441212
 ```
 
 For more complex interactions, you can create a QuickJS context and
@@ -80,9 +80,6 @@ arguments:
 ``` r
 ctx$call("add", 1, 2)
 #> [1] 3
-```
-
-``` r
 ctx$call("subtract", 5, 3)
 #> [1] 2
 ```
@@ -100,9 +97,6 @@ JavaScript arguments:
 ctx$source(code = "function callRFunction(f, x, y) { return f(x, y); }")
 ctx$call("callRFunction", function(x, y) x + y, 1, 2)
 #> [1] 3
-```
-
-``` r
 ctx$call("callRFunction", function(x, y) paste0(x, ",", y), "a", "b")
 #> [1] "a,b"
 ```
@@ -118,16 +112,10 @@ env$y <- 2
 ctx$source(code = "function accessEnv(env) { return env.x + env.y; }")
 ctx$call("accessEnv", env)
 #> [1] 3
-```
-
-``` r
 
 ctx$source(code = "function updateEnv(env) { env.z = env.x * env.y; return env.z;}")
 ctx$call("updateEnv", env)
 #> [1] 2
-```
-
-``` r
 
 env$z
 #> [1] 2
@@ -138,5 +126,5 @@ objects and functions from various R packages:
 
 ``` r
 qjs_eval('R.package("base")["Sys.Date"]()')
-#> [1] "2024-06-07 03:00:00 EEST"
+#> [1] "2025-09-17 08:00:00 AWST"
 ```
