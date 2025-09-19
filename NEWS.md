@@ -1,3 +1,6 @@
+# QuickJSR 1.8.1
+  * Fix issue where `stack_size` option was ignored in `JSContext$new()`
+
 # QuickJSR 1.8.0
   * Update bundled QuickJS-NG engine to v0.10.1 (see https://github.com/quickjs-ng/quickjs/releases for release notes)
 

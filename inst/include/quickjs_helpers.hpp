@@ -107,9 +107,8 @@ namespace quickjsr {
         return NULL;
     }
 
-    // Workaround for RStan stack overflow until they update
     if (stack_size != -1) {
-      JS_SetMaxStackSize(rt, 0);
+      JS_SetMaxStackSize(rt, stack_size);
     }
     js_std_set_worker_new_context_func(JS_NewCustomContext);
     js_std_init_handlers(rt);

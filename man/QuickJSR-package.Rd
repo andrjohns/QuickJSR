@@ -12,7 +12,7 @@ An interface to the QuickJS lightweight Javascript engine
 Useful links:
 \itemize{
   \item \url{https://github.com/andrjohns/QuickJSR}
-  \item \url{https://bellard.org/quickjs/}
+  \item \url{https://github.com/quickjs-ng/quickjs}
   \item Report bugs at \url{https://github.com/andrjohns/QuickJSR/issues}
 }
 
