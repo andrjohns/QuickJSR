@@ -3,6 +3,7 @@
 #include <quickjs-libc.h>
 #include <quickjs_helpers.hpp>
 #include <quickjsr.hpp>
+#include <quickjsr/JSValue_to_SEXP_2.hpp>
 
 using quickjsr::JS_RtCtxContainer;
 using quickjsr::JS_ValContainer;
@@ -107,7 +108,7 @@ extern "C" {
 
     const char* json = to_cstring(json_);
     JS_ValContainer result(rt_ctx, JS_ParseJSON(rt_ctx, json, strlen(json), "<input>"));
-    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result));
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP_2(rt_ctx, result));
     END_CPP11
   }
 
