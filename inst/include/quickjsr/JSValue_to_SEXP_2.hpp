@@ -3,8 +3,6 @@
 
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
-#include <quickjsr/JSValue_to_Cpp.hpp>
-#include <iostream>
 
 namespace quickjsr {
 
@@ -19,8 +17,6 @@ namespace quickjsr {
     Mixed,
     Error
   };
-
-
 
   BaseType value_to_base_type(const JSValue& value) {
     if (JS_IsException(value)) {
@@ -79,7 +75,9 @@ SEXP JSValue_to_SEXP_2(JSContext* ctx, const JSValue& val) {
   switch (value_to_base_type(val)) {
     case Error: {
       JSValue exc = JS_GetException(ctx);
-      std::string msg = JSValue_to_Cpp<std::string>(ctx, exc);
+      const char* res_str = JS_ToCString(ctx, val);
+      std::string msg = res_str;
+      JS_FreeCString(ctx, res_str);
       JS_FreeValue(ctx, exc);
       cpp11::stop("JavaScript Exception: " + msg);
     }
@@ -87,13 +85,16 @@ SEXP JSValue_to_SEXP_2(JSContext* ctx, const JSValue& val) {
       return R_NilValue;
     }
     case Boolean: {
-      return cpp11::as_sexp(JSValue_to_Cpp<bool>(ctx, val));
+      return cpp11::as_sexp(static_cast<bool>(JS_ToBool(ctx, val)));
     }
     case Number: {
-      return cpp11::as_sexp(JSValue_to_Cpp<double>(ctx, val));
+      double res;
+      JS_ToFloat64(ctx, &res, val);
+      return cpp11::as_sexp(res);
     }
     case String: {
-      return cpp11::as_sexp(JSValue_to_Cpp<std::string>(ctx, val));
+      const char* res = JS_ToCString(ctx, val);
+      return cpp11::as_sexp(res);
     }
     case DateNew: {
       double time_ms;
@@ -134,7 +135,9 @@ SEXP JSValue_to_SEXP_2(JSContext* ctx, const JSValue& val) {
           if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
             out[i] = NA_REAL;
           } else {
-            out[i] = JSValue_to_Cpp<double>(ctx, base_val);
+            double res;
+            JS_ToFloat64(ctx, &res, base_val);
+            out[i] = res;
           }
           JS_FreeValue(ctx, base_val);
         }
@@ -146,7 +149,9 @@ SEXP JSValue_to_SEXP_2(JSContext* ctx, const JSValue& val) {
           if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
             out[i] = NA_STRING;
           } else {
-            out[i] = JSValue_to_Cpp<std::string>(ctx, base_val);
+            const char* res = JS_ToCString(ctx, base_val);
+            out[i] = res;
+            JS_FreeCString(ctx, res);
           }
           JS_FreeValue(ctx, base_val);
         }
@@ -158,7 +163,7 @@ SEXP JSValue_to_SEXP_2(JSContext* ctx, const JSValue& val) {
           if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
             out[i] = NA_LOGICAL;
           } else {
-            out[i] = JSValue_to_Cpp<bool>(ctx, base_val);
+            out[i] = static_cast<bool>(JS_ToBool(ctx, base_val));
           }
           JS_FreeValue(ctx, base_val);
         }
