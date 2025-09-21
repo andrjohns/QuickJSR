@@ -61,7 +61,7 @@ extern "C" {
       JS_FreeValue(rt_ctx, arg);
     }
 
-    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result_js));
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP_2(rt_ctx, result_js));
     END_CPP11
   }
 
@@ -90,7 +90,7 @@ extern "C" {
     const char* eval_string = to_cstring(eval_string_);
     RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
     JS_ValContainer val(rt_ctx, JS_Eval(rt_ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL));
-    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, val));
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP_2(rt_ctx, val));
     END_CPP11
   }
 
