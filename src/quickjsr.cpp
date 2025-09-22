@@ -3,7 +3,6 @@
 #include <quickjs-libc.h>
 #include <quickjs_helpers.hpp>
 #include <quickjsr.hpp>
-#include <quickjsr/JSValue_to_SEXP_2.hpp>
 
 using quickjsr::JS_RtCtxContainer;
 using quickjsr::JS_ValContainer;
@@ -61,7 +60,7 @@ extern "C" {
       JS_FreeValue(rt_ctx, arg);
     }
 
-    return cpp11::sexp(quickjsr::JSValue_to_SEXP_2(rt_ctx, result_js));
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result_js));
     END_CPP11
   }
 
@@ -70,7 +69,7 @@ extern "C" {
     RtCtxXPtr rt_ctx(ctx_ptr_);
     JS_ValContainer global(rt_ctx, JS_GetGlobalObject(rt_ctx));
     JS_ValContainer result(rt_ctx, quickjsr::JS_GetPropertyRecursive(rt_ctx, global, to_cstring(js_obj_name)));
-    return cpp11::sexp(quickjsr::JSValue_to_SEXP_2(rt_ctx, result));
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result));
     END_CPP11
   }
 
@@ -90,7 +89,7 @@ extern "C" {
     const char* eval_string = to_cstring(eval_string_);
     RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
     JS_ValContainer val(rt_ctx, JS_Eval(rt_ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL));
-    return cpp11::sexp(quickjsr::JSValue_to_SEXP_2(rt_ctx, val));
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, val));
     END_CPP11
   }
 
@@ -98,7 +97,12 @@ extern "C" {
     BEGIN_CPP11
     RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
     JS_ValContainer arg(rt_ctx, quickjsr::SEXP_to_JSValue(rt_ctx, arg_, LOGICAL_ELT(auto_unbox_, 0)));
-    return cpp11::sexp(cpp11::as_sexp(quickjsr::JSValue_to_JSON(rt_ctx, arg)));
+    JSValue result_js = JS_JSONStringify(rt_ctx, arg, JS_UNDEFINED, JS_UNDEFINED);
+    const char* res_str = JS_ToCString(rt_ctx, result_js);
+    std::string json = res_str ? res_str : "";
+    JS_FreeCString(rt_ctx, res_str);
+    JS_FreeValue(rt_ctx, result_js);
+    return cpp11::as_sexp(json);
     END_CPP11
   }
 
@@ -108,7 +112,7 @@ extern "C" {
 
     const char* json = to_cstring(json_);
     JS_ValContainer result(rt_ctx, JS_ParseJSON(rt_ctx, json, strlen(json), "<input>"));
-    return cpp11::sexp(quickjsr::JSValue_to_SEXP_2(rt_ctx, result));
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result));
     END_CPP11
   }
 
