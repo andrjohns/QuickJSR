@@ -96,13 +96,14 @@ extern "C" {
   SEXP to_json_(SEXP arg_, SEXP auto_unbox_) {
     BEGIN_CPP11
     RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
-    JS_ValContainer arg(rt_ctx, quickjsr::SEXP_to_JSValue(rt_ctx, arg_, LOGICAL_ELT(auto_unbox_, 0)));
+    JSValue arg = quickjsr::SEXP_to_JSValue(rt_ctx, arg_, LOGICAL_ELT(auto_unbox_, 0));
     JSValue result_js = JS_JSONStringify(rt_ctx, arg, JS_UNDEFINED, JS_UNDEFINED);
     const char* res_str = JS_ToCString(rt_ctx, result_js);
     std::string json = res_str ? res_str : "";
     JS_FreeCString(rt_ctx, res_str);
     JS_FreeValue(rt_ctx, result_js);
-    return cpp11::as_sexp(json);
+    JS_FreeValue(rt_ctx, arg);
+    return cpp11::sexp(cpp11::as_sexp(json));
     END_CPP11
   }
 
