@@ -70,7 +70,7 @@ extern "C" {
     RtCtxXPtr rt_ctx(ctx_ptr_);
     JS_ValContainer global(rt_ctx, JS_GetGlobalObject(rt_ctx));
     JS_ValContainer result(rt_ctx, quickjsr::JS_GetPropertyRecursive(rt_ctx, global, to_cstring(js_obj_name)));
-    return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result));
+    return cpp11::sexp(quickjsr::JSValue_to_SEXP_2(rt_ctx, result));
     END_CPP11
   }
 
