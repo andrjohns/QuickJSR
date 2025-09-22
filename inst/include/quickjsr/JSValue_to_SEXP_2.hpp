@@ -286,7 +286,10 @@ SEXP JSValue_to_SEXP_2(JSContext* ctx, const JSValue& val) {
       return cpp11::as_sexp(JS_VALUE_GET_FLOAT64(val));
     }
     case JS_TAG_STRING: {
-      return cpp11::as_sexp(JS_ToCString(ctx, val));
+      const char* res = JS_ToCString(ctx, val);
+      std::string res_str = res ? res : "";
+      JS_FreeCString(ctx, res);
+      return cpp11::as_sexp(res_str);
     }
     case JS_TAG_OBJECT: {
       if (JS_IsDate(val)) {
