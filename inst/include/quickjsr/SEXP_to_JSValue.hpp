@@ -2,7 +2,6 @@
 #define QUICKJSR_SEXP_TO_JSVALUE_HPP
 
 #include <quickjsr/utilities.hpp>
-#include <quickjsr/JSValue_Date.hpp>
 #include <quickjsr/JSValue_to_SEXP.hpp>
 #include <quickjsr/JS_SEXP.hpp>
 #include <cpp11.hpp>
