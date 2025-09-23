@@ -1,7 +1,6 @@
 #ifndef QUICKJSR_SEXP_TO_JSVALUE_HPP
 #define QUICKJSR_SEXP_TO_JSVALUE_HPP
 
-#include <quickjsr/utilities.hpp>
 #include <quickjsr/JSValue_to_SEXP.hpp>
 #include <quickjsr/JS_SEXP.hpp>
 #include <cpp11.hpp>
@@ -31,7 +30,7 @@ namespace quickjsr {
     SEXP names = Rf_getAttrib(x, R_NamesSymbol);
     for (int64_t i = 0; i < Rf_xlength(x); i++) {
       JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
-      JS_SetPropertyStr(ctx, obj, to_cstring(names, i), val);
+      JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(names, i)), val);
     }
     return obj;
   }
@@ -61,18 +60,18 @@ namespace quickjsr {
           SEXP df_names = Rf_getAttrib(col, R_NamesSymbol);
           for (int64_t k = 0; k < Rf_xlength(col); k++) {
             JSValue val = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i);
-            JS_SetPropertyStr(ctx, df_obj, to_cstring(df_names, k), val);
+            JS_SetPropertyStr(ctx, df_obj, Rf_translateCharUTF8(STRING_ELT(df_names, k)), val);
           }
-          JS_SetPropertyStr(ctx, obj, to_cstring(col_names, j), df_obj);
+          JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), df_obj);
         } else {
           JSValue val = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i);
-          JS_SetPropertyStr(ctx, obj, to_cstring(col_names, j), val);
+          JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), val);
         }
       }
 
       // If row names are present and a character vector, add them to the object
       if (Rf_isString(row_names)) {
-        JSValue row_name = JS_NewString(ctx, to_cstring(row_names, i));
+        JSValue row_name = JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(row_names, i)));
         JS_SetPropertyStr(ctx, obj, "_row", row_name);
       }
 
@@ -150,7 +149,7 @@ namespace quickjsr {
           return JS_NULL;
         } else if (Rf_inherits(x, "factor")) {
           SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
-          return JS_NewString(ctx, to_cstring(levels, INTEGER_ELT(x, index) - 1));
+          return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, INTEGER_ELT(x, index) - 1)));
         } else {
           return JS_NewInt32(ctx, INTEGER_ELT(x, index));
         }
@@ -182,7 +181,7 @@ namespace quickjsr {
         if (STRING_ELT(x, index) == NA_STRING) {
           return JS_NULL;
         }
-        return JS_NewString(ctx, to_cstring(x, index));
+        return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(x, index)));
       }
       case VECSXP:
         return SEXP_to_JSValue(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);

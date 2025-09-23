@@ -7,7 +7,6 @@
 using quickjsr::JS_RtCtxContainer;
 using quickjsr::JS_ValContainer;
 using quickjsr::RtCtxXPtr;
-using quickjsr::to_cstring;
 
 extern "C" {
   SEXP qjs_context_(SEXP stack_size_) {
@@ -23,7 +22,7 @@ extern "C" {
     BEGIN_CPP11
     RtCtxXPtr rt_ctx(ctx_ptr_);
     int ret;
-    const char* input = to_cstring(input_);
+    const char* input = Rf_translateCharUTF8(STRING_ELT(input_, 0));
     if (LOGICAL_ELT(is_file_, 0)) {
       ret = quickjsr::eval_file(rt_ctx, input, -1);
     } else {
@@ -36,7 +35,7 @@ extern "C" {
   SEXP qjs_validate_(SEXP ctx_ptr_, SEXP code_string_) {
     BEGIN_CPP11
     RtCtxXPtr rt_ctx(ctx_ptr_);
-    const char* code_string = to_cstring(code_string_);
+    const char* code_string = Rf_translateCharUTF8(STRING_ELT(code_string_, 0));
     JS_ValContainer val(rt_ctx, JS_Eval(rt_ctx, code_string, strlen(code_string), "", JS_EVAL_FLAG_COMPILE_ONLY));
     return cpp11::sexp(cpp11::as_sexp(!JS_IsException(val)));
     END_CPP11
@@ -53,7 +52,7 @@ extern "C" {
     }
 
     JS_ValContainer global(rt_ctx, JS_GetGlobalObject(rt_ctx));
-    JS_ValContainer fun(rt_ctx, quickjsr::JS_GetPropertyRecursive(rt_ctx, global, to_cstring(fun_name_)));
+    JS_ValContainer fun(rt_ctx, quickjsr::JS_GetPropertyRecursive(rt_ctx, global, Rf_translateCharUTF8(STRING_ELT(fun_name_, 0))));
     JS_ValContainer result_js(rt_ctx, JS_Call(rt_ctx, fun, global, args.size(), args.data()));
 
     for (auto&& arg : args) {
@@ -68,7 +67,7 @@ extern "C" {
     BEGIN_CPP11
     RtCtxXPtr rt_ctx(ctx_ptr_);
     JS_ValContainer global(rt_ctx, JS_GetGlobalObject(rt_ctx));
-    JS_ValContainer result(rt_ctx, quickjsr::JS_GetPropertyRecursive(rt_ctx, global, to_cstring(js_obj_name)));
+    JS_ValContainer result(rt_ctx, quickjsr::JS_GetPropertyRecursive(rt_ctx, global, Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0))));
     return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result));
     END_CPP11
   }
@@ -78,7 +77,7 @@ extern "C" {
     RtCtxXPtr rt_ctx(ctx_ptr_);
     JS_ValContainer global(rt_ctx, JS_GetGlobalObject(rt_ctx));
     JS_ValContainer value(rt_ctx, quickjsr::SEXP_to_JSValue(rt_ctx, value_, true));
-    int result = quickjsr::JS_SetPropertyRecursive(rt_ctx, global, to_cstring(js_obj_name_), value);
+    int result = quickjsr::JS_SetPropertyRecursive(rt_ctx, global, Rf_translateCharUTF8(STRING_ELT(js_obj_name_, 0)), value);
 
     return cpp11::sexp(cpp11::as_sexp(result));
     END_CPP11
@@ -86,7 +85,7 @@ extern "C" {
 
   SEXP qjs_eval_(SEXP eval_string_) {
     BEGIN_CPP11
-    const char* eval_string = to_cstring(eval_string_);
+    const char* eval_string = Rf_translateCharUTF8(STRING_ELT(eval_string_, 0));
     RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
     JS_ValContainer val(rt_ctx, JS_Eval(rt_ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL));
     return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, val));
@@ -111,7 +110,7 @@ extern "C" {
     BEGIN_CPP11
     RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
 
-    const char* json = to_cstring(json_);
+    const char* json = Rf_translateCharUTF8(STRING_ELT(json_, 0));
     JS_ValContainer result(rt_ctx, JS_ParseJSON(rt_ctx, json, strlen(json), "<input>"));
     return cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result));
     END_CPP11
