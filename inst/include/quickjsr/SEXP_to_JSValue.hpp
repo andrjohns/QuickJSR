@@ -50,6 +50,8 @@ namespace quickjsr {
   inline JSValue SEXP_to_JSValue_df(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
     SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
     SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
+    PROTECT(col_names);
+    PROTECT(row_names);
     JSValue arr = JS_NewArray(ctx);
 
     for (int64_t i = 0; i < Rf_xlength(VECTOR_ELT(x, 0)); i++) {
@@ -60,10 +62,12 @@ namespace quickjsr {
         if (Rf_isDataFrame(col)) {
           JSValue df_obj = JS_NewObject(ctx);
           SEXP df_names = Rf_getAttrib(col, R_NamesSymbol);
+          PROTECT(df_names);
           for (int64_t k = 0; k < Rf_xlength(col); k++) {
             JSValue val = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i);
             JS_SetPropertyStr(ctx, df_obj, Rf_translateCharUTF8(STRING_ELT(df_names, k)), val);
           }
+          UNPROTECT(1);
           JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), df_obj);
         } else {
           JSValue val = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i);
@@ -79,6 +83,8 @@ namespace quickjsr {
 
       JS_SetPropertyInt64(ctx, arr, i, obj);
     }
+
+    UNPROTECT(2);
 
     return arr;
   }

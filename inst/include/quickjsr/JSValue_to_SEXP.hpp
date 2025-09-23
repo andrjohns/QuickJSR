@@ -4,7 +4,7 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 
-namespace quickjsr {    
+namespace quickjsr {
   enum BaseType {
     Number,
     String,
@@ -99,131 +99,131 @@ namespace quickjsr {
   }
 
   SEXP array_sexp(JSContext* ctx, const JSValue& val) {
-      // Handle as array
-      int64_t len;
-      JS_GetLength(ctx, val, &len);
+    // Handle as array
+    int64_t len;
+    JS_GetLength(ctx, val, &len);
 
-      JSValue base_val = JS_GetPropertyInt64(ctx, val, 0);
-      BaseType prev_type = value_to_base_type(base_val);
+    JSValue base_val = JS_GetPropertyInt64(ctx, val, 0);
+    BaseType prev_type = value_to_base_type(base_val);
+    JS_FreeValue(ctx, base_val);
+
+    for (int64_t i = 1; i < len; i++) {
+      base_val = JS_GetPropertyInt64(ctx, val, i);
+      BaseType curr_type = value_to_base_type(base_val);
       JS_FreeValue(ctx, base_val);
-
-      for (int64_t i = 1; i < len; i++) {
-        base_val = JS_GetPropertyInt64(ctx, val, i);
-        BaseType curr_type = value_to_base_type(base_val);
-        JS_FreeValue(ctx, base_val);
-        prev_type = combine_array_types(prev_type, curr_type);
-        if (prev_type == Mixed) {
-          // No need to continue checking types, we know it's mixed
-          break;
-        }
-      }
-
-      if (prev_type == Number) {
-        cpp11::writable::doubles out(len);
-        for (int64_t i = 0; i < len; i++) {
-          base_val = JS_GetPropertyInt64(ctx, val, i);
-          if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
-            out[static_cast<R_xlen_t>(i)] = NA_REAL;
-          } else {
-            double res;
-            JS_ToFloat64(ctx, &res, base_val);
-            out[static_cast<R_xlen_t>(i)] = res;
-          }
-          JS_FreeValue(ctx, base_val);
-        }
-        return out;
-      } else if (prev_type == String) {
-        cpp11::writable::strings out(len);
-        for (int64_t i = 0; i < len; i++) {
-          base_val = JS_GetPropertyInt64(ctx, val, i);
-          if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
-            out[static_cast<R_xlen_t>(i)] = NA_STRING;
-          } else if (JS_IsBool(base_val)) {
-            out[static_cast<R_xlen_t>(i)] = JS_ToBool(ctx, base_val) ? "TRUE" : "FALSE";
-          } else if (JS_VALUE_GET_TAG(base_val) == JS_TAG_INT) {
-            int32_t res = JS_VALUE_GET_INT(base_val);
-            out[static_cast<R_xlen_t>(i)] = std::to_string(res);
-          } else if (JS_VALUE_GET_TAG(base_val) == JS_TAG_BIG_INT) {
-            int64_t res;
-            JS_ToBigInt64(ctx, &res, base_val);
-            out[static_cast<R_xlen_t>(i)] = std::to_string(res);
-          } else if (JS_VALUE_GET_TAG(base_val) == JS_TAG_SHORT_BIG_INT) {
-            int64_t res = JS_VALUE_GET_SHORT_BIG_INT(base_val);
-            out[static_cast<R_xlen_t>(i)] = std::to_string(res);
-          } else if (JS_TAG_IS_FLOAT64(JS_VALUE_GET_TAG(base_val))) {
-            double res;
-            JS_ToFloat64(ctx, &res, base_val);
-            std::string str_res;
-            if (std::isnan(res)) {
-              str_res = "NaN";
-            } else if (std::isinf(res)) {
-              str_res = (res > 0) ? "Inf" : "-Inf";
-            } else {
-              str_res = std::to_string(res);
-              // Remove trailing zeros
-              str_res.erase(str_res.find_last_not_of('0') + 1, std::string::npos);
-              // If the last character is a decimal point, remove it
-              if (str_res.back() == '.') {
-                str_res.pop_back();
-              }
-            }
-            out[static_cast<R_xlen_t>(i)] = str_res;
-          } else {
-            const char* res = JS_ToCString(ctx, base_val);
-            out[static_cast<R_xlen_t>(i)] = res;
-            JS_FreeCString(ctx, res);
-          }
-          JS_FreeValue(ctx, base_val);
-        }
-        return out;
-      } else if (prev_type == Boolean || prev_type == Null) {
-        cpp11::writable::logicals out(len);
-        for (int64_t i = 0; i < len; i++) {
-          base_val = JS_GetPropertyInt64(ctx, val, i);
-          if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
-            out[static_cast<R_xlen_t>(i)] = NA_LOGICAL;
-          } else {
-            out[static_cast<R_xlen_t>(i)] = static_cast<bool>(JS_ToBool(ctx, base_val));
-          }
-          JS_FreeValue(ctx, base_val);
-        }
-        return out;
-      } else {
-        // Mixed types, return as list
-        cpp11::writable::list out(len);
-        bool all_double = true;
-        bool all_same_size = true;
-        int64_t first_size = -1;
-        for (int64_t i = 0; i < len; i++) {
-          JSValue elem = JS_GetPropertyInt64(ctx, val, i);
-          SEXP elem_sexp = JSValue_to_SEXP(ctx, elem);
-          if (all_double && all_same_size) {
-            if (TYPEOF(elem_sexp) != REALSXP) {
-              all_double = false;
-            }
-            R_xlen_t elem_size = Rf_xlength(elem_sexp);
-            if (first_size == -1) {
-              first_size = elem_size;
-            } else if (elem_size != first_size) {
-              all_same_size = false;
-            }
-          }
-
-          out[static_cast<R_xlen_t>(i)] = elem_sexp;
-          JS_FreeValue(ctx, elem);
-        }
-
-        if (all_double && all_same_size) {
-          cpp11::function unlist = cpp11::package("base")["unlist"];
-          cpp11::function matrix = cpp11::package("base")["matrix"];
-          return matrix(unlist(out), len, first_size, true);
-        } else {
-          return out;
-        }
+      prev_type = combine_array_types(prev_type, curr_type);
+      if (prev_type == Mixed) {
+        // No need to continue checking types, we know it's mixed
+        break;
       }
     }
-  
-    SEXP object_sexp(JSContext* ctx, const JSValue& val) {
+
+    if (prev_type == Number) {
+      cpp11::writable::doubles out(len);
+      for (int64_t i = 0; i < len; i++) {
+        base_val = JS_GetPropertyInt64(ctx, val, i);
+        if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
+          out[static_cast<R_xlen_t>(i)] = NA_REAL;
+        } else {
+          double res;
+          JS_ToFloat64(ctx, &res, base_val);
+          out[static_cast<R_xlen_t>(i)] = res;
+        }
+        JS_FreeValue(ctx, base_val);
+      }
+      return out;
+    } else if (prev_type == String) {
+      cpp11::writable::strings out(len);
+      for (int64_t i = 0; i < len; i++) {
+        base_val = JS_GetPropertyInt64(ctx, val, i);
+        if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
+          out[static_cast<R_xlen_t>(i)] = NA_STRING;
+        } else if (JS_IsBool(base_val)) {
+          out[static_cast<R_xlen_t>(i)] = JS_ToBool(ctx, base_val) ? "TRUE" : "FALSE";
+        } else if (JS_VALUE_GET_TAG(base_val) == JS_TAG_INT) {
+          int32_t res = JS_VALUE_GET_INT(base_val);
+          out[static_cast<R_xlen_t>(i)] = std::to_string(res);
+        } else if (JS_VALUE_GET_TAG(base_val) == JS_TAG_BIG_INT) {
+          int64_t res;
+          JS_ToBigInt64(ctx, &res, base_val);
+          out[static_cast<R_xlen_t>(i)] = std::to_string(res);
+        } else if (JS_VALUE_GET_TAG(base_val) == JS_TAG_SHORT_BIG_INT) {
+          int64_t res = JS_VALUE_GET_SHORT_BIG_INT(base_val);
+          out[static_cast<R_xlen_t>(i)] = std::to_string(res);
+        } else if (JS_TAG_IS_FLOAT64(JS_VALUE_GET_TAG(base_val))) {
+          double res;
+          JS_ToFloat64(ctx, &res, base_val);
+          std::string str_res;
+          if (std::isnan(res)) {
+            str_res = "NaN";
+          } else if (std::isinf(res)) {
+            str_res = (res > 0) ? "Inf" : "-Inf";
+          } else {
+            str_res = std::to_string(res);
+            // Remove trailing zeros
+            str_res.erase(str_res.find_last_not_of('0') + 1, std::string::npos);
+            // If the last character is a decimal point, remove it
+            if (str_res.back() == '.') {
+              str_res.pop_back();
+            }
+          }
+          out[static_cast<R_xlen_t>(i)] = str_res;
+        } else {
+          const char* res = JS_ToCString(ctx, base_val);
+          out[static_cast<R_xlen_t>(i)] = res;
+          JS_FreeCString(ctx, res);
+        }
+        JS_FreeValue(ctx, base_val);
+      }
+      return out;
+    } else if (prev_type == Boolean || prev_type == Null) {
+      cpp11::writable::logicals out(len);
+      for (int64_t i = 0; i < len; i++) {
+        base_val = JS_GetPropertyInt64(ctx, val, i);
+        if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
+          out[static_cast<R_xlen_t>(i)] = NA_LOGICAL;
+        } else {
+          out[static_cast<R_xlen_t>(i)] = static_cast<bool>(JS_ToBool(ctx, base_val));
+        }
+        JS_FreeValue(ctx, base_val);
+      }
+      return out;
+    } else {
+      // Mixed types, return as list
+      cpp11::writable::list out(len);
+      bool all_double = true;
+      bool all_same_size = true;
+      int64_t first_size = -1;
+      for (int64_t i = 0; i < len; i++) {
+        JSValue elem = JS_GetPropertyInt64(ctx, val, i);
+        SEXP elem_sexp = JSValue_to_SEXP(ctx, elem);
+        if (all_double && all_same_size) {
+          if (TYPEOF(elem_sexp) != REALSXP) {
+            all_double = false;
+          }
+          R_xlen_t elem_size = Rf_xlength(elem_sexp);
+          if (first_size == -1) {
+            first_size = elem_size;
+          } else if (elem_size != first_size) {
+            all_same_size = false;
+          }
+        }
+
+        out[static_cast<R_xlen_t>(i)] = elem_sexp;
+        JS_FreeValue(ctx, elem);
+      }
+
+      if (all_double && all_same_size) {
+        cpp11::function unlist = cpp11::package("base")["unlist"];
+        cpp11::function matrix = cpp11::package("base")["matrix"];
+        return matrix(unlist(out), len, first_size, true);
+      } else {
+        return out;
+      }
+    }
+  }
+
+  SEXP object_sexp(JSContext* ctx, const JSValue& val) {
     // Handle as object
     // Get the keys of the object
     JSPropertyEnum* tab = NULL;
@@ -245,7 +245,7 @@ namespace quickjsr {
     out.attr("names") = keys;
     return out;
   }
-    
+
 SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
   switch (JS_VALUE_GET_TAG(val)) {
     case JS_TAG_EXCEPTION: {
