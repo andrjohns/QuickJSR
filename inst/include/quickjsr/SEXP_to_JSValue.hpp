@@ -159,13 +159,22 @@ namespace quickjsr {
       case REALSXP: {
         if (ISNA(REAL_ELT(x, index))) {
           return JS_NULL;
-        } else if (Rf_inherits(x, "POSIXct")) {
-          static constexpr double milliseconds_second = 1000;
-          double tz_offset_seconds = get_tz_offset_seconds();
-          return JS_NewDate(ctx, (REAL_ELT(x, index) + tz_offset_seconds) * milliseconds_second);
-        } else if (Rf_inherits(x, "Date")) {
-          static constexpr double milliseconds_day = 86400000;
-          return JS_NewDate(ctx, REAL_ELT(x, index) * milliseconds_day);
+        } else if (Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt") || Rf_inherits(x, "Date")) {
+          cpp11::writable::doubles x_index(1);
+          x_index[0] = REAL_ELT(x, index);
+          // Match input classes
+          x_index.attr("class") = Rf_getAttrib(x, R_ClassSymbol);
+          cpp11::function format = cpp11::package("base")["format"];
+          std::string formatted = cpp11::as_cpp<std::string>(format(x_index, "format"_nm = "%Y-%m-%dT%H:%M:%OSZ", "tz"_nm = "UTC"));
+          // Create new Date from ISO string using JS_CallConstructor
+          JSValue global = JS_GetGlobalObject(ctx);
+          JSValue date_ctor = JS_GetPropertyStr(ctx, global, "Date");
+          JSValue iso_str = JS_NewString(ctx, formatted.c_str());
+          JSValue date_obj = JS_CallConstructor(ctx, date_ctor, 1, &iso_str);
+          JS_FreeValue(ctx, iso_str);
+          JS_FreeValue(ctx, date_ctor);
+          JS_FreeValue(ctx, global);
+          return date_obj;
         } else {
           return JS_NewFloat64(ctx, REAL_ELT(x, index));
         }
