@@ -28,10 +28,12 @@ namespace quickjsr {
   inline JSValue SEXP_to_JSValue_object(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
     JSValue obj = JS_NewObject(ctx);
     SEXP names = Rf_getAttrib(x, R_NamesSymbol);
+    PROTECT(names);
     for (int64_t i = 0; i < Rf_xlength(x); i++) {
       JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
       JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(names, i)), val);
     }
+    UNPROTECT(1);
     return obj;
   }
 
