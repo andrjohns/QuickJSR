@@ -49,8 +49,8 @@ namespace quickjsr {
 
   inline JSValue SEXP_to_JSValue_df(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
     SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
-    SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
     PROTECT(col_names);
+    SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
     PROTECT(row_names);
     JSValue arr = JS_NewArray(ctx);
 
