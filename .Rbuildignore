@@ -6,13 +6,7 @@
 ^.vscode$
 ^LICENSE\.md$
 ^cran-comments\.md$
-^src/quickjs/\.github$
-^src/quickjs/\.git$
-^src/quickjs/test262$
-^src/quickjs/docs$
-^src/quickjs/examples$
-^src/quickjs/gen$
-^src/quickjs/tests$
+^src/quickjs/(?!(cutils|xsum|libregexp|libunicode|quickjs|quickjs-libc|libregexp-opcode|libunicode-table|quickjs-atom|quickjs-c-atomics|list|quickjs-opcode|builtin-array-fromasync|dirent_compat)\.(c|h)).*
 semicolon_delimited_script
 Makefile
 ^README\.Rmd$
