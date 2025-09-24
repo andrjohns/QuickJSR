@@ -99,6 +99,7 @@ extern "C" {
     RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
     JSValue val = JS_Eval(rt_ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL);
     SEXP result = quickjsr::JSValue_to_SEXP(rt_ctx, val);
+    JS_FreeValue(rt_ctx, val);
     return cpp11::sexp(result);
     END_CPP11
   }
