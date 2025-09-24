@@ -1,4 +1,4 @@
-PKG_CPPFLAGS = -I"../inst/include/" -I"quickjs" -D_GNU_SOURCE
+PKG_CPPFLAGS = -I"include" -I"quickjs" -D_GNU_SOURCE
 PKG_LIBS = libquickjs.o
 
 ifeq ($(OS),Windows_NT)

@@ -30,24 +30,6 @@ struct RtCtxXPtr : cpp11::external_pointer<JS_RtCtxContainer> {
   }
 };
 
-struct JS_ValContainer {
-  public:
-    RtCtxXPtr rt_ctx;
-    JSValue val;
-
-    template <typename JSValT>
-    JS_ValContainer(RtCtxXPtr in_rt_ctx, JSValT&& in_val)
-      : rt_ctx(in_rt_ctx), val(std::forward<JSValT>(in_val)) {}
-
-    ~JS_ValContainer() {
-      JS_FreeValue(rt_ctx->ctx, val);
-    }
-
-    operator JSValue() const {
-      return val;
-    }
-};
-
 } // namespace quickjsr
 
 #endif
