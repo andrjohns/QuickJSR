@@ -75,7 +75,10 @@ extern "C" {
     JSValue global = JS_GetGlobalObject(rt_ctx);
     JSValue result = quickjsr::JS_GetPropertyRecursive(rt_ctx, global, Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0)));
     SEXP res_sexp = quickjsr::JSValue_to_SEXP(rt_ctx, result);
+    PROTECT(res_sexp);
     JS_FreeValue(rt_ctx, result);
+    JS_FreeValue(rt_ctx, global);
+    UNPROTECT(1);
     return cpp11::sexp(res_sexp);
     END_CPP11
   }
@@ -99,7 +102,9 @@ extern "C" {
     RtCtxXPtr rt_ctx(new JS_RtCtxContainer());
     JSValue val = JS_Eval(rt_ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL);
     SEXP result = quickjsr::JSValue_to_SEXP(rt_ctx, val);
+    PROTECT(result);
     JS_FreeValue(rt_ctx, val);
+    UNPROTECT(1);
     return cpp11::sexp(result);
     END_CPP11
   }
@@ -125,7 +130,9 @@ extern "C" {
     const char* json = Rf_translateCharUTF8(STRING_ELT(json_, 0));
     JSValue result = JS_ParseJSON(rt_ctx, json, strlen(json), "<input>");
     SEXP res_sexp = quickjsr::JSValue_to_SEXP(rt_ctx, result);
+    PROTECT(res_sexp);
     JS_FreeValue(rt_ctx, result);
+    UNPROTECT(1);
     return cpp11::sexp(res_sexp);
     END_CPP11
   }
