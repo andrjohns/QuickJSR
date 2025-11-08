@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, cross]
 
 name: R-CMD-check-crossplatform
 
@@ -8,22 +8,17 @@ jobs:
   R-CMD-check:
     runs-on: ubuntu-latest
 
-    name: Check (${{ matrix.config.platform }} ${{ matrix.config.cc }})
+    name: Check (${{ matrix.config.platform }})
 
     strategy:
       fail-fast: false
       matrix:
         config:
-          -  { platform: 386, cc: gcc-14, cxx: g++-14 }
-          -  { platform: 386, cc: clang-18, cxx: clang++-18 }
-
-          -  { platform: armel, cc: gcc-14, cxx: g++-14 }
-          -  { platform: armel, cc: clang-18, cxx: clang++-18 }
-
-          -  { platform: armhf, cc: gcc-14, cxx: g++-14 }
-          -  { platform: armhf, cc: clang-18, cxx: clang++-18 }
-
-          -  { platform: FreeBSD, cc: default, cxx: default }
+          -  { platform: 386 }
+          -  { platform: armhf }
+          -  { platform: ppc64le }
+          -  { platform: ppc64le }
+          -  { platform: FreeBSD }
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -46,19 +41,12 @@ jobs:
           options: -v ${{ github.workspace }}:/quickjsr --platform=linux/${{ matrix.config.platform }} -e DEBIAN_FRONTEND=noninteractive -e TZ=Etc/UTC -e LANG=en_AU.UTF-8
           run: |
             apt-get update
-            apt-get install --no-install-recommends -y ${{ matrix.config.cc }} g++-14 \
+            apt-get install --no-install-recommends -y g++ \
               r-base-core locales pandoc qpdf r-cran-tinytest r-cran-rmarkdown \
               r-cran-knitr r-cran-rcmdcheck make
             echo "en_AU.UTF-8 UTF-8" >> /etc/locale.gen
             locale-gen en_AU.UTF-8
-            echo "CC=${{ matrix.config.cc }}" >> /etc/R/Makeconf
-            echo "CXX=${{ matrix.config.cxx }}" >> /etc/R/Makeconf
-            # PPC64LE pandoc does not support lua filters (breaking vignettes)
-            if [ "${{ matrix.config.platform }}" = "ppc64le" ]; then
-              Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran", "--no-vignettes"), build_args = "--no-build-vignettes", check_dir = "/quickjsr/check")'
-            else
-              Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran"), check_dir = "/quickjsr/check")'
-            fi
+            Rscript -e 'rcmdcheck::rcmdcheck("/quickjsr", args = c("--no-manual", "--as-cran"), check_dir = "/quickjsr/check")'
 
       - name: Test in FreeBSD
         if: matrix.config.platform == 'FreeBSD'
@@ -73,5 +61,5 @@ jobs:
       - name: Upload check results
         uses: actions/upload-artifact@v4
         with:
-          name: arch-${{ matrix.config.platform }}-${{ matrix.config.cc }}-results
+          name: arch-${{ matrix.config.platform }}-results
           path: check
