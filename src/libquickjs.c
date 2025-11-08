@@ -1,5 +1,5 @@
 #include "quickjs/cutils.c"
-#include "quickjs/xsum.c"
+#include "quickjs/dtoa.c"
 #include "quickjs/libregexp.c"
 #include "quickjs/libunicode.c"
 #include "quickjs/quickjs.c"
