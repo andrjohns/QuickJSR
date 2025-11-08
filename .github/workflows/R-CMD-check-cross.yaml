@@ -17,7 +17,7 @@ jobs:
           -  { platform: 386 }
           -  { platform: armhf }
           -  { platform: ppc64le }
-          -  { platform: ppc64le }
+          -  { platform: s390x }
           -  { platform: FreeBSD }
 
     env:
