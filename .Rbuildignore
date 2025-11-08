@@ -6,7 +6,7 @@
 ^.vscode$
 ^LICENSE\.md$
 ^cran-comments\.md$
-^src/quickjs/(?!(cutils|xsum|libregexp|libunicode|quickjs|quickjs-libc|libregexp-opcode|libunicode-table|quickjs-atom|quickjs-c-atomics|list|quickjs-opcode|builtin-array-fromasync|dirent_compat)\.(c|h)).*
+^src/quickjs/(?!(cutils|xsum|libregexp|libunicode|quickjs|quickjs-libc|libregexp-opcode|libunicode-table|quickjs-atom|quickjs-c-atomics|list|quickjs-opcode|builtin-array-fromasync|dirent_compat|dtoa)\.(c|h)).*
 semicolon_delimited_script
 Makefile
 ^README\.Rmd$
