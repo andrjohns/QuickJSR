@@ -237,6 +237,116 @@ namespace quickjsr {
     }
     return SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox_curr, 0);
   }
+
+  JSValue SEXP_to_JSValue_new(JSContext* ctx, SEXP x, bool auto_unbox) {
+    const int64_t len = Rf_xlength(x);
+    if (len == 0) {
+      return JS_NewArray(ctx);
+    }
+    switch (TYPEOF(x)) {
+      case NILSXP: {
+        if (auto_unbox) {
+          return JS_NULL;
+        } else {
+          JSValue arr = JS_NewArray(ctx);
+          JS_SetPropertyInt64(ctx, arr, 0, JS_NULL);
+          return arr;
+        }
+      }
+      case LGLSXP: {
+        std::vector<JSValue> values;
+        values.reserve(len);
+        for (int64_t i = 0; i < len; i++) {
+          if (LOGICAL_ELT(x, i) != NA_LOGICAL) {
+            values.push_back(JS_NewBool(ctx, LOGICAL_ELT(x, i)));
+          }
+        }
+        if (len == 1 && auto_unbox) {
+          return values[0];
+        } else {
+          return JS_NewArrayFrom(ctx, values.size(), values.data());
+        }
+      }
+      case INTSXP: {
+        std::vector<JSValue> values;
+        values.reserve(len);
+        for (int64_t i = 0; i < len; i++) {
+          if (INTEGER_ELT(x, i) != NA_INTEGER) {
+            if (Rf_inherits(x, "factor")) {
+              SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
+              values.push_back(JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, INTEGER_ELT(x, i) - 1))));
+            } else {
+              values.push_back(JS_NewInt32(ctx, INTEGER_ELT(x, i)));
+            }
+          }
+        }
+        if (len == 1 && auto_unbox) {
+          return values[0];
+        } else {
+          return JS_NewArrayFrom(ctx, values.size(), values.data());
+        }
+      }
+      case REALSXP: {
+        std::vector<JSValue> values;
+        values.reserve(len);
+        for (int64_t i = 0; i < len; i++) {
+          if (REAL_ELT(x, i) != NA_REAL) {
+            values.push_back(JS_NewFloat64(ctx, REAL_ELT(x, i)));
+          }
+        }
+        if (len == 1 && auto_unbox) {
+          return values[0];
+        } else {
+          return JS_NewArrayFrom(ctx, values.size(), values.data());
+        }
+      }
+      case STRSXP: {
+        std::vector<JSValue> values;
+        values.reserve(len);
+        for (int64_t i = 0; i < len; i++) {
+          if (STRING_ELT(x, i) != NA_STRING) {
+            values.push_back(JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(x, i))));
+          }
+        }
+        if (len == 1 && auto_unbox) {
+          return values[0];
+        } else {
+          return JS_NewArrayFrom(ctx, values.size(), values.data());
+        }
+      }
+      case VECSXP: {
+        SEXP names = Rf_getAttrib(x, R_NamesSymbol);
+        bool has_names = names != R_NilValue;
+        std::vector<JSValue> values;
+        std::vector<JSAtom> props;
+        values.reserve(len);
+        props.reserve(len);
+        for (int64_t i = 0; i < len; i++) {
+          values.push_back(SEXP_to_JSValue_new(ctx, VECTOR_ELT(x, i), auto_unbox));
+          if (has_names) {
+            props.push_back(JS_NewAtom(ctx, Rf_translateCharUTF8(STRING_ELT(names, i))));
+          }
+        }
+        if (len == 1 && auto_unbox && !has_names) {
+          return values[0];
+        } else {
+          if (has_names) {
+            JSValue obj = JS_NewObject(ctx);
+            for (size_t i = 0; i < values.size(); i++) {
+              JS_SetProperty(ctx, obj, props[i], values[i]);
+              JS_FreeAtom(ctx, props[i]);
+            }
+            return obj;
+          } else {
+            return JS_NewArrayFrom(ctx, values.size(), values.data());
+          }
+        }
+      }
+      default:
+        cpp11::stop("Conversions for type %s to JSValue are not yet implemented",
+                    Rf_type2char(TYPEOF(x)));
+    }
+  }
 } // namespace quickjsr
 
 #endif
