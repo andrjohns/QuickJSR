@@ -72,13 +72,6 @@ namespace quickjsr {
         return NULL;
     }
 
-    /* system modules */
-    js_init_module_std(ctx, "std");
-    js_init_module_os(ctx, "os");
-
-    JSValue proto = JS_NewObject(ctx);
-    JS_SetClassProto(ctx, quickjsr::js_renv_class_id, proto);
-
     JS_SetModuleLoaderFunc(rt, NULL, js_module_loader, NULL);
 
     js_init_module_os(ctx, "os");
@@ -114,6 +107,8 @@ namespace quickjsr {
     js_std_init_handlers(rt);
     // Initialise a class which can be used for passing SEXP objects to JS
     // without needing conversion
+    JS_NewClassID(rt, &quickjsr::js_sexp_class_id);
+    JS_NewClassID(rt, &quickjsr::js_renv_class_id);
     JS_NewClass(rt, quickjsr::js_sexp_class_id, &quickjsr::js_sexp_class_def);
     JS_NewClass(rt, quickjsr::js_renv_class_id, &quickjsr::js_renv_class_def);
 

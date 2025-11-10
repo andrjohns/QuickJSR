@@ -13,6 +13,7 @@
 
 namespace quickjsr {
   // Forward declaration to allow for recursive calls
+  JSValue SEXP_to_JSValue_new(JSContext* ctx, SEXP x, const bool auto_unbox);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index);
 
@@ -238,110 +239,156 @@ namespace quickjsr {
     return SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox_curr, 0);
   }
 
-  JSValue SEXP_to_JSValue_new(JSContext* ctx, SEXP x, bool auto_unbox) {
+  JSValue SEXP_to_JSValue_nilsxp(JSContext* ctx, const bool auto_unbox) {
+    if (auto_unbox) {
+      return JS_NULL;
+    } else {
+      JSValue arr = JS_NewArray(ctx);
+      JS_SetPropertyInt64(ctx, arr, 0, JS_NULL);
+      return arr;
+    }
+  }
+
+  JSValue SEXP_to_JSValue_lglsxp(JSContext* ctx, SEXP x, const bool auto_unbox) {
+    const int64_t len = Rf_xlength(x);
+    std::vector<JSValue> values;
+    values.reserve(len);
+    for (int64_t i = 0; i < len; i++) {
+      if (LOGICAL_ELT(x, i) != NA_LOGICAL) {
+        values.push_back(JS_NewBool(ctx, LOGICAL_ELT(x, i)));
+      }
+    }
+    if (len == 1 && auto_unbox) {
+      return values[0];
+    } else {
+      return JS_NewArrayFrom(ctx, values.size(), values.data());
+    }
+  }
+
+  JSValue SEXP_to_JSValue_intsxp(JSContext* ctx, SEXP x, const bool auto_unbox) {
+    const int64_t len = Rf_xlength(x);
+    std::vector<JSValue> values;
+    values.reserve(len);
+    for (int64_t i = 0; i < len; i++) {
+      if (INTEGER_ELT(x, i) != NA_INTEGER) {
+        if (Rf_inherits(x, "factor")) {
+          SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
+          values.push_back(JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, INTEGER_ELT(x, i) - 1))));
+        } else {
+          values.push_back(JS_NewInt32(ctx, INTEGER_ELT(x, i)));
+        }
+      }
+    }
+    if (len == 1 && auto_unbox) {
+      return values[0];
+    } else {
+      return JS_NewArrayFrom(ctx, values.size(), values.data());
+    }
+  }
+
+  JSValue SEXP_to_JSValue_realsxp(JSContext* ctx, SEXP x, const bool auto_unbox) {
+    const int64_t len = Rf_xlength(x);
+    std::vector<JSValue> values;
+    values.reserve(len);
+    for (int64_t i = 0; i < len; i++) {
+      if (REAL_ELT(x, i) != NA_REAL) {
+        values.push_back(JS_NewFloat64(ctx, REAL_ELT(x, i)));
+      }
+    }
+    if (len == 1 && auto_unbox) {
+      return values[0];
+    } else {
+      return JS_NewArrayFrom(ctx, values.size(), values.data());
+    }
+  }
+
+  JSValue SEXP_to_JSValue_strsxp(JSContext* ctx, SEXP x, const bool auto_unbox) {
+    const int64_t len = Rf_xlength(x);
+    std::vector<JSValue> values;
+    values.reserve(len);
+    for (int64_t i = 0; i < len; i++) {
+      if (STRING_ELT(x, i) != NA_STRING) {
+        values.push_back(JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(x, i))));
+      }
+    }
+    if (len == 1 && auto_unbox) {
+      return values[0];
+    } else {
+      return JS_NewArrayFrom(ctx, values.size(), values.data());
+    }
+  }
+
+  JSValue SEXP_to_JSValue_vecsxp_df(JSContext* ctx, SEXP x, const bool auto_unbox) {
+    const int64_t rows = Rf_nrows(x);
+    const int64_t cols = Rf_ncols(x);
+    std::vector<JSValue> col_values;
+    std::vector<JSValue> values;
+    std::vector<const char*> props;
+    col_values.reserve(cols);
+    values.reserve(rows);
+    props.reserve(cols);
+    SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
+    for (int64_t i = 0; i < cols; i++) {
+      props.push_back(Rf_translateCharUTF8(STRING_ELT(col_names, i)));
+      col_values.push_back(SEXP_to_JSValue_new(ctx, VECTOR_ELT(x, i), auto_unbox));
+    }
+    for (int64_t i = 0; i < rows; i++) {
+      JSValue row_obj = JS_NewObject(ctx);
+      for (int64_t j = 0; j < cols; j++) {
+        JSValue col_val = JS_GetPropertyInt64(ctx, col_values[j], i);
+        JS_SetPropertyStr(ctx, row_obj, props[j], col_val);
+      }
+      values.push_back(row_obj);
+    }
+    return JS_NewArrayFrom(ctx, values.size(), values.data());
+  }
+
+  JSValue SEXP_to_JSValue_vecsxp(JSContext* ctx, SEXP x, const bool auto_unbox) {
+    if (Rf_isDataFrame(x)) {
+      return SEXP_to_JSValue_vecsxp_df(ctx, x, auto_unbox);
+    }
+    const int64_t len = Rf_xlength(x);
+    SEXP names = Rf_getAttrib(x, R_NamesSymbol);
+    bool has_names = names != R_NilValue;
+    std::vector<JSValue> values;
+    std::vector<const char*> props;
+    values.reserve(len);
+    props.reserve(len);
+    for (int64_t i = 0; i < len; i++) {
+      values.push_back(SEXP_to_JSValue_new(ctx, VECTOR_ELT(x, i), auto_unbox));
+      if (has_names) {
+        props.push_back(Rf_translateCharUTF8(STRING_ELT(names, i)));
+      }
+    }
+    if (len == 1 && auto_unbox && !has_names) {
+      return values[0];
+    } else {
+      if (has_names) {
+        return JS_NewObjectFromStr(ctx, values.size(), props.data(), values.data());
+      } else {
+        return JS_NewArrayFrom(ctx, values.size(), values.data());
+      }
+    }
+  }
+
+  JSValue SEXP_to_JSValue_new(JSContext* ctx, SEXP x, const bool auto_unbox) {
     const int64_t len = Rf_xlength(x);
     if (len == 0) {
       return JS_NewArray(ctx);
     }
     switch (TYPEOF(x)) {
-      case NILSXP: {
-        if (auto_unbox) {
-          return JS_NULL;
-        } else {
-          JSValue arr = JS_NewArray(ctx);
-          JS_SetPropertyInt64(ctx, arr, 0, JS_NULL);
-          return arr;
-        }
-      }
-      case LGLSXP: {
-        std::vector<JSValue> values;
-        values.reserve(len);
-        for (int64_t i = 0; i < len; i++) {
-          if (LOGICAL_ELT(x, i) != NA_LOGICAL) {
-            values.push_back(JS_NewBool(ctx, LOGICAL_ELT(x, i)));
-          }
-        }
-        if (len == 1 && auto_unbox) {
-          return values[0];
-        } else {
-          return JS_NewArrayFrom(ctx, values.size(), values.data());
-        }
-      }
-      case INTSXP: {
-        std::vector<JSValue> values;
-        values.reserve(len);
-        for (int64_t i = 0; i < len; i++) {
-          if (INTEGER_ELT(x, i) != NA_INTEGER) {
-            if (Rf_inherits(x, "factor")) {
-              SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
-              values.push_back(JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, INTEGER_ELT(x, i) - 1))));
-            } else {
-              values.push_back(JS_NewInt32(ctx, INTEGER_ELT(x, i)));
-            }
-          }
-        }
-        if (len == 1 && auto_unbox) {
-          return values[0];
-        } else {
-          return JS_NewArrayFrom(ctx, values.size(), values.data());
-        }
-      }
-      case REALSXP: {
-        std::vector<JSValue> values;
-        values.reserve(len);
-        for (int64_t i = 0; i < len; i++) {
-          if (REAL_ELT(x, i) != NA_REAL) {
-            values.push_back(JS_NewFloat64(ctx, REAL_ELT(x, i)));
-          }
-        }
-        if (len == 1 && auto_unbox) {
-          return values[0];
-        } else {
-          return JS_NewArrayFrom(ctx, values.size(), values.data());
-        }
-      }
-      case STRSXP: {
-        std::vector<JSValue> values;
-        values.reserve(len);
-        for (int64_t i = 0; i < len; i++) {
-          if (STRING_ELT(x, i) != NA_STRING) {
-            values.push_back(JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(x, i))));
-          }
-        }
-        if (len == 1 && auto_unbox) {
-          return values[0];
-        } else {
-          return JS_NewArrayFrom(ctx, values.size(), values.data());
-        }
-      }
-      case VECSXP: {
-        SEXP names = Rf_getAttrib(x, R_NamesSymbol);
-        bool has_names = names != R_NilValue;
-        std::vector<JSValue> values;
-        std::vector<JSAtom> props;
-        values.reserve(len);
-        props.reserve(len);
-        for (int64_t i = 0; i < len; i++) {
-          values.push_back(SEXP_to_JSValue_new(ctx, VECTOR_ELT(x, i), auto_unbox));
-          if (has_names) {
-            props.push_back(JS_NewAtom(ctx, Rf_translateCharUTF8(STRING_ELT(names, i))));
-          }
-        }
-        if (len == 1 && auto_unbox && !has_names) {
-          return values[0];
-        } else {
-          if (has_names) {
-            JSValue obj = JS_NewObject(ctx);
-            for (size_t i = 0; i < values.size(); i++) {
-              JS_SetProperty(ctx, obj, props[i], values[i]);
-              JS_FreeAtom(ctx, props[i]);
-            }
-            return obj;
-          } else {
-            return JS_NewArrayFrom(ctx, values.size(), values.data());
-          }
-        }
-      }
+      case NILSXP: 
+        return SEXP_to_JSValue_nilsxp(ctx, auto_unbox);
+      case LGLSXP: 
+        return SEXP_to_JSValue_lglsxp(ctx, x, auto_unbox);
+      case INTSXP: 
+        return SEXP_to_JSValue_intsxp(ctx, x, auto_unbox);
+      case REALSXP: 
+        return SEXP_to_JSValue_realsxp(ctx, x, auto_unbox);
+      case STRSXP: 
+        return SEXP_to_JSValue_strsxp(ctx, x, auto_unbox);
+      case VECSXP:
+        return SEXP_to_JSValue_vecsxp(ctx, x, auto_unbox);
       default:
         cpp11::stop("Conversions for type %s to JSValue are not yet implemented",
                     Rf_type2char(TYPEOF(x)));
