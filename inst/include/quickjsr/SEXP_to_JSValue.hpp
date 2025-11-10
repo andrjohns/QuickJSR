@@ -239,76 +239,19 @@ namespace quickjsr {
     return SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox_curr, 0);
   }
 
-  JSValue SEXP_to_JSValue_nilsxp(JSContext* ctx, const bool auto_unbox) {
-    if (auto_unbox) {
-      return JS_NULL;
-    } else {
-      JSValue arr = JS_NewArray(ctx);
-      JS_SetPropertyInt64(ctx, arr, 0, JS_NULL);
-      return arr;
-    }
-  }
-
-  JSValue SEXP_to_JSValue_lglsxp(JSContext* ctx, SEXP x, const bool auto_unbox) {
+  template <typename CtxT, typename SexpT, typename IndexFuncT, typename ValueFuncT, typename MissingType>
+  JSValue SEXP_to_JSValue_prim(CtxT&& ctx, SexpT&& x,
+                                         IndexFuncT&& index_func,
+                                         ValueFuncT&& value_func,
+                                         MissingType&& missing_value,
+                                         const bool auto_unbox) {
     const int64_t len = Rf_xlength(x);
     std::vector<JSValue> values;
     values.reserve(len);
     for (int64_t i = 0; i < len; i++) {
-      if (LOGICAL_ELT(x, i) != NA_LOGICAL) {
-        values.push_back(JS_NewBool(ctx, LOGICAL_ELT(x, i)));
-      }
-    }
-    if (len == 1 && auto_unbox) {
-      return values[0];
-    } else {
-      return JS_NewArrayFrom(ctx, values.size(), values.data());
-    }
-  }
-
-  JSValue SEXP_to_JSValue_intsxp(JSContext* ctx, SEXP x, const bool auto_unbox) {
-    const int64_t len = Rf_xlength(x);
-    std::vector<JSValue> values;
-    values.reserve(len);
-    for (int64_t i = 0; i < len; i++) {
-      if (INTEGER_ELT(x, i) != NA_INTEGER) {
-        if (Rf_inherits(x, "factor")) {
-          SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
-          values.push_back(JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, INTEGER_ELT(x, i) - 1))));
-        } else {
-          values.push_back(JS_NewInt32(ctx, INTEGER_ELT(x, i)));
-        }
-      }
-    }
-    if (len == 1 && auto_unbox) {
-      return values[0];
-    } else {
-      return JS_NewArrayFrom(ctx, values.size(), values.data());
-    }
-  }
-
-  JSValue SEXP_to_JSValue_realsxp(JSContext* ctx, SEXP x, const bool auto_unbox) {
-    const int64_t len = Rf_xlength(x);
-    std::vector<JSValue> values;
-    values.reserve(len);
-    for (int64_t i = 0; i < len; i++) {
-      if (REAL_ELT(x, i) != NA_REAL) {
-        values.push_back(JS_NewFloat64(ctx, REAL_ELT(x, i)));
-      }
-    }
-    if (len == 1 && auto_unbox) {
-      return values[0];
-    } else {
-      return JS_NewArrayFrom(ctx, values.size(), values.data());
-    }
-  }
-
-  JSValue SEXP_to_JSValue_strsxp(JSContext* ctx, SEXP x, const bool auto_unbox) {
-    const int64_t len = Rf_xlength(x);
-    std::vector<JSValue> values;
-    values.reserve(len);
-    for (int64_t i = 0; i < len; i++) {
-      if (STRING_ELT(x, i) != NA_STRING) {
-        values.push_back(JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(x, i))));
+      decltype(auto) val = index_func(std::forward<SexpT>(x), i);
+      if (val != missing_value) {
+        values.push_back(value_func(std::forward<CtxT>(ctx), std::forward<decltype(val)>(val)));
       }
     }
     if (len == 1 && auto_unbox) {
@@ -377,16 +320,42 @@ namespace quickjsr {
       return JS_NewArray(ctx);
     }
     switch (TYPEOF(x)) {
-      case NILSXP: 
-        return SEXP_to_JSValue_nilsxp(ctx, auto_unbox);
-      case LGLSXP: 
-        return SEXP_to_JSValue_lglsxp(ctx, x, auto_unbox);
-      case INTSXP: 
-        return SEXP_to_JSValue_intsxp(ctx, x, auto_unbox);
-      case REALSXP: 
-        return SEXP_to_JSValue_realsxp(ctx, x, auto_unbox);
-      case STRSXP: 
-        return SEXP_to_JSValue_strsxp(ctx, x, auto_unbox);
+      case NILSXP: {
+        if (auto_unbox) {
+          return JS_NULL;
+        } else {
+          JSValue arr = JS_NewArray(ctx);
+          JS_SetPropertyInt64(ctx, arr, 0, JS_NULL);
+          return arr;
+        }
+      }
+      case LGLSXP: {
+        const auto& index_func = [](SEXP x, int64_t i) { return LOGICAL_ELT(x, i); };
+        const auto& value_func = [](JSContext* ctx, int val) { return JS_NewBool(ctx, val); };
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_LOGICAL, auto_unbox);
+      }
+      case INTSXP: {
+        const auto& index_func = [](SEXP x, int64_t i) { return INTEGER_ELT(x, i); };
+        const auto& value_func = [x](JSContext* ctx, int val) {
+          if (Rf_inherits(x, "factor")) {
+            SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
+            return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, val - 1)));
+          } else {
+            return JS_NewInt32(ctx, val);
+          }
+        };
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_INTEGER, auto_unbox);
+      }
+      case REALSXP: {
+        const auto& index_func = [](SEXP x, int64_t i) { return REAL_ELT(x, i); };
+        const auto& value_func = [](JSContext* ctx, double val) { return JS_NewFloat64(ctx, val); };
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_REAL, auto_unbox);
+      }
+      case STRSXP: {
+        const auto& index_func = [](SEXP x, int64_t i) { return STRING_ELT(x, i); };
+        const auto& value_func = [](JSContext* ctx, SEXP val) { return JS_NewString(ctx, Rf_translateCharUTF8(val)); };
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_STRING, auto_unbox);
+      }
       case VECSXP:
         return SEXP_to_JSValue_vecsxp(ctx, x, auto_unbox);
       default:
