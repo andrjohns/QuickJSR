@@ -5,6 +5,7 @@
 #include <quickjsr/JS_SEXP.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
+#include <iostream>
 
 #if R_VERSION < R_Version(4, 5, 0)
 # define R_ClosureFormals(x) FORMALS(x)
@@ -246,7 +247,7 @@ namespace quickjsr {
                                          MissingType&& missing_value,
                                          const bool auto_unbox,
                                          const int64_t index) {
-    const int64_t len = index == -1 ? 1 : Rf_xlength(x);
+    const int64_t len = index == -1 ? Rf_xlength(x) : 1;
     std::vector<JSValue> values;
     values.reserve(len);
     const int64_t start = index == -1 ? 0 : index;
@@ -265,13 +266,13 @@ namespace quickjsr {
   }
 
   JSValue SEXP_to_JSValue_vecsxp_df(JSContext* ctx, SEXP x, const bool auto_unbox) {
-    const int64_t rows = Rf_nrows(x);
-    const int64_t cols = Rf_ncols(x);
+    const int64_t rows = Rf_xlength(VECTOR_ELT(x, 0));
+    SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
+    const int64_t cols = Rf_xlength(col_names);
     std::vector<JSValue> values;
     std::vector<const char*> props;
     values.reserve(rows);
     props.reserve(cols);
-    SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
     for (int64_t i = 0; i < cols; i++) {
       props.push_back(Rf_translateCharUTF8(STRING_ELT(col_names, i)));
     }
@@ -330,13 +331,13 @@ namespace quickjsr {
         }
       }
       case LGLSXP: {
-        const auto& index_func = [](SEXP x, int64_t i) { return LOGICAL_ELT(x, i); };
+        const auto& index_func = [](const SEXP& x, const int64_t i) { return LOGICAL_ELT(x, i); };
         const auto& value_func = [](JSContext* ctx, int val) { return JS_NewBool(ctx, val); };
         return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_LOGICAL, auto_unbox, index);
       }
       case INTSXP: {
-        const auto& index_func = [](SEXP x, int64_t i) { return INTEGER_ELT(x, i); };
-        const auto& value_func = [x](JSContext* ctx, int val) {
+        const auto& index_func = [](const SEXP& x, const int64_t i) { return INTEGER_ELT(x, i); };
+        const auto& value_func = [&x](JSContext* ctx, int val) {
           if (Rf_inherits(x, "factor")) {
             SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
             return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, val - 1)));
@@ -347,13 +348,33 @@ namespace quickjsr {
         return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_INTEGER, auto_unbox, index);
       }
       case REALSXP: {
-        const auto& index_func = [](SEXP x, int64_t i) { return REAL_ELT(x, i); };
-        const auto& value_func = [](JSContext* ctx, double val) { return JS_NewFloat64(ctx, val); };
+        const auto& index_func = [](const SEXP& x, const int64_t i) { return REAL_ELT(x, i); };
+        const auto& value_func = [&x](JSContext* ctx, double val) {
+          if (Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt") || Rf_inherits(x, "Date")) {
+            cpp11::writable::doubles x_index(1);
+            x_index[0] = std::move(val);
+            // Match input classes
+            x_index.attr("class") = Rf_getAttrib(x, R_ClassSymbol);
+            cpp11::function format = cpp11::package("base")["format"];
+            std::string formatted = cpp11::as_cpp<std::string>(format(x_index, "format"_nm = "%Y-%m-%dT%H:%M:%OSZ", "tz"_nm = "UTC"));
+            // Create new Date from ISO string using JS_CallConstructor
+            JSValue global = JS_GetGlobalObject(ctx);
+            JSValue date_ctor = JS_GetPropertyStr(ctx, global, "Date");
+            JSValue iso_str = JS_NewString(ctx, formatted.c_str());
+            JSValue date_obj = JS_CallConstructor(ctx, date_ctor, 1, &iso_str);
+            JS_FreeValue(ctx, iso_str);
+            JS_FreeValue(ctx, date_ctor);
+            JS_FreeValue(ctx, global);
+            return date_obj;
+          } else {
+            return JS_NewFloat64(ctx, val);
+          }
+        };
         return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_REAL, auto_unbox, index);
       }
       case STRSXP: {
-        const auto& index_func = [](SEXP x, int64_t i) { return STRING_ELT(x, i); };
-        const auto& value_func = [](JSContext* ctx, SEXP val) { return JS_NewString(ctx, Rf_translateCharUTF8(val)); };
+        const auto& index_func = [](const SEXP& x, const int64_t i) { return STRING_ELT(x, i); };
+        const auto& value_func = [](JSContext* ctx, const SEXP& val) { return JS_NewString(ctx, Rf_translateCharUTF8(val)); };
         return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_STRING, auto_unbox, index);
       }
       case VECSXP:
