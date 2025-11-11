@@ -13,7 +13,7 @@
 
 namespace quickjsr {
   // Forward declaration to allow for recursive calls
-  JSValue SEXP_to_JSValue_new(JSContext* ctx, SEXP x, const bool auto_unbox);
+  JSValue SEXP_to_JSValue_new(JSContext* ctx, SEXP x, const bool auto_unbox, const int64_t index = -1);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index);
 
@@ -244,11 +244,14 @@ namespace quickjsr {
                                          IndexFuncT&& index_func,
                                          ValueFuncT&& value_func,
                                          MissingType&& missing_value,
-                                         const bool auto_unbox) {
-    const int64_t len = Rf_xlength(x);
+                                         const bool auto_unbox,
+                                         const int64_t index) {
+    const int64_t len = index == -1 ? 1 : Rf_xlength(x);
     std::vector<JSValue> values;
     values.reserve(len);
-    for (int64_t i = 0; i < len; i++) {
+    const int64_t start = index == -1 ? 0 : index;
+    const int64_t end = index == -1 ? len : index + 1;
+    for (int64_t i = start; i < end; i++) {
       decltype(auto) val = index_func(std::forward<SexpT>(x), i);
       if (val != missing_value) {
         values.push_back(value_func(std::forward<CtxT>(ctx), std::forward<decltype(val)>(val)));
@@ -264,24 +267,21 @@ namespace quickjsr {
   JSValue SEXP_to_JSValue_vecsxp_df(JSContext* ctx, SEXP x, const bool auto_unbox) {
     const int64_t rows = Rf_nrows(x);
     const int64_t cols = Rf_ncols(x);
-    std::vector<JSValue> col_values;
     std::vector<JSValue> values;
     std::vector<const char*> props;
-    col_values.reserve(cols);
     values.reserve(rows);
     props.reserve(cols);
     SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
     for (int64_t i = 0; i < cols; i++) {
       props.push_back(Rf_translateCharUTF8(STRING_ELT(col_names, i)));
-      col_values.push_back(SEXP_to_JSValue_new(ctx, VECTOR_ELT(x, i), auto_unbox));
     }
     for (int64_t i = 0; i < rows; i++) {
-      JSValue row_obj = JS_NewObject(ctx);
+      std::vector<JSValue> row_values;
+      row_values.reserve(cols);
       for (int64_t j = 0; j < cols; j++) {
-        JSValue col_val = JS_GetPropertyInt64(ctx, col_values[j], i);
-        JS_SetPropertyStr(ctx, row_obj, props[j], col_val);
+        row_values.push_back(SEXP_to_JSValue_new(ctx, VECTOR_ELT(x, j), auto_unbox, i));
       }
-      values.push_back(row_obj);
+      values.push_back(JS_NewObjectFromStr(ctx, row_values.size(), props.data(), row_values.data()));
     }
     return JS_NewArrayFrom(ctx, values.size(), values.data());
   }
@@ -314,7 +314,7 @@ namespace quickjsr {
     }
   }
 
-  JSValue SEXP_to_JSValue_new(JSContext* ctx, SEXP x, const bool auto_unbox) {
+  JSValue SEXP_to_JSValue_new(JSContext* ctx, SEXP x, const bool auto_unbox, const int64_t index) {
     const int64_t len = Rf_xlength(x);
     if (len == 0) {
       return JS_NewArray(ctx);
@@ -332,7 +332,7 @@ namespace quickjsr {
       case LGLSXP: {
         const auto& index_func = [](SEXP x, int64_t i) { return LOGICAL_ELT(x, i); };
         const auto& value_func = [](JSContext* ctx, int val) { return JS_NewBool(ctx, val); };
-        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_LOGICAL, auto_unbox);
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_LOGICAL, auto_unbox, index);
       }
       case INTSXP: {
         const auto& index_func = [](SEXP x, int64_t i) { return INTEGER_ELT(x, i); };
@@ -344,17 +344,17 @@ namespace quickjsr {
             return JS_NewInt32(ctx, val);
           }
         };
-        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_INTEGER, auto_unbox);
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_INTEGER, auto_unbox, index);
       }
       case REALSXP: {
         const auto& index_func = [](SEXP x, int64_t i) { return REAL_ELT(x, i); };
         const auto& value_func = [](JSContext* ctx, double val) { return JS_NewFloat64(ctx, val); };
-        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_REAL, auto_unbox);
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_REAL, auto_unbox, index);
       }
       case STRSXP: {
         const auto& index_func = [](SEXP x, int64_t i) { return STRING_ELT(x, i); };
         const auto& value_func = [](JSContext* ctx, SEXP val) { return JS_NewString(ctx, Rf_translateCharUTF8(val)); };
-        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_STRING, auto_unbox);
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_STRING, auto_unbox, index);
       }
       case VECSXP:
         return SEXP_to_JSValue_vecsxp(ctx, x, auto_unbox);
