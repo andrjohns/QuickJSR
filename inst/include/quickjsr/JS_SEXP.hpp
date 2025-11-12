@@ -17,8 +17,7 @@
 #endif
 
 namespace quickjsr {
-  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox,
-                                  bool auto_unbox_curr);
+  JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, const bool auto_unbox, const int64_t index);
 
   JSClassID js_sexp_class_id = 100;
   JSClassID js_renv_class_id = 101;
@@ -26,6 +25,23 @@ namespace quickjsr {
     "SEXP",
     nullptr // finalized
   };
+
+
+  static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
+                                JSValueConst* argv, int magic, JSValue* data) {
+    JSValue data_val = data[0];
+    SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(data_val, js_sexp_class_id));
+    JS_FreeValue(ctx, data_val);
+    if (argc == 0) {
+      return SEXP_to_JSValue(ctx, cpp11::function(x)(), true, -1);
+    }
+    cpp11::writable::list args(argc);
+    for (int i = 0; i < argc; i++) {
+      args[i] = JSValue_to_SEXP(ctx, argv[i]);
+    }
+    cpp11::function do_call = cpp11::package("base")["do.call"];
+    return SEXP_to_JSValue(ctx, do_call(x, args), true, -1);
+  }
 
   static JSValue js_renv_get_property(JSContext *ctx, JSValueConst this_val, JSAtom atom, JSValueConst receiver) {
     const char *property_name = JS_AtomToCString(ctx, atom);
@@ -36,7 +52,7 @@ namespace quickjsr {
     if (TYPEOF(fun) == PROMSXP) {
       fun = Rf_eval(fun, env);
     }
-    return SEXP_to_JSValue(ctx, fun, true, true);
+    return SEXP_to_JSValue(ctx, fun, true, -1);
   }
 
   static int js_renv_set_property(JSContext *ctx, JSValueConst this_val, JSAtom atom, JSValueConst value, JSValueConst receiver, int flags) {
@@ -83,7 +99,7 @@ namespace quickjsr {
       SEXP pkg_name_sexp = Rf_mkString(package_name);
       pkg_ns = R_FindNamespace(pkg_name_sexp);
     }
-    return SEXP_to_JSValue(ctx, pkg_ns, true, true);
+    return SEXP_to_JSValue(ctx, pkg_ns, true, -1);
   }
 
   static const JSCFunctionListEntry js_r_funcs[] = {
