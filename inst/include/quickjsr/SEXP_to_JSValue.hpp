@@ -5,6 +5,7 @@
 #include <quickjsr/JS_SEXP.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
+#include <type_traits>
 #include <iostream>
 
 #if R_VERSION < R_Version(4, 5, 0)
@@ -15,6 +16,16 @@
 namespace quickjsr {
   // Forward declaration to allow for recursive calls
   JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, const bool auto_unbox, const int64_t index = -1);
+
+  template <typename Tval, typename Tmiss, std::enable_if_t<std::is_floating_point_v<Tval>>* = nullptr>
+  bool is_NA(Tval&& value, Tmiss&& missing_value) {
+    return R_IsNA(std::forward<Tval>(value)) || std::forward<Tval>(value) == std::forward<Tmiss>(missing_value);
+  }
+
+  template <typename Tval, typename Tmiss, std::enable_if_t<!std::is_floating_point_v<Tval>>* = nullptr>
+  bool is_NA(Tval&& value, Tmiss&& missing_value) {
+    return std::forward<Tval>(value) == std::forward<Tmiss>(missing_value);
+  }
 
   template <typename CtxT, typename SexpT, typename IndexFuncT, typename ValueFuncT, typename MissingType>
   JSValue SEXP_to_JSValue_prim(CtxT&& ctx, SexpT&& x,
@@ -30,7 +41,13 @@ namespace quickjsr {
     const int64_t end = index == -1 ? len : index + 1;
     for (int64_t i = start; i < end; i++) {
       decltype(auto) val = index_func(std::forward<SexpT>(x), i);
-      if (val != missing_value) {
+      if (is_NA(std::forward<decltype(val)>(val), std::forward<MissingType>(missing_value))) {
+        if (Rf_isNumeric(x) && !Rf_isLogical(x)) {
+          values.push_back(JS_NewString(std::forward<CtxT>(ctx), "NA"));
+        } else {
+          values.push_back(JS_NULL);
+        }
+      } else {
         values.push_back(value_func(std::forward<CtxT>(ctx), std::forward<decltype(val)>(val)));
       }
     }
@@ -68,7 +85,7 @@ namespace quickjsr {
     const int64_t rows = Rf_xlength(VECTOR_ELT(x, 0));
     SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
     SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
-    const bool has_row_names = row_names != R_NilValue;
+    const bool has_row_names = Rf_isString(row_names);
     const int64_t cols = Rf_xlength(col_names);
     std::vector<JSValue> values;
     std::vector<const char*> props;
@@ -111,14 +128,10 @@ namespace quickjsr {
         props.push_back(Rf_translateCharUTF8(STRING_ELT(names, i)));
       }
     }
-    if (len == 1 && auto_unbox && !has_names) {
-      return values[0];
+    if (has_names) {
+      return JS_NewObjectFromStr(ctx, values.size(), props.data(), values.data());
     } else {
-      if (has_names) {
-        return JS_NewObjectFromStr(ctx, values.size(), props.data(), values.data());
-      } else {
-        return JS_NewArrayFrom(ctx, values.size(), values.data());
-      }
+      return JS_NewArrayFrom(ctx, values.size(), values.data());
     }
   }
   
@@ -140,23 +153,21 @@ namespace quickjsr {
     return date_obj;
   }
 
-  JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, const bool auto_unbox, const int64_t index) {
+  JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, const bool auto_unbox_inp, const int64_t index) {
     const int64_t len = Rf_xlength(x);
+    if (Rf_isNull(x)) {
+      return JS_NewObject(ctx);
+    }
     if (len == 0) {
       return JS_NewArray(ctx);
     }
     if (Rf_isMatrix(x) && index == -1) {
       return SEXP_to_JSValue_matrix(ctx, x);
     }
+    const bool auto_unbox = static_cast<bool>(Rf_inherits(x, "AsIs")) ? false : auto_unbox_inp;
     switch (TYPEOF(x)) {
       case NILSXP: {
-        if (auto_unbox) {
-          return JS_NULL;
-        } else {
-          JSValue arr = JS_NewArray(ctx);
-          JS_SetPropertyInt64(ctx, arr, 0, JS_NULL);
-          return arr;
-        }
+        return JS_NewObject(ctx);
       }
       case LGLSXP: {
         const auto& index_func = [](const SEXP& x, const int64_t i) { return LOGICAL_ELT(x, i); };
