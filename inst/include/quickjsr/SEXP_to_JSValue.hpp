@@ -81,7 +81,7 @@ namespace quickjsr {
     return JS_NewArrayFrom(ctx, values.size(), values.data());
   }
 
-  JSValue SEXP_to_JSValue_df(JSContext* ctx, SEXP x, const bool auto_unbox) {
+  JSValue SEXP_to_JSValue_df(JSContext* ctx, SEXP x, const bool auto_unbox, int64_t index) {
     const int64_t rows = Rf_xlength(VECTOR_ELT(x, 0));
     SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
     SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
@@ -111,9 +111,9 @@ namespace quickjsr {
     return JS_NewArrayFrom(ctx, values.size(), values.data());
   }
 
-  JSValue SEXP_to_JSValue_vecsxp(JSContext* ctx, SEXP x, const bool auto_unbox) {
+  JSValue SEXP_to_JSValue_vecsxp(JSContext* ctx, SEXP x, const bool auto_unbox, int64_t index) {
     if (Rf_isDataFrame(x)) {
-      return SEXP_to_JSValue_df(ctx, x, true);
+      return SEXP_to_JSValue_df(ctx, x, true, index);
     }
     const int64_t len = Rf_xlength(x);
     SEXP names = Rf_getAttrib(x, R_NamesSymbol);
@@ -134,7 +134,7 @@ namespace quickjsr {
       return JS_NewArrayFrom(ctx, values.size(), values.data());
     }
   }
-  
+
   JSValue dbl_to_date(JSContext* ctx, double val, SEXP class_) {
     cpp11::writable::doubles x_index(1);
     x_index[0] = std::move(val);
@@ -198,7 +198,7 @@ namespace quickjsr {
         return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_STRING, auto_unbox, index);
       }
       case VECSXP:
-        return SEXP_to_JSValue_vecsxp(ctx, x, auto_unbox);
+        return SEXP_to_JSValue_vecsxp(ctx, x, auto_unbox, index);
       case ENVSXP: {
         JSValue obj = JS_NewObjectClass(ctx, js_renv_class_id);
         JS_SetOpaque(obj, reinterpret_cast<void*>(x));
