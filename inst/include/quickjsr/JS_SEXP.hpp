@@ -48,10 +48,12 @@ namespace quickjsr {
     JS_FreeCString(ctx, property_name);
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(this_val, js_renv_class_id));
     cpp11::environment env(x);
-    SEXP fun = TYPEOF(env[property_name]) == PROMSXP ? Rf_eval(env[property_name], env) : env[property_name];
+    SEXP prop_raw = env[property_name];
+    PROTECT(prop_raw);
+    SEXP fun = TYPEOF(prop_raw) == PROMSXP ? Rf_eval(prop_raw, env) : prop_raw;
     PROTECT(fun);
     JSValue result = SEXP_to_JSValue(ctx, fun, true, -1);
-    UNPROTECT(1);
+    UNPROTECT(2);
     return result;
   }
 
