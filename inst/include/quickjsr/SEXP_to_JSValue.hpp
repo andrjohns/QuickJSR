@@ -40,7 +40,7 @@ namespace quickjsr {
     const int64_t start = index == -1 ? 0 : index;
     const int64_t end = index == -1 ? len : index + 1;
     for (int64_t i = start; i < end; i++) {
-      const auto& val = index_func(std::forward<SexpT>(x), i);
+      auto&& val = index_func(std::forward<SexpT>(x), i);
       if (is_NA(std::forward<decltype(val)>(val), std::forward<MissingType>(missing_value))) {
         if (Rf_isNumeric(x) && !Rf_isLogical(x)) {
           values.push_back(JS_NewString(std::forward<CtxT>(ctx), "NA"));
