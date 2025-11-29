@@ -6,6 +6,7 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <type_traits>
+#include <vector>
 
 #if R_VERSION < R_Version(4, 5, 0)
 # define R_ClosureFormals(x) FORMALS(x)
@@ -16,12 +17,12 @@ namespace quickjsr {
   // Forward declaration to allow for recursive calls
   JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, const bool auto_unbox, const int64_t index = -1);
 
-  template <typename Tval, typename Tmiss, std::enable_if_t<std::is_floating_point_v<Tval>>* = nullptr>
+  template <typename Tval, typename Tmiss, typename std::enable_if<std::is_floating_point<Tval>::value>::type* = nullptr>
   bool is_NA(Tval&& value, Tmiss&& missing_value) {
     return R_IsNA(std::forward<Tval>(value)) || std::forward<Tval>(value) == std::forward<Tmiss>(missing_value);
   }
 
-  template <typename Tval, typename Tmiss, std::enable_if_t<!std::is_floating_point_v<Tval>>* = nullptr>
+  template <typename Tval, typename Tmiss, typename std::enable_if<!std::is_floating_point<Tval>::value>::type* = nullptr>
   bool is_NA(Tval&& value, Tmiss&& missing_value) {
     return std::forward<Tval>(value) == std::forward<Tmiss>(missing_value);
   }
@@ -39,7 +40,7 @@ namespace quickjsr {
     const int64_t start = index == -1 ? 0 : index;
     const int64_t end = index == -1 ? len : index + 1;
     for (int64_t i = start; i < end; i++) {
-      decltype(auto) val = index_func(std::forward<SexpT>(x), i);
+      const auto& val = index_func(std::forward<SexpT>(x), i);
       if (is_NA(std::forward<decltype(val)>(val), std::forward<MissingType>(missing_value))) {
         if (Rf_isNumeric(x) && !Rf_isLogical(x)) {
           values.push_back(JS_NewString(std::forward<CtxT>(ctx), "NA"));
@@ -144,6 +145,7 @@ namespace quickjsr {
   }
 
   JSValue dbl_to_date(JSContext* ctx, double val, SEXP class_) {
+    using cpp11::literals::operator""_nm;
     cpp11::writable::doubles x_index(1);
     x_index[0] = std::move(val);
     // Match input classes

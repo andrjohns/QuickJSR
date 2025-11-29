@@ -92,6 +92,7 @@ namespace quickjsr {
     }
     const char* res = JS_ToCString(ctx, iso_str_val);
     cpp11::function as_posix = cpp11::package("base")["as.POSIXct"];
+    using cpp11::literals::operator""_nm;
     SEXP out = as_posix(res, "tz"_nm = "UTC", "format"_nm = "%Y-%m-%dT%H:%M:%OSZ");
     JS_FreeValue(ctx, iso_str_val);
     JS_FreeCString(ctx, res);
