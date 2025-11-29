@@ -6,7 +6,6 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <type_traits>
-#include <iostream>
 
 #if R_VERSION < R_Version(4, 5, 0)
 # define R_ClosureFormals(x) FORMALS(x)
