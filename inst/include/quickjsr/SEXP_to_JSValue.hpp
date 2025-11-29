@@ -84,7 +84,9 @@ namespace quickjsr {
   JSValue SEXP_to_JSValue_df(JSContext* ctx, SEXP x, const bool auto_unbox, int64_t index) {
     const int64_t rows = index == -1 ? Rf_xlength(VECTOR_ELT(x, 0)) : 1;
     SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
+    PROTECT(col_names);
     SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
+    PROTECT(row_names);
     const bool has_row_names = Rf_isString(row_names);
     const int64_t cols = Rf_xlength(col_names);
     std::vector<JSValue> values;
@@ -110,6 +112,7 @@ namespace quickjsr {
       }
       values.push_back(JS_NewObjectFromStr(ctx, row_values.size(), props.data(), row_values.data()));
     }
+    UNPROTECT(2);
     if (rows == 1 && auto_unbox) {
       return values[0];
     } else {
@@ -123,6 +126,7 @@ namespace quickjsr {
     }
     const int64_t len = index == -1 ? Rf_xlength(x) : 1;
     SEXP names = Rf_getAttrib(x, R_NamesSymbol);
+    PROTECT(names);
     // Ignore names if indexing a single element
     bool has_names = names != R_NilValue && index == -1;
     std::vector<JSValue> values;
@@ -137,6 +141,7 @@ namespace quickjsr {
         props.push_back(Rf_translateCharUTF8(STRING_ELT(names, i)));
       }
     }
+    UNPROTECT(1);
     if (has_names) {
       return JS_NewObjectFromStr(ctx, values.size(), props.data(), values.data());
     } else {
