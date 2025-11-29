@@ -82,7 +82,7 @@ namespace quickjsr {
   }
 
   JSValue SEXP_to_JSValue_df(JSContext* ctx, SEXP x, const bool auto_unbox, int64_t index) {
-    const int64_t rows = Rf_xlength(VECTOR_ELT(x, 0));
+    const int64_t rows = index == -1 ? Rf_xlength(VECTOR_ELT(x, 0)) : 1;
     SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
     SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
     const bool has_row_names = Rf_isString(row_names);
@@ -97,32 +97,41 @@ namespace quickjsr {
     if (has_row_names) {
       props.push_back("_row");
     }
-    for (int64_t i = 0; i < rows; i++) {
+    const int64_t start = index == -1 ? 0 : index;
+    const int64_t end = index == -1 ? rows : index + 1;
+    for (int64_t i = start; i < end; i++) {
       std::vector<JSValue> row_values;
       row_values.reserve(cols);
       for (int64_t j = 0; j < cols; j++) {
-        row_values.push_back(SEXP_to_JSValue(ctx, VECTOR_ELT(x, j), auto_unbox, i));
+        row_values.push_back(SEXP_to_JSValue(ctx, VECTOR_ELT(x, j), true, i));
       }
       if (has_row_names) {
-        row_values.push_back(SEXP_to_JSValue(ctx, row_names, auto_unbox, i));
+        row_values.push_back(SEXP_to_JSValue(ctx, row_names, true, i));
       }
       values.push_back(JS_NewObjectFromStr(ctx, row_values.size(), props.data(), row_values.data()));
     }
-    return JS_NewArrayFrom(ctx, values.size(), values.data());
+    if (rows == 1 && auto_unbox) {
+      return values[0];
+    } else {
+      return JS_NewArrayFrom(ctx, values.size(), values.data());
+    }
   }
 
   JSValue SEXP_to_JSValue_vecsxp(JSContext* ctx, SEXP x, const bool auto_unbox, int64_t index) {
     if (Rf_isDataFrame(x)) {
-      return SEXP_to_JSValue_df(ctx, x, true, index);
+      return SEXP_to_JSValue_df(ctx, x, auto_unbox, index);
     }
-    const int64_t len = Rf_xlength(x);
+    const int64_t len = index == -1 ? Rf_xlength(x) : 1;
     SEXP names = Rf_getAttrib(x, R_NamesSymbol);
-    bool has_names = names != R_NilValue;
+    // Ignore names if indexing a single element
+    bool has_names = names != R_NilValue && index == -1;
     std::vector<JSValue> values;
     std::vector<const char*> props;
     values.reserve(len);
     props.reserve(len);
-    for (int64_t i = 0; i < len; i++) {
+    const int64_t start = index == -1 ? 0 : index;
+    const int64_t end = index == -1 ? len : index + 1;
+    for (int64_t i = start; i < end; i++) {
       values.push_back(SEXP_to_JSValue(ctx, VECTOR_ELT(x, i), auto_unbox));
       if (has_names) {
         props.push_back(Rf_translateCharUTF8(STRING_ELT(names, i)));
