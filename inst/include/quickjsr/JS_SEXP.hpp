@@ -48,7 +48,14 @@ namespace quickjsr {
     JS_FreeCString(ctx, property_name);
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(this_val, js_renv_class_id));
     cpp11::environment env(x);
-    return SEXP_to_JSValue(ctx, Rf_eval(env[property_name], env), true, -1);
+    SEXP fun = env[property_name];
+    PROTECT(fun);
+    if (TYPEOF(fun) == PROMSXP) {
+      fun = Rf_eval(fun, env);
+    }
+    JSValue result = SEXP_to_JSValue(ctx, fun, true, -1);
+    UNPROTECT(1);
+    return result;
   }
 
   static int js_renv_set_property(JSContext *ctx, JSValueConst this_val, JSAtom atom, JSValueConst value, JSValueConst receiver, int flags) {
@@ -88,14 +95,17 @@ namespace quickjsr {
     if (!package_name) {
         return JS_EXCEPTION;
     }
-    SEXP pkg_ns = cpp11::safe[Rf_allocVector](ENVSXP, 1);
+    SEXP pkg_ns;
+    PROTECT(pkg_ns);
     if (strcmp(package_name, "base") == 0) {
       pkg_ns = R_BaseEnv;
     } else {
       SEXP pkg_name_sexp = Rf_mkString(package_name);
       pkg_ns = R_FindNamespace(pkg_name_sexp);
     }
-    return SEXP_to_JSValue(ctx, pkg_ns, true, -1);
+    JSValue result = SEXP_to_JSValue(ctx, pkg_ns, true, -1);
+    UNPROTECT(1);
+    return result;
   }
 
   static const JSCFunctionListEntry js_r_funcs[] = {
