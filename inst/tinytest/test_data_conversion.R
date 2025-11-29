@@ -1,6 +1,6 @@
 expect_equal(to_json(1), "[1]")
-expect_equal(to_json(c(NA, 1:3, NA)), "[null,1,2,3,null]")
-expect_equal(to_json(c(NA, 1.5, NA, 2.5)), "[null,1.5,null,2.5]")
+expect_equal(to_json(c(NA, 1:3, NA)), "[\"NA\",1,2,3,\"NA\"]")
+expect_equal(to_json(c(NA, 1.5, NA, 2.5)), "[\"NA\",1.5,\"NA\",2.5]")
 
 expect_equal(to_json("a"), "[\"a\"]")
 expect_equal(to_json(c("a", "b", NA, "c")), "[\"a\",\"b\",null,\"c\"]")
@@ -66,7 +66,7 @@ expect_equal(NA, from_json("[null]"))
 expect_equal(c(NA, 1), from_json("[null, 1]"))
 expect_equal(c(1, NA, 1), from_json("[1, null, 1]"))
 
-expect_equal("[null]", to_json(NULL))
-expect_equal("null", to_json(NULL, auto_unbox = TRUE))
+expect_equal("{}", to_json(NULL))
+expect_equal("{}", to_json(NULL, auto_unbox = TRUE))
 expect_equal("[null]", to_json(NA))
 expect_equal("null", to_json(NA, auto_unbox = TRUE))

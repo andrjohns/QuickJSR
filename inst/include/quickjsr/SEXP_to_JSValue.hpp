@@ -5,6 +5,8 @@
 #include <quickjsr/JS_SEXP.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
+#include <type_traits>
+#include <vector>
 
 #if R_VERSION < R_Version(4, 5, 0)
 # define R_ClosureFormals(x) FORMALS(x)
@@ -13,229 +15,220 @@
 
 namespace quickjsr {
   // Forward declaration to allow for recursive calls
-  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
-  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index);
+  JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, const bool auto_unbox, const int64_t index = -1);
 
-  inline JSValue SEXP_to_JSValue_array(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
-    JSValue arr = JS_NewArray(ctx);
-    for (int64_t i = 0; i < Rf_xlength(x); i++) {
-      JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
-      JS_SetPropertyInt64(ctx, arr, i, val);
-    }
-    return arr;
+  template <typename Tval, typename Tmiss, typename std::enable_if<std::is_floating_point<Tval>::value>::type* = nullptr>
+  bool is_NA(Tval&& value, Tmiss&& missing_value) {
+    return R_IsNA(std::forward<Tval>(value)) || std::forward<Tval>(value) == std::forward<Tmiss>(missing_value);
   }
 
-  inline JSValue SEXP_to_JSValue_object(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
-    JSValue obj = JS_NewObject(ctx);
-    SEXP names = Rf_getAttrib(x, R_NamesSymbol);
-    PROTECT(names);
-    for (int64_t i = 0; i < Rf_xlength(x); i++) {
-      JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
-      JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(names, i)), val);
-    }
-    UNPROTECT(1);
-    return obj;
+  template <typename Tval, typename Tmiss, typename std::enable_if<!std::is_floating_point<Tval>::value>::type* = nullptr>
+  bool is_NA(Tval&& value, Tmiss&& missing_value) {
+    return std::forward<Tval>(value) == std::forward<Tmiss>(missing_value);
   }
 
-  inline JSValue SEXP_to_JSValue_list(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
-    // Following jsonlite conventions:
-    //   - R list with names is an object, otherwise an array
-    if (Rf_getAttrib(x, R_NamesSymbol) != R_NilValue) {
-      return SEXP_to_JSValue_object(ctx, x, auto_unbox, auto_unbox_curr);
+  template <typename CtxT, typename SexpT, typename IndexFuncT, typename ValueFuncT, typename MissingType>
+  JSValue SEXP_to_JSValue_prim(CtxT&& ctx, SexpT&& x,
+                                         IndexFuncT&& index_func,
+                                         ValueFuncT&& value_func,
+                                         MissingType&& missing_value,
+                                         const bool auto_unbox,
+                                         const int64_t index) {
+    const int64_t len = index == -1 ? Rf_xlength(x) : 1;
+    std::vector<JSValue> values;
+    values.reserve(len);
+    const int64_t start = index == -1 ? 0 : index;
+    const int64_t end = index == -1 ? len : index + 1;
+    for (int64_t i = start; i < end; i++) {
+      auto&& val = index_func(std::forward<SexpT>(x), i);
+      if (is_NA(std::forward<decltype(val)>(val), std::forward<MissingType>(missing_value))) {
+        if (Rf_isNumeric(x) && !Rf_isLogical(x)) {
+          values.push_back(JS_NewString(std::forward<CtxT>(ctx), "NA"));
+        } else {
+          values.push_back(JS_NULL);
+        }
+      } else {
+        values.push_back(value_func(std::forward<CtxT>(ctx), std::forward<decltype(val)>(val)));
+      }
+    }
+    if (values.size() == 0) {
+      values.push_back(JS_NULL);
+    }
+    if (len == 1 && auto_unbox) {
+      return values[0];
     } else {
-      return SEXP_to_JSValue_array(ctx, x, auto_unbox, auto_unbox_curr);
+      return JS_NewArrayFrom(ctx, values.size(), values.data());
     }
   }
 
-  inline JSValue SEXP_to_JSValue_df(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
+  JSValue SEXP_to_JSValue_matrix(JSContext* ctx, SEXP x) {
+    const int64_t nrow = Rf_nrows(x);
+    const int64_t ncol = Rf_ncols(x);
+    std::vector<JSValue> values;
+    values.reserve(nrow);
+    for (int64_t i = 0; i < nrow; i++) {
+      std::vector<JSValue> row_values;
+      row_values.reserve(ncol);
+      for (int64_t j = 0; j < ncol; j++) {
+        JSValue val = SEXP_to_JSValue(ctx, x, true, i + j * nrow);
+        if (JS_IsNull(val)) {
+          val = JS_NewString(ctx, "NA");
+        }
+        row_values.push_back(val);
+      }
+      values.push_back(JS_NewArrayFrom(ctx, row_values.size(), row_values.data()));
+    }
+    return JS_NewArrayFrom(ctx, values.size(), values.data());
+  }
+
+  JSValue SEXP_to_JSValue_df(JSContext* ctx, SEXP x, const bool auto_unbox, int64_t index) {
+    const int64_t rows = index == -1 ? Rf_xlength(VECTOR_ELT(x, 0)) : 1;
     SEXP col_names = Rf_getAttrib(x, R_NamesSymbol);
     PROTECT(col_names);
     SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
     PROTECT(row_names);
-    JSValue arr = JS_NewArray(ctx);
-
-    for (int64_t i = 0; i < Rf_xlength(VECTOR_ELT(x, 0)); i++) {
-      JSValue obj = JS_NewObject(ctx);
-
-      for (int64_t j = 0; j < Rf_xlength(x); j++) {
-        SEXP col = VECTOR_ELT(x, j);
-        if (Rf_isDataFrame(col)) {
-          JSValue df_obj = JS_NewObject(ctx);
-          SEXP df_names = Rf_getAttrib(col, R_NamesSymbol);
-          PROTECT(df_names);
-          for (int64_t k = 0; k < Rf_xlength(col); k++) {
-            JSValue val = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i);
-            JS_SetPropertyStr(ctx, df_obj, Rf_translateCharUTF8(STRING_ELT(df_names, k)), val);
-          }
-          UNPROTECT(1);
-          JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), df_obj);
-        } else {
-          JSValue val = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i);
-          JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), val);
-        }
-      }
-
-      // If row names are present and a character vector, add them to the object
-      if (Rf_isString(row_names)) {
-        JSValue row_name = JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(row_names, i)));
-        JS_SetPropertyStr(ctx, obj, "_row", row_name);
-      }
-
-      JS_SetPropertyInt64(ctx, arr, i, obj);
+    const bool has_row_names = Rf_isString(row_names);
+    const int64_t cols = Rf_xlength(col_names);
+    std::vector<JSValue> values;
+    std::vector<const char*> props;
+    values.reserve(rows);
+    props.reserve(cols);
+    for (int64_t i = 0; i < cols; i++) {
+      props.push_back(Rf_translateCharUTF8(STRING_ELT(col_names, i)));
     }
-
+    if (has_row_names) {
+      props.push_back("_row");
+    }
+    const int64_t start = index == -1 ? 0 : index;
+    const int64_t end = index == -1 ? rows : index + 1;
+    for (int64_t i = start; i < end; i++) {
+      std::vector<JSValue> row_values;
+      row_values.reserve(cols);
+      for (int64_t j = 0; j < cols; j++) {
+        row_values.push_back(SEXP_to_JSValue(ctx, VECTOR_ELT(x, j), true, i));
+      }
+      if (has_row_names) {
+        row_values.push_back(SEXP_to_JSValue(ctx, row_names, true, i));
+      }
+      values.push_back(JS_NewObjectFromStr(ctx, row_values.size(), props.data(), row_values.data()));
+    }
     UNPROTECT(2);
-
-    return arr;
-  }
-
-  static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
-                                JSValueConst* argv, int magic, JSValue* data) {
-    JSValue data_val = data[0];
-    SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(data_val, js_sexp_class_id));
-    JS_FreeValue(ctx, data_val);
-    if (argc == 0) {
-      return SEXP_to_JSValue(ctx, cpp11::function(x)(), true, true);
+    if (rows == 1 && auto_unbox) {
+      return values[0];
+    } else {
+      return JS_NewArrayFrom(ctx, values.size(), values.data());
     }
-    cpp11::writable::list args(argc);
-    for (int i = 0; i < argc; i++) {
-      args[i] = JSValue_to_SEXP(ctx, argv[i]);
-    }
-    cpp11::function do_call = cpp11::package("base")["do.call"];
-    return SEXP_to_JSValue(ctx, do_call(x, args), true, true);
   }
 
-  inline JSValue SEXP_to_JSValue_function(JSContext* ctx, const SEXP& x,
-                                          bool auto_unbox_inp = false,
-                                          bool auto_unbox = false) {
-    JSValue obj = JS_NewObjectClass(ctx, js_sexp_class_id);
-    JS_SetOpaque(obj, reinterpret_cast<void*>(x));
-    return JS_NewCFunctionData(ctx, js_fun_static, Rf_xlength(R_ClosureFormals(x)),
-                                JS_CFUNC_generic, 1, &obj);
-  }
-
-  inline JSValue SEXP_to_JSValue_env(JSContext* ctx, const SEXP& x) {
-    JSValue obj = JS_NewObjectClass(ctx, js_renv_class_id);
-    JS_SetOpaque(obj, reinterpret_cast<void*>(x));
-    return obj;
-  }
-
-
-  inline JSValue SEXP_to_JSValue_matrix(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
-    int64_t nrow = Rf_nrows(x);
-    int64_t ncol = Rf_ncols(x);
-    JSValue arr = JS_NewArray(ctx);
-    for (int64_t i = 0; i < nrow; i++) {
-      JSValue row = JS_NewArray(ctx);
-      for (int64_t j = 0; j < ncol; j++) {
-        JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox, i + j * nrow);
-        JS_SetPropertyInt64(ctx, row, j, val);
-      }
-      JS_SetPropertyInt64(ctx, arr, i, row);
-    }
-    return arr;
-  }
-
-  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index) {
+  JSValue SEXP_to_JSValue_vecsxp(JSContext* ctx, SEXP x, const bool auto_unbox, int64_t index) {
     if (Rf_isDataFrame(x)) {
-      return SEXP_to_JSValue_df(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
+      return SEXP_to_JSValue_df(ctx, x, auto_unbox, index);
     }
-    if (Rf_isNewList(x)) {
-      return SEXP_to_JSValue(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
-    }
-    switch (TYPEOF(x)) {
-      case NILSXP:
-        return JS_NULL;
-      case LGLSXP: {
-        if (LOGICAL_ELT(x, index) == NA_LOGICAL) {
-          return JS_NULL;
-        }
-        return JS_NewBool(ctx, LOGICAL_ELT(x, index));
+    const int64_t len = index == -1 ? Rf_xlength(x) : 1;
+    SEXP names = Rf_getAttrib(x, R_NamesSymbol);
+    PROTECT(names);
+    // Ignore names if indexing a single element
+    bool has_names = names != R_NilValue && index == -1;
+    std::vector<JSValue> values;
+    std::vector<const char*> props;
+    values.reserve(len);
+    props.reserve(len);
+    const int64_t start = index == -1 ? 0 : index;
+    const int64_t end = index == -1 ? len : index + 1;
+    for (int64_t i = start; i < end; i++) {
+      values.push_back(SEXP_to_JSValue(ctx, VECTOR_ELT(x, i), auto_unbox));
+      if (has_names) {
+        props.push_back(Rf_translateCharUTF8(STRING_ELT(names, i)));
       }
-      case INTSXP: {
-        if (INTEGER_ELT(x, index) == NA_INTEGER) {
-          return JS_NULL;
-        } else if (Rf_inherits(x, "factor")) {
-          SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
-          return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, INTEGER_ELT(x, index) - 1)));
-        } else {
-          return JS_NewInt32(ctx, INTEGER_ELT(x, index));
-        }
+    }
+    UNPROTECT(1);
+    if (has_names) {
+      return JS_NewObjectFromStr(ctx, values.size(), props.data(), values.data());
+    } else {
+      return JS_NewArrayFrom(ctx, values.size(), values.data());
+    }
+  }
+
+  JSValue dbl_to_date(JSContext* ctx, double val, SEXP class_) {
+    using cpp11::literals::operator""_nm;
+    cpp11::writable::doubles x_index(1);
+    x_index[0] = std::move(val);
+    // Match input classes
+    x_index.attr("class") = class_;
+    cpp11::function format = cpp11::package("base")["format"];
+    std::string formatted = cpp11::as_cpp<std::string>(format(x_index, "format"_nm = "%Y-%m-%dT%H:%M:%OSZ", "tz"_nm = "UTC"));
+    // Create new Date from ISO string using JS_CallConstructor
+    JSValue global = JS_GetGlobalObject(ctx);
+    JSValue date_ctor = JS_GetPropertyStr(ctx, global, "Date");
+    JSValue iso_str = JS_NewString(ctx, formatted.c_str());
+    JSValue date_obj = JS_CallConstructor(ctx, date_ctor, 1, &iso_str);
+    JS_FreeValue(ctx, iso_str);
+    JS_FreeValue(ctx, date_ctor);
+    JS_FreeValue(ctx, global);
+    return date_obj;
+  }
+
+  JSValue SEXP_to_JSValue(JSContext* ctx, SEXP x, const bool auto_unbox_inp, const int64_t index) {
+    const int64_t len = Rf_xlength(x);
+    if (Rf_isNull(x)) {
+      return JS_NewObject(ctx);
+    }
+    if (len == 0) {
+      return JS_NewArray(ctx);
+    }
+    if (Rf_isMatrix(x) && index == -1) {
+      return SEXP_to_JSValue_matrix(ctx, x);
+    }
+    const bool auto_unbox = static_cast<bool>(Rf_inherits(x, "AsIs")) ? false : auto_unbox_inp;
+    switch (TYPEOF(x)) {
+      case NILSXP: {
+        return JS_NewObject(ctx);
+      }
+      case LGLSXP: {
+        const auto& index_func = [](const SEXP& x, const int64_t i) { return LOGICAL_ELT(x, i); };
+        const auto& value_func = [](JSContext* ctx, const int val) { return JS_NewBool(ctx, val); };
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_LOGICAL, auto_unbox, index);
+      }
+      case INTSXP:  {
+        const auto& index_func = [](const SEXP& x, const int64_t i) { return INTEGER_ELT(x, i); };
+        const bool is_factor = Rf_inherits(x, "factor");
+        SEXP levels = is_factor ? Rf_getAttrib(x, R_LevelsSymbol) : R_NilValue;
+        const auto& value_func = [is_factor, levels](JSContext* ctx, int val) {
+          return is_factor ? JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, val - 1))) : JS_NewInt32(ctx, val);
+        };
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_INTEGER, auto_unbox, index);
       }
       case REALSXP: {
-        if (ISNA(REAL_ELT(x, index))) {
-          return JS_NULL;
-        } else if (Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt") || Rf_inherits(x, "Date")) {
-          cpp11::writable::doubles x_index(1);
-          x_index[0] = REAL_ELT(x, index);
-          // Match input classes
-          x_index.attr("class") = Rf_getAttrib(x, R_ClassSymbol);
-          cpp11::function format = cpp11::package("base")["format"];
-          std::string formatted = cpp11::as_cpp<std::string>(format(x_index, "format"_nm = "%Y-%m-%dT%H:%M:%OSZ", "tz"_nm = "UTC"));
-          // Create new Date from ISO string using JS_CallConstructor
-          JSValue global = JS_GetGlobalObject(ctx);
-          JSValue date_ctor = JS_GetPropertyStr(ctx, global, "Date");
-          JSValue iso_str = JS_NewString(ctx, formatted.c_str());
-          JSValue date_obj = JS_CallConstructor(ctx, date_ctor, 1, &iso_str);
-          JS_FreeValue(ctx, iso_str);
-          JS_FreeValue(ctx, date_ctor);
-          JS_FreeValue(ctx, global);
-          return date_obj;
-        } else {
-          return JS_NewFloat64(ctx, REAL_ELT(x, index));
-        }
+        const auto& index_func = [](const SEXP& x, const int64_t i) { return REAL_ELT(x, i); };
+        const bool is_date = Rf_inherits(x, "Date") || Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt");
+        SEXP class_ = is_date ? Rf_getAttrib(x, R_ClassSymbol) : R_NilValue;
+        const auto& value_func = [is_date, class_](JSContext* ctx, double val) {
+          return is_date ? dbl_to_date(ctx, val, class_) : JS_NewFloat64(ctx, val);
+        };
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_REAL, auto_unbox, index);
       }
       case STRSXP: {
-        if (STRING_ELT(x, index) == NA_STRING) {
-          return JS_NULL;
-        }
-        return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(x, index)));
+        const auto& index_func = [](const SEXP& x, const int64_t i) { return STRING_ELT(x, i); };
+        const auto& value_func = [](JSContext* ctx, const SEXP& val) { return JS_NewString(ctx, Rf_translateCharUTF8(val)); };
+        return SEXP_to_JSValue_prim(ctx, x, index_func, value_func, NA_STRING, auto_unbox, index);
       }
       case VECSXP:
-        return SEXP_to_JSValue(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
-      case CLOSXP:
-        return SEXP_to_JSValue_function(ctx, x, auto_unbox, auto_unbox_curr);
-      case ENVSXP:
-        return SEXP_to_JSValue_env(ctx, x);
+        return SEXP_to_JSValue_vecsxp(ctx, x, auto_unbox, index);
+      case ENVSXP: {
+        JSValue obj = JS_NewObjectClass(ctx, js_renv_class_id);
+        JS_SetOpaque(obj, reinterpret_cast<void*>(x));
+        return obj;
+      }
+      case CLOSXP: {
+        JSValue obj = JS_NewObjectClass(ctx, js_sexp_class_id);
+        JS_SetOpaque(obj, reinterpret_cast<void*>(x));
+        return JS_NewCFunctionData(ctx, js_fun_static, Rf_xlength(R_ClosureFormals(x)),
+                                    JS_CFUNC_generic, 1, &obj);
+      }
       default:
         cpp11::stop("Conversions for type %s to JSValue are not yet implemented",
                     Rf_type2char(TYPEOF(x)));
     }
-  }
-
-  inline JSValue SEXP_to_JSValue_null(JSContext* ctx, bool auto_unbox) {
-    if (auto_unbox) {
-      return JS_NULL;
-    } else {
-      JSValue arr = JS_NewArray(ctx);
-      JS_SetPropertyInt64(ctx, arr, 0, JS_NULL);
-      return arr;
-    }
-  }
-
-  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x,
-                          bool auto_unbox_inp = false,
-                          bool auto_unbox = false) {
-    bool auto_unbox_curr = static_cast<bool>(Rf_inherits(x, "AsIs")) ? false : auto_unbox_inp;
-    if (Rf_isNull(x)) {
-      return SEXP_to_JSValue_null(ctx, auto_unbox_curr);
-    }
-
-    if (Rf_isDataFrame(x)) {
-      return SEXP_to_JSValue_df(ctx, x, auto_unbox_inp, auto_unbox_curr);
-    }
-    if (Rf_isNewList(x)) {
-      return SEXP_to_JSValue_list(ctx, x, auto_unbox_inp, auto_unbox_curr);
-    }
-    if (Rf_isMatrix(x)) {
-      return SEXP_to_JSValue_matrix(ctx, x, auto_unbox_inp, auto_unbox_curr);
-    }
-    if (Rf_isVectorAtomic(x) || Rf_isArray(x)) {
-      if (Rf_xlength(x) > 1 || !auto_unbox_curr || Rf_isArray(x)) {
-        return SEXP_to_JSValue_array(ctx, x, auto_unbox_inp, auto_unbox_curr);
-      }
-    }
-    return SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox_curr, 0);
   }
 } // namespace quickjsr
 
