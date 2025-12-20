@@ -19,6 +19,9 @@ jobs:
           - { label: "clang-asan",
               name: "clang-asan",
               container: "ghcr.io/r-hub/containers/clang-asan:latest"}
+          - { label: "clang-ubsan",
+              name: "clang-ubsan",
+              container: "ghcr.io/r-hub/containers/clang-ubsan:latest"}
           - { label: "gcc-asan",
               name: "gcc-asan",
               container: "ghcr.io/r-hub/containers/gcc-asan:latest"}
@@ -64,10 +67,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           job-config: ${{ toJson(matrix.config) }}
-      - name: Install awk for gcc15
-        if: matrix.config.label == 'gcc15'
-        run: |
-          dnf update -y && dnf install -y awk
       - uses: r-hub/actions/setup-deps@main
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
