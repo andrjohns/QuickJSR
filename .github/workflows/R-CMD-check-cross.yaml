@@ -25,7 +25,7 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -59,7 +59,7 @@ jobs:
             Rscript -e 'rcmdcheck::rcmdcheck("/root/work/QuickJSR/QuickJSR", args = c("--no-manual", "--as-cran"), check_dir = "/root/work/QuickJSR/QuickJSR/check")'
 
       - name: Upload check results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: arch-${{ matrix.config.platform }}-results
           path: check
