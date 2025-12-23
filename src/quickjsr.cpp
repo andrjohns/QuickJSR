@@ -53,7 +53,9 @@ extern "C" {
     const char* code_string = Rf_translateCharUTF8(STRING_ELT(code_string_, 0));
     JSValue val = JS_Eval(ctx.get(), code_string, strlen(code_string), "<input>", JS_EVAL_TYPE_GLOBAL);
     SEXP rtn = cpp11::as_sexp(!JS_IsException(val));
+    PROTECT(rtn);
     JS_FreeValue(ctx.get(), val);
+    UNPROTECT(1);
     return rtn;
     END_CPP11
   }
@@ -76,10 +78,12 @@ extern "C" {
       JS_FreeValue(ctx.get(), arg);
     }
 
-    SEXP result = cpp11::sexp(quickjsr::JSValue_to_SEXP(ctx.get(), result_js));
+    SEXP result = quickjsr::JSValue_to_SEXP(ctx.get(), result_js);
+    PROTECT(result);
     JS_FreeValue(ctx.get(), fun);
     JS_FreeValue(ctx.get(), global);
     JS_FreeValue(ctx.get(), result_js);
+    UNPROTECT(1);
 
     return result;
     END_CPP11
@@ -90,9 +94,11 @@ extern "C" {
     ContextXPtr ctx(ctx_ptr_);
     JSValue global = JS_GetGlobalObject(ctx.get());
     JSValue result = quickjsr::JS_GetPropertyRecursive(ctx.get(), global, Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0)));
-    SEXP rtn = cpp11::sexp(quickjsr::JSValue_to_SEXP(ctx.get(), result));
+    SEXP rtn = quickjsr::JSValue_to_SEXP(ctx.get(), result);
+    PROTECT(rtn);
     JS_FreeValue(ctx.get(), result);
     JS_FreeValue(ctx.get(), global);
+    UNPROTECT(1);
     return rtn;
     END_CPP11
   }
@@ -118,11 +124,12 @@ extern "C" {
     JSContext* rt_ctx = quickjsr::JS_NewCustomContext(rt);
 
     JSValue val = JS_Eval(rt_ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL);
-    SEXP rtn = cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, val));
-
+    SEXP rtn = quickjsr::JSValue_to_SEXP(rt_ctx, val);
+    PROTECT(rtn);
     JS_FreeValue(rt_ctx, val);
     JS_FreeContext(rt_ctx);
     JS_FreeRuntime(rt);
+    UNPROTECT(1);
 
     return rtn;
     END_CPP11
@@ -136,14 +143,17 @@ extern "C" {
     JSValue arg = quickjsr::SEXP_to_JSValue(rt_ctx, arg_, LOGICAL_ELT(auto_unbox_, 0));
     JSValue result_js = JS_JSONStringify(rt_ctx, arg, JS_UNDEFINED, JS_UNDEFINED);
     const char* res_str = JS_ToCString(rt_ctx, result_js);
-    std::string json = res_str ? res_str : "";
+    SEXP json = cpp11::as_sexp(res_str ? res_str : "");
+    PROTECT(json);
 
     JS_FreeCString(rt_ctx, res_str);
     JS_FreeValue(rt_ctx, result_js);
     JS_FreeValue(rt_ctx, arg);
     JS_FreeContext(rt_ctx);
     JS_FreeRuntime(rt);
-    return cpp11::as_sexp(json);
+    UNPROTECT(1);
+
+    return json;
     END_CPP11
   }
 
@@ -154,10 +164,12 @@ extern "C" {
 
     const char* json = Rf_translateCharUTF8(STRING_ELT(json_, 0));
     JSValue result = JS_ParseJSON(rt_ctx, json, strlen(json), "<input>");
-    SEXP rtn = cpp11::sexp(quickjsr::JSValue_to_SEXP(rt_ctx, result));
+    SEXP rtn = quickjsr::JSValue_to_SEXP(rt_ctx, result);
+    PROTECT(rtn);
     JS_FreeValue(rt_ctx, result);
     JS_FreeContext(rt_ctx);
     JS_FreeRuntime(rt);
+    UNPROTECT(1);
 
     return rtn;
     END_CPP11
