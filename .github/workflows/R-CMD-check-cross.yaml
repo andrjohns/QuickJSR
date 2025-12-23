@@ -34,11 +34,11 @@ jobs:
         if: matrix.config.platform != 'FreeBSD'
         uses: docker/setup-qemu-action@master
 
-      - name: Check with ${{ matrix.config.cc }}
+      - name: Check package
         if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
-          image: debian:sid-slim
+          image: debian:trixie-slim
           options: -v ${{ github.workspace }}:/quickjsr --platform=linux/${{ matrix.config.platform }} -e DEBIAN_FRONTEND=noninteractive -e TZ=Etc/UTC -e LANG=en_AU.UTF-8
           run: |
             apt-get update
