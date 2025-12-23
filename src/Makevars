@@ -1,17 +1,17 @@
-PKG_CPPFLAGS = -I"../inst/include/" -I"quickjs" -D_GNU_SOURCE
+PKG_CPPFLAGS = -I"include" -I"quickjs" -D_GNU_SOURCE
 PKG_LIBS = libquickjs.o
 
 ifeq ($(OS),Windows_NT)
-  DLL := .dll
+	DLL := .dll
 else
 	DLL := .so
 endif
 
 ifdef R_HOME
-  R_CC := $(shell $(R_HOME)/bin$(R_ARCH_BIN)/R CMD config CC)
-  R_CXX := $(shell $(R_HOME)/bin$(R_ARCH_BIN)/R CMD config CXX)
+	R_CC := $(shell $(R_HOME)/bin$(R_ARCH_BIN)/R CMD config CC)
+	R_CXX := $(shell $(R_HOME)/bin$(R_ARCH_BIN)/R CMD config CXX)
 else
-  R_CC := $(CC)
+	R_CC := $(CC)
 	R_CXX := $(CXX)
 endif
 

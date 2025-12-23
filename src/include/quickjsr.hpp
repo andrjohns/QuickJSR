@@ -6,6 +6,5 @@
 #include <quickjsr/JSValue_to_SEXP.hpp>
 #include <quickjsr/type_traits.hpp>
 #include <quickjsr/JS_PropertyRecursive.hpp>
-#include <quickjsr/JS_Containers.hpp>
 
 #endif
