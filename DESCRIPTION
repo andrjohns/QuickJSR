@@ -26,3 +26,4 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 SystemRequirements: GNU make
 VignetteBuilder: knitr
+Config/build/compilation-database: true

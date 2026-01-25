@@ -4,9 +4,6 @@
 #include <quickjs_helpers.hpp>
 #include <quickjsr.hpp>
 
-using quickjsr::JS_NewCustomRuntime;
-using quickjsr::JS_NewCustomContext;
-
 void JS_FreeRuntimeStdHandlers(JSRuntime* rt) {
   js_std_free_handlers(rt);
   JS_FreeRuntime(rt);
