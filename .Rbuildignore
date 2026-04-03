@@ -10,5 +10,5 @@
 semicolon_delimited_script
 Makefile
 ^README\.Rmd$
-.cache
-compile_commands.json
+^compile_commands\.json$
+^\.cache$
