@@ -9,3 +9,5 @@ inst/include/quickjs
 .vscode
 *.DS_Store
 inst/doc
+.cache
+compile_commands.json
