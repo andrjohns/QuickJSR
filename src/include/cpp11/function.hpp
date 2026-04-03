@@ -69,8 +69,11 @@ class package {
     if (strcmp(name, "base") == 0) {
       return R_BaseEnv;
     }
-    sexp name_sexp = safe[Rf_install](name);
-    return safe[detail::r_env_get](R_NamespaceRegistry, name_sexp);
+    SEXP env = safe[detail::r_ns_env](name);
+    if (env == R_NilValue) {
+      stop("Can't find namespace: '%s'.", name);
+    }
+    return env;
   }
 
   // Either base env or in namespace registry, so no protection needed
