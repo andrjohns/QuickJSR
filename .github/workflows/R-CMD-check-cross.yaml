@@ -60,7 +60,7 @@ jobs:
             Rscript -e 'rcmdcheck::rcmdcheck("/root/work/QuickJSR/QuickJSR", args = c("--no-manual", "--as-cran"), check_dir = "/root/work/QuickJSR/QuickJSR/check")'
 
       - name: Upload check results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: arch-${{ matrix.config.platform }}-results
           path: check
