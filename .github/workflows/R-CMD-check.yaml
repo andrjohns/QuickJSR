@@ -64,8 +64,7 @@ jobs:
       - name: Add Non-API Check on R-Devel
         if: matrix.config.r == 'devel'
         run: |
-          mkdir ~/.R
-          echo "CPPFLAGS=-DNO_LEGACY_NONAPI" >> ~/.R/Makevars${{ matrix.config.os == 'windows-latest' && '.win' || '' }}
+          perl -i -pe 's/-D_GNU_SOURCE/-D_GNU_SOURCE -DNO_LEGACY_NONAPI/g' src/Makevars
 
       - uses: r-lib/actions/check-r-package@v2
         if: matrix.config.os != 'wasm'
