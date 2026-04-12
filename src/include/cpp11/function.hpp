@@ -1,18 +1,22 @@
-// cpp11 version: 0.5.1
-// vendored on: 2024-12-26
+// cpp11 version: 0.5.4.9000
+// vendored on: 2026-04-12
 #pragma once
 
-#include <string.h>  // for strcmp
-
 #include <cstdio>   // for snprintf
+#include <cstring>  // for strcmp
 #include <string>   // for string, basic_string
 #include <utility>  // for forward
 
 #include "cpp11/R.hpp"          // for SEXP, SEXPREC, CDR, Rf_install, SETCAR
 #include "cpp11/as.hpp"         // for as_sexp
 #include "cpp11/named_arg.hpp"  // for named_arg
-#include "cpp11/protect.hpp"    // for protect, protect::function, safe
+#include "cpp11/protect.hpp"    // for protect, protect::function, safe, stop
 #include "cpp11/sexp.hpp"       // for sexp
+
+#ifdef CPP11_USE_FMT
+#define FMT_HEADER_ONLY
+#include "fmt/core.h"
+#endif
 
 namespace cpp11 {
 
@@ -112,7 +116,7 @@ inline void r_message(const char* x) {
 
 inline void message(const char* fmt_arg) {
 #ifdef CPP11_USE_FMT
-  std::string msg = fmt::format(fmt_arg);
+  std::string msg = fmt::format(fmt::runtime(fmt_arg));
   safe[detail::r_message](msg.c_str());
 #else
   char buff[1024];
@@ -127,7 +131,7 @@ inline void message(const char* fmt_arg) {
 template <typename... Args>
 void message(const char* fmt_arg, Args... args) {
 #ifdef CPP11_USE_FMT
-  std::string msg = fmt::format(fmt_arg, args...);
+  std::string msg = fmt::format(fmt::runtime(fmt_arg), args...);
   safe[detail::r_message](msg.c_str());
 #else
   char buff[1024];

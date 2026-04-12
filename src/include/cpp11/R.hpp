@@ -1,5 +1,5 @@
-// cpp11 version: 0.5.1
-// vendored on: 2024-12-26
+// cpp11 version: 0.5.4.9000
+// vendored on: 2026-04-12
 #pragma once
 
 #ifdef R_INTERNALS_H_
@@ -115,7 +115,6 @@ inline bool r_env_has(SEXP env, SEXP sym) {
 #endif
 }
 
-
 /// Get a namespace from the namespace registry
 ///
 /// Returns `R_NilValue` if the namespace is not in the registry, i.e. if the package has
@@ -131,11 +130,11 @@ inline SEXP r_ns_env(const char* name) {
   return R_getRegisteredNamespace(name);
 #else
   SEXP sym = Rf_install(name);
-  SEXP out = Rf_findVarInFrame3(R_NamespaceRegistry, sym, TRUE);
-  if (out == R_UnboundValue) {
-    out = R_NilValue;
+  if (r_env_has(R_NamespaceRegistry, sym)) {
+    return r_env_get(R_NamespaceRegistry, sym);
+  } else {
+    return R_NilValue;
   }
-  return out;
 #endif
 }
 
