@@ -70,7 +70,7 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         if: matrix.config.os != 'wasm'
         with:
-          upload-snapshots: true
+          upload-results: true
           check-dir: '"check"'
 
       - name: Check WASM build
