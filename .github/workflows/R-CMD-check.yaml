@@ -2,9 +2,9 @@
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 on:
   push:
-    branches: [main, master]
+    branches: main
   pull_request:
-    branches: [main, master]
+    branches: main
 
 name: R-CMD-check
 
@@ -25,7 +25,7 @@ jobs:
           - {os: macos-latest,   r: 'release'}
           - {os: macos-latest,   r: 'oldrel'}
 
-          - {os: windows-11-arm, r: 'devel'}
+          - {os: windows-11-arm, r: 'release'}
           - {os: windows-latest, r: 'devel'}
           - {os: windows-latest, r: 'release'}
           - {os: windows-latest, r: 'oldrel'}
@@ -61,10 +61,15 @@ jobs:
           extra-packages: any::rcmdcheck ${{ matrix.config.os == 'wasm' && 'github::r-wasm/rwasm' || '' }}
           needs: check
 
+      - name: Add Non-API Check on R-Devel
+        if: matrix.config.r == 'devel'
+        run: |
+          perl -i -pe 's/-D_GNU_SOURCE/-D_GNU_SOURCE -DNO_LEGACY_NONAPI/g' src/Makevars
+
       - uses: r-lib/actions/check-r-package@v2
         if: matrix.config.os != 'wasm'
         with:
-          upload-snapshots: true
+          upload-results: true
           check-dir: '"check"'
 
       - name: Check WASM build

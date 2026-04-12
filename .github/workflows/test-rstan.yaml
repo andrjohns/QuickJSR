@@ -2,7 +2,9 @@
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 on:
   push:
-    branches: [main, master]
+    branches: main
+  pull_request:
+    branches: main
 
 name: RStan stanc
 
@@ -18,7 +20,7 @@ jobs:
         config:
           - {os: macos-latest,   r: 'devel'}
 
-          - {os: windows-11-arm, r: 'devel', extra-pkgs: RcppCore/RcppParallel}
+          - {os: windows-11-arm, r: 'release', extra-pkgs: RcppCore/RcppParallel}
           - {os: windows-latest, r: 'devel'}
 
           - {os: ubuntu-24.04-arm,   r: 'release'}

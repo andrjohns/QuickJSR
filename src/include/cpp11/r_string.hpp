@@ -1,5 +1,5 @@
-// cpp11 version: 0.5.1
-// vendored on: 2024-12-26
+// cpp11 version: 0.5.4.9000
+// vendored on: 2026-04-12
 #pragma once
 
 #include <string>       // for string, basic_string, operator==
