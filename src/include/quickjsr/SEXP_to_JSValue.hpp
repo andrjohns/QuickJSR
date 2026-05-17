@@ -171,6 +171,7 @@ namespace quickjsr {
           // Match input classes
           x_index.attr("class") = Rf_getAttrib(x, R_ClassSymbol);
           cpp11::function format = cpp11::package("base")["format"];
+          using cpp11::literals::operator""_nm;
           std::string formatted = cpp11::as_cpp<std::string>(format(x_index, "format"_nm = "%Y-%m-%dT%H:%M:%OSZ", "tz"_nm = "UTC"));
           // Create new Date from ISO string using JS_CallConstructor
           JSValue global = JS_GetGlobalObject(ctx);
