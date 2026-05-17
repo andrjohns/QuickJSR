@@ -1,10 +1,12 @@
 #ifndef QUICKJSR_SEXP_TO_JSVALUE_HPP
 #define QUICKJSR_SEXP_TO_JSVALUE_HPP
 
+#include "quickjs.h"
 #include <quickjsr/JSValue_to_SEXP.hpp>
 #include <quickjsr/JS_SEXP.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
+#include <vector>
 
 #if R_VERSION < R_Version(4, 5, 0)
 # define R_ClosureFormals(x) FORMALS(x)
@@ -17,24 +19,26 @@ namespace quickjsr {
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index);
 
   inline JSValue SEXP_to_JSValue_array(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
-    JSValue arr = JS_NewArray(ctx);
-    for (int64_t i = 0; i < Rf_xlength(x); i++) {
-      JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
-      JS_SetPropertyInt64(ctx, arr, i, val);
+    const int64_t n = Rf_xlength(x);
+    std::vector<JSValue> jsvals(n);
+    for (int64_t i = 0; i < n; i++) {
+      jsvals[i] = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
     }
-    return arr;
+    return JS_NewArrayFrom(ctx, jsvals.size(), jsvals.data());
   }
 
   inline JSValue SEXP_to_JSValue_object(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
-    JSValue obj = JS_NewObject(ctx);
+    const int64_t n = Rf_xlength(x);
     SEXP names = Rf_getAttrib(x, R_NamesSymbol);
+    std::vector<JSValue> values(n);
+    std::vector<const char*> props(n);
     PROTECT(names);
-    for (int64_t i = 0; i < Rf_xlength(x); i++) {
-      JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
-      JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(names, i)), val);
+    for (int64_t i = 0; i < n; i++) {
+      values[i] = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
+      props[i] = Rf_translateCharUTF8(STRING_ELT(names, i));
     }
     UNPROTECT(1);
-    return obj;
+    return JS_NewObjectFromStr(ctx, props.size(), props.data(), values.data());
   }
 
   inline JSValue SEXP_to_JSValue_list(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
@@ -52,41 +56,46 @@ namespace quickjsr {
     PROTECT(col_names);
     SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
     PROTECT(row_names);
-    JSValue arr = JS_NewArray(ctx);
+    const int64_t ncol = Rf_xlength(x);
+    const int64_t obj_n = Rf_isString(row_names) ? ncol + 1 : ncol;
 
-    for (int64_t i = 0; i < Rf_xlength(VECTOR_ELT(x, 0)); i++) {
-      JSValue obj = JS_NewObject(ctx);
+    const int64_t nrow = Rf_xlength(VECTOR_ELT(x, 0));
+    std::vector<JSValue> rtn_vals(nrow);
+    for (int64_t i = 0; i < nrow; i++) {
+      std::vector<JSValue> row_vals(obj_n);
+      std::vector<const char*> row_props(obj_n);
 
-      for (int64_t j = 0; j < Rf_xlength(x); j++) {
+      for (int64_t j = 0; j < ncol; j++) {
         SEXP col = VECTOR_ELT(x, j);
         if (Rf_isDataFrame(col)) {
-          JSValue df_obj = JS_NewObject(ctx);
+          const int64_t nrow = Rf_xlength(col);
+          std::vector<JSValue> dfcol_vals(nrow);
+          std::vector<const char*> dfcol_props(nrow);
           SEXP df_names = Rf_getAttrib(col, R_NamesSymbol);
           PROTECT(df_names);
-          for (int64_t k = 0; k < Rf_xlength(col); k++) {
-            JSValue val = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i);
-            JS_SetPropertyStr(ctx, df_obj, Rf_translateCharUTF8(STRING_ELT(df_names, k)), val);
+          for (int64_t k = 0; k < nrow; k++) {
+            dfcol_vals[k] = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i);
+            dfcol_props[k] = Rf_translateCharUTF8(STRING_ELT(df_names, k));
           }
           UNPROTECT(1);
-          JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), df_obj);
+          row_vals[j] = JS_NewObjectFromStr(ctx, dfcol_props.size(), dfcol_props.data(), dfcol_vals.data());
         } else {
-          JSValue val = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i);
-          JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), val);
+          row_vals[j] = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i);
         }
+        row_props[j] = Rf_translateCharUTF8(STRING_ELT(col_names, j));
       }
 
       // If row names are present and a character vector, add them to the object
       if (Rf_isString(row_names)) {
-        JSValue row_name = JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(row_names, i)));
-        JS_SetPropertyStr(ctx, obj, "_row", row_name);
+        row_vals[ncol] = JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(row_names, i)));
+        row_props[ncol] = "_row";
       }
-
-      JS_SetPropertyInt64(ctx, arr, i, obj);
+      rtn_vals[i] = JS_NewObjectFromStr(ctx, row_props.size(), row_props.data(), row_vals.data());
     }
 
     UNPROTECT(2);
 
-    return arr;
+    return JS_NewArrayFrom(ctx, rtn_vals.size(), rtn_vals.data());
   }
 
   static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
@@ -122,18 +131,17 @@ namespace quickjsr {
 
 
   inline JSValue SEXP_to_JSValue_matrix(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
-    int64_t nrow = Rf_nrows(x);
-    int64_t ncol = Rf_ncols(x);
-    JSValue arr = JS_NewArray(ctx);
+    const int64_t nrow = Rf_nrows(x);
+    const int64_t ncol = Rf_ncols(x);
+    std::vector<JSValue> row_vals(nrow);
     for (int64_t i = 0; i < nrow; i++) {
-      JSValue row = JS_NewArray(ctx);
+      std::vector<JSValue> values(ncol);
       for (int64_t j = 0; j < ncol; j++) {
-        JSValue val = SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox, i + j * nrow);
-        JS_SetPropertyInt64(ctx, row, j, val);
+        values[j] = SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox, i + j * nrow);
       }
-      JS_SetPropertyInt64(ctx, arr, i, row);
+      row_vals[i] = JS_NewArrayFrom(ctx, values.size(), values.data());
     }
-    return arr;
+    return JS_NewArrayFrom(ctx, row_vals.size(), row_vals.data());
   }
 
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index) {
@@ -171,6 +179,7 @@ namespace quickjsr {
           // Match input classes
           x_index.attr("class") = Rf_getAttrib(x, R_ClassSymbol);
           cpp11::function format = cpp11::package("base")["format"];
+          using cpp11::literals::operator""_nm;
           std::string formatted = cpp11::as_cpp<std::string>(format(x_index, "format"_nm = "%Y-%m-%dT%H:%M:%OSZ", "tz"_nm = "UTC"));
           // Create new Date from ISO string using JS_CallConstructor
           JSValue global = JS_GetGlobalObject(ctx);

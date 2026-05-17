@@ -6,7 +6,7 @@
 #include <cstring>
 
 namespace quickjsr {
-  JSValue JS_GetPropertyRecursive(JSContext* ctx, JSValue obj, const char* name) {
+  inline JSValue JS_GetPropertyRecursive(JSContext* ctx, JSValue obj, const char* name) {
     const char* dot = strchr(name, '.');
     if (dot) {
       // The name contains a ".", so we extract the first property and recurse on the rest of the name
@@ -20,8 +20,8 @@ namespace quickjsr {
       return JS_GetPropertyStr(ctx, obj, name);
     }
   }
-  
-  int JS_SetPropertyRecursive(JSContext* ctx, JSValue obj, const char* name, JSValue value) {
+
+  inline int JS_SetPropertyRecursive(JSContext* ctx, JSValue obj, const char* name, JSValue value) {
     const char* dot = strchr(name, '.');
     if (dot) {
       // The name contains a ".", so we extract the first property and recurse on the rest of the name

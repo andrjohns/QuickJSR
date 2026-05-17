@@ -20,9 +20,9 @@ namespace quickjsr {
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox,
                                   bool auto_unbox_curr);
 
-  JSClassID js_sexp_class_id = 100;
-  JSClassID js_renv_class_id = 101;
-  JSClassDef js_sexp_class_def = {
+  static JSClassID js_sexp_class_id;
+  static JSClassID js_renv_class_id;
+  static JSClassDef js_sexp_class_def = {
     "SEXP",
     nullptr // finalized
   };
@@ -48,7 +48,7 @@ namespace quickjsr {
     return 0;
   }
 
-  JSClassExoticMethods js_renv_exotic_methods = {
+  static JSClassExoticMethods js_renv_exotic_methods = {
     nullptr,
     nullptr,
     nullptr,
@@ -58,7 +58,7 @@ namespace quickjsr {
     js_renv_set_property
   };
 
-  JSClassDef js_renv_class_def = {
+  static JSClassDef js_renv_class_def = {
     "REnv",
     nullptr,
     nullptr,

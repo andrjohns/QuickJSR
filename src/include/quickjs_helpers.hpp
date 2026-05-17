@@ -1,6 +1,7 @@
 #ifndef QUICKJS_HELPERS_HPP
 #define QUICKJS_HELPERS_HPP
 
+#include "quickjs.h"
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <quickjsr/JS_SEXP.hpp>
@@ -105,7 +106,7 @@ namespace quickjsr {
     return ctx;
   }
 
-  JSRuntime* JS_NewCustomRuntime(int stack_size) {
+  inline JSRuntime* JS_NewCustomRuntime(int stack_size) {
     JSRuntime *rt;
     rt = JS_NewRuntime();
     if (!rt){
@@ -117,6 +118,9 @@ namespace quickjsr {
     }
     js_std_set_worker_new_context_func(JS_NewCustomContext);
     js_std_init_handlers(rt);
+
+    JS_NewClassID(rt, &quickjsr::js_sexp_class_id);
+    JS_NewClassID(rt, &quickjsr::js_renv_class_id);
     // Initialise a class which can be used for passing SEXP objects to JS
     // without needing conversion
     JS_NewClass(rt, quickjsr::js_sexp_class_id, &quickjsr::js_sexp_class_def);
