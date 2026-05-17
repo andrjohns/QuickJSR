@@ -1,3 +1,6 @@
+# QuickJSR 1.10.0
+  * Update bundled QuickJS-NG engine to v0.14.0 (see https://github.com/quickjs-ng/quickjs/releases/tag/v0.14.0 for release notes)
+
 # QuickJSR 1.9.0
   * Update bundled QuickJS-NG engine to v0.11.0 (see https://github.com/quickjs-ng/quickjs/releases for release notes)
   * Move build headers to reduce installed package size

@@ -59,6 +59,7 @@ jobs:
       - name: Install development rstan
         run: |
           pak::repo_add('https://stan-dev.r-universe.dev')
+          pak::pak('StanHeaders')
           pak::pak('rstan')
         shell: Rscript {0}
 
