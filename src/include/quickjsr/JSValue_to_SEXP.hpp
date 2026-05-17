@@ -141,17 +141,17 @@ namespace quickjsr {
           out[static_cast<R_xlen_t>(i)] = NA_STRING;
         } else if (JS_IsBool(base_val)) {
           out[static_cast<R_xlen_t>(i)] = JS_ToBool(ctx, base_val) ? "TRUE" : "FALSE";
-        } else if (JS_VALUE_GET_TAG(base_val) == JS_TAG_INT) {
+        } else if (JS_VALUE_GET_NORM_TAG(base_val) == JS_TAG_INT) {
           int32_t res = JS_VALUE_GET_INT(base_val);
           out[static_cast<R_xlen_t>(i)] = std::to_string(res);
-        } else if (JS_VALUE_GET_TAG(base_val) == JS_TAG_BIG_INT) {
+        } else if (JS_VALUE_GET_NORM_TAG(base_val) == JS_TAG_BIG_INT) {
           int64_t res;
           JS_ToBigInt64(ctx, &res, base_val);
           out[static_cast<R_xlen_t>(i)] = std::to_string(res);
-        } else if (JS_VALUE_GET_TAG(base_val) == JS_TAG_SHORT_BIG_INT) {
+        } else if (JS_VALUE_GET_NORM_TAG(base_val) == JS_TAG_SHORT_BIG_INT) {
           int64_t res = JS_VALUE_GET_SHORT_BIG_INT(base_val);
           out[static_cast<R_xlen_t>(i)] = std::to_string(res);
-        } else if (JS_TAG_IS_FLOAT64(JS_VALUE_GET_TAG(base_val))) {
+        } else if (JS_TAG_IS_FLOAT64(JS_VALUE_GET_NORM_TAG(base_val))) {
           double res;
           JS_ToFloat64(ctx, &res, base_val);
           std::string str_res;
@@ -248,7 +248,7 @@ namespace quickjsr {
   }
 
 SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
-  switch (JS_VALUE_GET_TAG(val)) {
+  switch (JS_VALUE_GET_NORM_TAG(val)) {
     case JS_TAG_EXCEPTION: {
       JSValue exc = JS_GetException(ctx);
       const char* res_str = JS_ToCString(ctx, val);
@@ -308,7 +308,7 @@ SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
       }
     }
     default: {
-      cpp11::stop("Unknown JS TAG: %d", JS_VALUE_GET_TAG(val));
+      cpp11::stop("Unknown JS TAG: %d", JS_VALUE_GET_NORM_TAG(val));
       return R_NilValue;
     }
   }
