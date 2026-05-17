@@ -1,8 +1,6 @@
 on:
   push:
-    branches:
-      - main
-      - cleanups
+    branches: main
   pull_request:
     branches: main
 
