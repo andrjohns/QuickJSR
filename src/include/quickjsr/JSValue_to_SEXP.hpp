@@ -18,7 +18,7 @@ namespace quickjsr {
     Error
   };
 
-  BaseType value_to_base_type(const JSValue& value) {
+  inline BaseType value_to_base_type(const JSValue& value) {
     if (JS_IsException(value)) {
       return Error;
     }
@@ -46,7 +46,7 @@ namespace quickjsr {
     return Mixed;
   }
 
-  BaseType combine_array_types(BaseType a, BaseType b) {
+  inline BaseType combine_array_types(BaseType a, BaseType b) {
     if (a == Mixed || b == Mixed) {
       return Mixed;
     }
@@ -78,7 +78,7 @@ namespace quickjsr {
   }
   SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val);
 
-  SEXP date_sexp(JSContext* ctx, const JSValue& val) {
+  inline SEXP date_sexp(JSContext* ctx, const JSValue& val) {
     // Extract getIsoString from the Date object
     JSValue iso_str_func = JS_GetPropertyStr(ctx, val, "toISOString");
     if (JS_IsException(iso_str_func) || !JS_IsFunction(ctx, iso_str_func)) {
@@ -100,7 +100,7 @@ namespace quickjsr {
     return out;
   }
 
-  SEXP array_sexp(JSContext* ctx, const JSValue& val) {
+  inline SEXP array_sexp(JSContext* ctx, const JSValue& val) {
     // Handle as array
     int64_t len;
     JS_GetLength(ctx, val, &len);
@@ -225,7 +225,7 @@ namespace quickjsr {
     }
   }
 
-  SEXP object_sexp(JSContext* ctx, const JSValue& val) {
+  inline SEXP object_sexp(JSContext* ctx, const JSValue& val) {
     // Handle as object
     // Get the keys of the object
     JSPropertyEnum* tab = NULL;
@@ -248,7 +248,7 @@ namespace quickjsr {
     return out;
   }
 
-SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
+inline SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
   switch (JS_VALUE_GET_NORM_TAG(val)) {
     case JS_TAG_EXCEPTION: {
       JSValue exc = JS_GetException(ctx);
