@@ -4,7 +4,6 @@
 #include "cpp11/protect.hpp"
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
-#include <iostream>
 
 namespace quickjsr {
   enum BaseType {
