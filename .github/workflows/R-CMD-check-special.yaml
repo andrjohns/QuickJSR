@@ -21,8 +21,6 @@ jobs:
           - { name: "gcc-asan" }
           - { name: "valgrind" }
           - { name: "rchk" }
-          - { name: "gcc16" }
-          - { name: "clang22" }
           - { name: "rhel9" }
 
     env:

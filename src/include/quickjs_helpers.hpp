@@ -8,7 +8,12 @@
 /**
  * These functions were adapted from the qjs.c file in the QuickJS source code.
 */
-extern "C" int js__has_suffix(const char *str, const char *suffix);
+static inline int js__has_suffix(const char *str, const char *suffix)
+{
+    size_t len = strlen(str);
+    size_t slen = strlen(suffix);
+    return (len >= slen && !memcmp(str + len - slen, suffix, slen));
+}
 #ifndef countof
 #define countof(x) (sizeof(x) / sizeof((x)[0]))
 #endif
@@ -79,7 +84,7 @@ namespace quickjsr {
     JSValue proto = JS_NewObject(ctx);
     JS_SetClassProto(ctx, quickjsr::js_renv_class_id, proto);
 
-    JS_SetModuleLoaderFunc(rt, NULL, js_module_loader, NULL);
+    JS_SetModuleLoaderFunc2(rt, NULL, js_module_loader, js_module_check_attributes, NULL);
 
     js_init_module_os(ctx, "os");
     js_init_module_std(ctx, "std");

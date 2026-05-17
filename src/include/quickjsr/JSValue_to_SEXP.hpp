@@ -1,8 +1,10 @@
 #ifndef QUICKJSR_JSVALUE_TO_SEXP_HPP
 #define QUICKJSR_JSVALUE_TO_SEXP_HPP
 
+#include "cpp11/protect.hpp"
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
+#include <iostream>
 
 namespace quickjsr {
   enum BaseType {
@@ -291,6 +293,12 @@ SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
       JS_FreeCString(ctx, res);
       return cpp11::as_sexp(res_str);
     }
+    case JS_TAG_STRING_ROPE: {
+      const char* res = JS_ToCString(ctx, val);
+      std::string res_str = res ? res : "";
+      JS_FreeCString(ctx, res);
+      return cpp11::as_sexp(res_str);
+    }
     case JS_TAG_OBJECT: {
       if (JS_IsDate(val)) {
         return date_sexp(ctx, val);
@@ -301,6 +309,7 @@ SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
       }
     }
     default: {
+      cpp11::stop("Unknown JS TAG: %d", JS_VALUE_GET_TAG(val));
       return R_NilValue;
     }
   }
