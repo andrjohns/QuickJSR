@@ -17,7 +17,11 @@
 #'
 #' @export
 qjs_eval <- function(eval_string) {
-  .Call(`qjs_eval_`, eval_string)
+  res <- .Call(`qjs_eval_`, eval_string)
+  if (is.null(res)) {
+    return(invisible(NULL))
+  }
+  res
 }
 
 qjs_context <- function(stack_size) {

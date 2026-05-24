@@ -5,7 +5,7 @@ void Rprintf(const char *, ...);
 void REprintf(const char *, ...);
 void Rvprintf(const char *, va_list);
 void REvprintf(const char *, va_list);
-[[noreturn]] void Rf_error(const char *, ...);
+void Rf_error(const char *, ...);
 
 FILE* stdout_dummy = (FILE*)1;
 FILE* stderr_dummy = (FILE*)2;
