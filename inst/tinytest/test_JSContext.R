@@ -36,6 +36,16 @@ jsc$call("env_update", env)
 expect_equal(env$a, 10)
 expect_equal(env$b, 20)
 
+expect_equal(
+  tryCatch({jsc$source(code = "non_exist_fun(1)")}, error = function(e) {as.character(e)}),
+  "Error: JavaScript Exception: \nReferenceError: non_exist_fun is not defined\n    at <eval> (<input>:1:1)\n\n"
+)
+
+expect_equal(
+  capture.output(jsc$source(code = "console.log('Testing value')")),
+  "Testing value"
+)
+
 
 # Fails on 3.6 CI, but can't be replicated locally
 exit_if_not(R.version$major  > "3")
