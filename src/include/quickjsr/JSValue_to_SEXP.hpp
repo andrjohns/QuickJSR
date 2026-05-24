@@ -2,6 +2,7 @@
 #define QUICKJSR_JSVALUE_TO_SEXP_HPP
 
 #include "cpp11/protect.hpp"
+#include "quickjs.h"
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 
@@ -252,11 +253,20 @@ inline SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
   switch (JS_VALUE_GET_NORM_TAG(val)) {
     case JS_TAG_EXCEPTION: {
       JSValue exc = JS_GetException(ctx);
-      const char* res_str = JS_ToCString(ctx, val);
+      const char* res_str = JS_ToCString(ctx, exc);
       std::string msg = res_str;
       JS_FreeCString(ctx, res_str);
+      std::string stack = "";
+      if (JS_IsError(exc)) {
+        JSValue stack_val = JS_GetPropertyStr(ctx, exc, "stack");
+        const char* stack_str = JS_ToCString(ctx, stack_val);
+        stack = stack_str;
+        stack = "\n" + stack;
+        JS_FreeCString(ctx, stack_str);
+        JS_FreeValue(ctx, stack_val);
+      }
       JS_FreeValue(ctx, exc);
-      cpp11::stop("JavaScript Exception: " + msg);
+      cpp11::stop("JavaScript Exception: \n" + msg + stack);
     }
     case JS_TAG_NULL: {
       return R_NilValue;

@@ -38,12 +38,27 @@ namespace quickjsr {
       val = JS_Eval(ctx, buf, buf_len, filename, eval_flags);
     }
     if (JS_IsException(val)) {
-      js_std_dump_error(ctx);
+      JSValue exc = JS_GetException(ctx);
+      const char* res_str = JS_ToCString(ctx, exc);
+      std::string msg = res_str;
+      JS_FreeCString(ctx, res_str);
+      std::string stack = "";
+      if (JS_IsError(exc)) {
+        JSValue stack_val = JS_GetPropertyStr(ctx, exc, "stack");
+        const char* stack_str = JS_ToCString(ctx, stack_val);
+        stack = stack_str;
+        stack = "\n" + stack;
+        JS_FreeCString(ctx, stack_str);
+        JS_FreeValue(ctx, stack_val);
+      }
+      JS_FreeValue(ctx, exc);
+      JS_FreeValue(ctx, val);
+      cpp11::stop("JavaScript Exception: \n" + msg + stack);
       ret = -1;
     } else {
+      JS_FreeValue(ctx, val);
       ret = 0;
     }
-    JS_FreeValue(ctx, val);
     return ret;
   }
 
