@@ -12,3 +12,5 @@ Makefile
 ^README\.Rmd$
 ^compile_commands\.json$
 ^\.cache$
+inst/include
+inst/lib
