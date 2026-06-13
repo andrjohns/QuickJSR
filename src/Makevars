@@ -1,4 +1,5 @@
 PKG_CPPFLAGS = -I"include" -I"quickjs" -D_GNU_SOURCE
+PKG_LIBS = libquickjs.a
 
 ifeq ($(OS),Windows_NT)
 	DLL := .dll
@@ -31,11 +32,20 @@ else
 	endif
 endif
 
-SOURCES = quickjsr.cpp init.cpp libquickjs.c
-OBJECTS = quickjsr.o init.o libquickjs.o
+SOURCES = quickjsr.cpp init.cpp
+OBJECTS = $(SOURCES:.cpp=.o)
 
 $(SHLIB): $(OBJECTS)
+$(OBJECTS): build-static
+
+build-static:
+	@mkdir -p ../inst/include/quickjs
+	@cp $(wildcard quickjs/*.h) ../inst/include/quickjs
+	$(R_CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -funsigned-char -std=gnu11 -c libquickjs.c
+	$(AR) -rs libquickjs.a libquickjs.o
+	@mkdir -p ../inst/lib/$(R_ARCH)
+	@cp libquickjs.a  ../inst/lib/$(R_ARCH)
 
 clean:
-	$(RM) libquickjs.o $(OBJECTS)
+	$(RM) libquickjs.o libquickjs.a $(OBJECTS)
 	$(RM) -r ../inst/lib ../inst/include/quickjs

@@ -20,6 +20,11 @@ Useful links:
 \author{
 \strong{Maintainer}: Andrew R. Johnson \email{andrew.johnson@arjohnsonau.com} (\href{https://orcid.org/0000-0001-7000-8065}{ORCID})
 
+Authors:
+\itemize{
+  \item Andrew R. Johnson \email{andrew.johnson@arjohnsonau.com} (\href{https://orcid.org/0000-0001-7000-8065}{ORCID})
+}
+
 Other contributors:
 \itemize{
   \item QuickJS Authors (QuickJS sources and headers) [copyright holder]
