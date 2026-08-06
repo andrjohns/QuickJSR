@@ -98,9 +98,11 @@ extern "C" {
     ContextXPtr ctx(ctx_ptr_);
     JSValue global = JS_GetGlobalObject(ctx.get());
     JSValue value = quickjsr::SEXP_to_JSValue(ctx.get(), value_, true);
+    // JS_SetPropertyRecursive() bottoms out in JS_SetPropertyStr(), which
+    // always consumes (frees) `value`'s reference itself; freeing it again
+    // here double-frees any heap-allocated value (string/array/object).
     int result = quickjsr::JS_SetPropertyRecursive(ctx.get(), global, Rf_translateCharUTF8(STRING_ELT(js_obj_name_, 0)), value);
 
-    JS_FreeValue(ctx.get(), value);
     JS_FreeValue(ctx.get(), global);
 
     return cpp11::as_sexp(result);

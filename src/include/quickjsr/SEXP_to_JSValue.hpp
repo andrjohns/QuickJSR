@@ -29,6 +29,11 @@ namespace quickjsr {
 
   inline JSValue SEXP_to_JSValue_object(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
     const int64_t n = Rf_xlength(x);
+    // JS_NewObjectFromStr() treats count < 1 as an error and always returns
+    // JS_EXCEPTION, so it cannot be used to create an empty object.
+    if (n == 0) {
+      return JS_NewObject(ctx);
+    }
     SEXP names = Rf_getAttrib(x, R_NamesSymbol);
     std::vector<JSValue> values(n);
     std::vector<const char*> props(n);
@@ -59,7 +64,7 @@ namespace quickjsr {
     const int64_t ncol = Rf_xlength(x);
     const int64_t obj_n = Rf_isString(row_names) ? ncol + 1 : ncol;
 
-    const int64_t nrow = Rf_xlength(VECTOR_ELT(x, 0));
+    const int64_t nrow = ncol > 0 ? Rf_xlength(VECTOR_ELT(x, 0)) : 0;
     std::vector<JSValue> rtn_vals(nrow);
     for (int64_t i = 0; i < nrow; i++) {
       std::vector<JSValue> row_vals(obj_n);
@@ -78,7 +83,9 @@ namespace quickjsr {
             dfcol_props[k] = Rf_translateCharUTF8(STRING_ELT(df_names, k));
           }
           UNPROTECT(1);
-          row_vals[j] = JS_NewObjectFromStr(ctx, dfcol_props.size(), dfcol_props.data(), dfcol_vals.data());
+          // JS_NewObjectFromStr() cannot create an empty object (see above)
+          row_vals[j] = nrow == 0 ? JS_NewObject(ctx)
+              : JS_NewObjectFromStr(ctx, dfcol_props.size(), dfcol_props.data(), dfcol_vals.data());
         } else {
           row_vals[j] = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i);
         }
@@ -100,9 +107,13 @@ namespace quickjsr {
 
   static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
                                 JSValueConst* argv, int magic, JSValue* data) {
+    // data[0] is owned by the enclosing JSCFunctionDataRecord (freed once,
+    // when the function object itself is finalized) and merely borrowed for
+    // the duration of this call; it must not be freed here. Freeing it on
+    // every call previously released the same reference repeatedly, leaving
+    // a dangling opaque pointer after the second call.
     JSValue data_val = data[0];
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(data_val, js_sexp_class_id));
-    JS_FreeValue(ctx, data_val);
     if (argc == 0) {
       return SEXP_to_JSValue(ctx, cpp11::function(x)(), true, true);
     }
@@ -117,10 +128,17 @@ namespace quickjsr {
   inline JSValue SEXP_to_JSValue_function(JSContext* ctx, const SEXP& x,
                                           bool auto_unbox_inp = false,
                                           bool auto_unbox = false) {
+    // Nothing else protects `x` from R's GC once the .Call() that produced
+    // it returns; keep it alive until js_sexp_finalizer() releases it.
+    R_PreserveObject(x);
     JSValue obj = JS_NewObjectClass(ctx, js_sexp_class_id);
     JS_SetOpaque(obj, reinterpret_cast<void*>(x));
-    return JS_NewCFunctionData(ctx, js_fun_static, Rf_xlength(R_ClosureFormals(x)),
-                                JS_CFUNC_generic, 1, &obj);
+    // JS_NewCFunctionData() dups `obj` into its own storage, so the local
+    // reference created above must still be freed here to avoid leaking it.
+    JSValue fun = JS_NewCFunctionData(ctx, js_fun_static, Rf_xlength(R_ClosureFormals(x)),
+                                       JS_CFUNC_generic, 1, &obj);
+    JS_FreeValue(ctx, obj);
+    return fun;
   }
 
   inline JSValue SEXP_to_JSValue_env(JSContext* ctx, const SEXP& x) {

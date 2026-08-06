@@ -22,9 +22,21 @@ namespace quickjsr {
 
   static JSClassID js_sexp_class_id;
   static JSClassID js_renv_class_id;
+
+  // The wrapped SEXP (an R closure, see SEXP_to_JSValue_function) is kept
+  // alive with R_PreserveObject() for as long as this JS object holds a raw
+  // pointer to it, since nothing else protects it from R's GC once the
+  // .Call() that produced it returns.
+  static void js_sexp_finalizer(JSRuntime *rt, JSValueConst val) {
+    SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(val, js_sexp_class_id));
+    if (x) {
+      R_ReleaseObject(x);
+    }
+  }
+
   static JSClassDef js_sexp_class_def = {
     "SEXP",
-    nullptr // finalized
+    js_sexp_finalizer
   };
 
   static JSValue js_renv_get_property(JSContext *ctx, JSValueConst this_val, JSAtom atom, JSValueConst receiver) {

@@ -110,7 +110,12 @@ namespace quickjsr {
     const char *str = "import * as std from 'std';\n"
         "import * as os from 'os';\n"
         "globalThis.std = std;\n"
-        "globalThis.os = os;\n";
+        "globalThis.os = os;\n"
+        // console.log is defined by js_std_add_helpers(); console.error is
+        // not, so add it here, writing to stderr instead of stdout.
+        "globalThis.console.error = function(...args) {\n"
+        "  std.err.puts(args.join(' ') + '\\n');\n"
+        "};\n";
     eval_buf(ctx, str, strlen(str), "<input>", JS_EVAL_TYPE_MODULE);
 
     JSValue global_obj = JS_GetGlobalObject(ctx);
