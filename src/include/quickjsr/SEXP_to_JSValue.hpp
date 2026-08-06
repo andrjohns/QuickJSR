@@ -28,22 +28,25 @@ namespace quickjsr {
   }
 
   inline JSValue SEXP_to_JSValue_object(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
+    // Built via JS_NewObject()+JS_SetPropertyStr() rather than
+    // JS_NewObjectFromStr(): the latter assumes the fresh object's shape is
+    // uniquely owned (an assert to that effect is compiled out under
+    // -DNDEBUG), but a freshly created empty object's shape is normally
+    // shared (hash-consed) with every other empty object of the same
+    // prototype, so mutating it in place corrupts all of them.
     const int64_t n = Rf_xlength(x);
-    // JS_NewObjectFromStr() treats count < 1 as an error and always returns
-    // JS_EXCEPTION, so it cannot be used to create an empty object.
+    JSValue obj = JS_NewObject(ctx);
     if (n == 0) {
-      return JS_NewObject(ctx);
+      return obj;
     }
     SEXP names = Rf_getAttrib(x, R_NamesSymbol);
-    std::vector<JSValue> values(n);
-    std::vector<const char*> props(n);
     PROTECT(names);
     for (int64_t i = 0; i < n; i++) {
-      values[i] = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
-      props[i] = Rf_translateCharUTF8(STRING_ELT(names, i));
+      JSValue value = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
+      JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(names, i)), value);
     }
     UNPROTECT(1);
-    return JS_NewObjectFromStr(ctx, props.size(), props.data(), values.data());
+    return obj;
   }
 
   inline JSValue SEXP_to_JSValue_list(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
@@ -62,42 +65,38 @@ namespace quickjsr {
     SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
     PROTECT(row_names);
     const int64_t ncol = Rf_xlength(x);
-    const int64_t obj_n = Rf_isString(row_names) ? ncol + 1 : ncol;
 
     const int64_t nrow = ncol > 0 ? Rf_xlength(VECTOR_ELT(x, 0)) : 0;
     std::vector<JSValue> rtn_vals(nrow);
     for (int64_t i = 0; i < nrow; i++) {
-      std::vector<JSValue> row_vals(obj_n);
-      std::vector<const char*> row_props(obj_n);
+      JSValue row_obj = JS_NewObject(ctx);
 
       for (int64_t j = 0; j < ncol; j++) {
         SEXP col = VECTOR_ELT(x, j);
+        JSValue col_val;
         if (Rf_isDataFrame(col)) {
           const int64_t nrow = Rf_xlength(col);
-          std::vector<JSValue> dfcol_vals(nrow);
-          std::vector<const char*> dfcol_props(nrow);
           SEXP df_names = Rf_getAttrib(col, R_NamesSymbol);
           PROTECT(df_names);
+          JSValue dfcol_obj = JS_NewObject(ctx);
           for (int64_t k = 0; k < nrow; k++) {
-            dfcol_vals[k] = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i);
-            dfcol_props[k] = Rf_translateCharUTF8(STRING_ELT(df_names, k));
+            JSValue dfcol_val = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i);
+            JS_SetPropertyStr(ctx, dfcol_obj, Rf_translateCharUTF8(STRING_ELT(df_names, k)), dfcol_val);
           }
           UNPROTECT(1);
-          // JS_NewObjectFromStr() cannot create an empty object (see above)
-          row_vals[j] = nrow == 0 ? JS_NewObject(ctx)
-              : JS_NewObjectFromStr(ctx, dfcol_props.size(), dfcol_props.data(), dfcol_vals.data());
+          col_val = dfcol_obj;
         } else {
-          row_vals[j] = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i);
+          col_val = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i);
         }
-        row_props[j] = Rf_translateCharUTF8(STRING_ELT(col_names, j));
+        JS_SetPropertyStr(ctx, row_obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), col_val);
       }
 
       // If row names are present and a character vector, add them to the object
       if (Rf_isString(row_names)) {
-        row_vals[ncol] = JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(row_names, i)));
-        row_props[ncol] = "_row";
+        JSValue row_name = JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(row_names, i)));
+        JS_SetPropertyStr(ctx, row_obj, "_row", row_name);
       }
-      rtn_vals[i] = JS_NewObjectFromStr(ctx, row_props.size(), row_props.data(), row_vals.data());
+      rtn_vals[i] = row_obj;
     }
 
     UNPROTECT(2);
