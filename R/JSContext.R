@@ -124,13 +124,23 @@ new_JSContext <- function(stack_size = NULL) {
     eval_success <- TRUE
     if (!is.null(file)) {
       if (!is.null(code)) {
-        warning("Both a filepath and code string cannot be provided,",
-                " code will be ignored!", call. = FALSE)
+        warning(
+          "Both a filepath and code string cannot be provided,",
+          " code will be ignored!",
+          call. = FALSE
+        )
       }
-      eval_success <- qjs_source(ContextList$context,
-                                  input = normalizePath(file), is_file = TRUE)
+      eval_success <- qjs_source(
+        ContextList$context,
+        input = normalizePath(file),
+        is_file = TRUE
+      )
     } else if (!is.null(code)) {
-      eval_success <- qjs_source(ContextList$context, input = code, is_file = FALSE)
+      eval_success <- qjs_source(
+        ContextList$context,
+        input = code,
+        is_file = FALSE
+      )
     } else {
       stop("No JS code provided!", call. = FALSE)
     }

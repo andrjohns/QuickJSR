@@ -25,7 +25,9 @@ jsc$assign("lst", list(a = 1, b = "two"))
 expect_equal(jsc$get("lst"), list(a = 1, b = "two"))
 
 # Repeated assignment to the same name
-for (i in 1:50) jsc$assign("loopvar", paste0("v", i))
+for (i in 1:50) {
+  jsc$assign("loopvar", paste0("v", i))
+}
 expect_equal(jsc$get("loopvar"), "v50")
 
 # Nested-name assignment uses the recursive setter, which also steals the value
@@ -40,7 +42,8 @@ expect_equal(jsc$get("obj.deep"), "nested-value")
 jsc$assign("gc1", "one")
 jsc$assign("gc2", c("two", "three"))
 jsc$assign("gc3", list(a = 1))
-gc(); gc()
+gc()
+gc()
 expect_equal(jsc$get("gc1"), "one")
 expect_equal(jsc$get("gc2"), c("two", "three"))
 expect_equal(jsc$get("gc3"), list(a = 1))

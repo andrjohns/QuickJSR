@@ -9,14 +9,23 @@
 
 log_file <- tempfile()
 script <- tempfile(fileext = ".R")
-writeLines(c(
-  "library(QuickJSR)",
-  sprintf("log_file <- %s", deparse(log_file)),
-  "ret <- qjs_eval(\"os.exec(['/nonexistent_xyz_quickjsr_test'], {block:true})\")",
-  "cat('MARK', ret, '\\n', file = log_file, append = TRUE)"
-), script)
+writeLines(
+  c(
+    "library(QuickJSR)",
+    sprintf("log_file <- %s", deparse(log_file)),
+    "ret <- qjs_eval(\"os.exec(['/nonexistent_xyz_quickjsr_test'], {block:true})\")",
+    "cat('MARK', ret, '\\n', file = log_file, append = TRUE)"
+  ),
+  script
+)
 
-status <- system2(R.home("bin/Rscript"), args = script, stdout = TRUE, stderr = TRUE, timeout = 20)
+status <- system2(
+  R.home("bin/Rscript"),
+  args = script,
+  stdout = TRUE,
+  stderr = TRUE,
+  timeout = 20
+)
 unlink(script)
 log_lines <- if (file.exists(log_file)) readLines(log_file) else character(0)
 unlink(log_file)
@@ -26,9 +35,20 @@ unlink(log_file)
 expect_equal(length(log_lines), 1)
 
 # The exec failure must surface in the parent as a normal, prompt return
-# value (127, matching a failed exec/command-not-found), not an R error and
-# not a hang.
-expect_equal(trimws(sub("^MARK", "", log_lines[1])), "127")
+# value, not an R error and not a hang. The forked child terminates via
+# hard_terminate() (libquickjs.c), which is platform-specific: Linux and
+# Windows can pass the real exit status through (127, matching a failed
+# exec/command-not-found), but other Unixes fall back to raise(SIGKILL),
+# which has no way to carry a status and always reports as killed-by-signal-9
+# (-9) instead.
+expected_status <- if (
+  .Platform$OS.type == "windows" || Sys.info()[["sysname"]] == "Linux"
+) {
+  "127"
+} else {
+  "-9"
+}
+expect_equal(trimws(sub("^MARK", "", log_lines[1])), expected_status)
 
 # The happy path (successful exec, no _exit() in the child at all) must be
 # completely unaffected.

@@ -7,14 +7,23 @@
 run_subprocess <- function(lines) {
   script <- tempfile(fileext = ".R")
   writeLines(c("library(QuickJSR)", lines, "cat('__DONE__\\n')"), script)
-  out <- suppressWarnings(system2(R.home("bin/Rscript"), args = script, stdout = TRUE, stderr = TRUE))
+  out <- suppressWarnings(system2(
+    R.home("bin/Rscript"),
+    args = script,
+    stdout = TRUE,
+    stderr = TRUE
+  ))
   unlink(script)
   out
 }
 
 get_val <- function(out, name) {
   line <- grep(paste0("^", name, "="), out, value = TRUE)
-  if (length(line) == 0) NA_character_ else sub(paste0("^", name, "="), "", line[1])
+  if (length(line) == 0) {
+    NA_character_
+  } else {
+    sub(paste0("^", name, "="), "", line[1])
+  }
 }
 
 out <- run_subprocess(c(
@@ -55,17 +64,19 @@ expect_error(qjs_eval("std.err.close()"), "cannot close stdio")
 tmp <- tempfile()
 jsc <- JSContext$new()
 jsc$assign("tmp_path", tmp)
-jsc$source(code = paste(
-  "var f = std.open(tmp_path, 'w+');",
-  "f.puts('hello');",
-  "f.flush();",
-  "function fTell() { return f.tell(); }",
-  "function fSeek() { return f.seek(0, 0); }",
-  "function fFileno() { return f.fileno(); }",
-  "function fEof() { return f.eof(); }",
-  "function fClose() { return f.close(); }",
-  sep = "\n"
-))
+jsc$source(
+  code = paste(
+    "var f = std.open(tmp_path, 'w+');",
+    "f.puts('hello');",
+    "f.flush();",
+    "function fTell() { return f.tell(); }",
+    "function fSeek() { return f.seek(0, 0); }",
+    "function fFileno() { return f.fileno(); }",
+    "function fEof() { return f.eof(); }",
+    "function fClose() { return f.close(); }",
+    sep = "\n"
+  )
+)
 expect_equal(jsc$call("fTell"), 5)
 expect_equal(jsc$call("fSeek"), 0)
 expect_true(jsc$call("fFileno") > 2)

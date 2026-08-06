@@ -14,14 +14,20 @@ expect_equal(e$y, 42)
 expect_equal(e$z, "hi")
 
 # Repeated access is stable
-for (i in 1:10) expect_equal(jsc$call("envget", e), 10)
+for (i in 1:10) {
+  expect_equal(jsc$call("envget", e), 10)
+}
 
 # R.package retrieves a base closure and calls it (js_r_package path)
-jsc$source(code = 'function useId() { return R.package("base")["identity"](99); }')
+jsc$source(
+  code = 'function useId() { return R.package("base")["identity"](99); }'
+)
 expect_equal(jsc$call("useId"), 99)
 
 # A non-existent package must error cleanly rather than crash
-jsc$source(code = 'function badpkg() { return R.package("no_such_pkg_xyz_123"); }')
+jsc$source(
+  code = 'function badpkg() { return R.package("no_such_pkg_xyz_123"); }'
+)
 expect_error(jsc$call("badpkg"))
 
 # The engine remains usable afterwards

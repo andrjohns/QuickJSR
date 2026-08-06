@@ -17,6 +17,11 @@ cppflags <- function() {
 #' @rdname quickjs_flags
 #' @export
 ldflags <- function() {
-  lib_dir <- system.file("lib", Sys.getenv("R_ARCH"), package = "QuickJSR", mustWork = TRUE)
+  lib_dir <- system.file(
+    "lib",
+    Sys.getenv("R_ARCH"),
+    package = "QuickJSR",
+    mustWork = TRUE
+  )
   paste0("-L", shQuote(lib_dir), " -lquickjs")
 }

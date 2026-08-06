@@ -5,11 +5,18 @@
 # Helper to capture stderr by running code in a subprocess
 capture_stderr <- function(code) {
   script <- tempfile(fileext = ".R")
-  writeLines(c(
-    "library(QuickJSR)",
-    paste0("qjs_eval(", shQuote(code), ")")
-  ), script)
-  result <- suppressWarnings(system2(R.home("bin/Rscript"), args = script, stderr = TRUE))
+  writeLines(
+    c(
+      "library(QuickJSR)",
+      paste0("qjs_eval(", shQuote(code), ")")
+    ),
+    script
+  )
+  result <- suppressWarnings(system2(
+    R.home("bin/Rscript"),
+    args = script,
+    stderr = TRUE
+  ))
   unlink(script)
   trimws(result)
 }
