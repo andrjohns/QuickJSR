@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -e
+
+for file in "src/quickjs/quickjs-libc.c" "src/quickjs/quickjs.c"
+do
+  sed -i 's/#pragma GCC diagnostic.*//' "$file"
+  sed -i 's/return js_free_cstring(rt, ptr);/js_free_cstring(rt, ptr);/' "$file"
+  sed -i 's/return js_free_cstring(ctx->rt, ptr);/js_free_cstring(ctx->rt, ptr);/' "$file"
+done
