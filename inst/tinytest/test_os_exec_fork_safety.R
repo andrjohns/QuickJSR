@@ -65,3 +65,6 @@ if (!identical(qjs_eval("typeof os.exec"), "undefined")) {
   wait_res <- qjs_eval(sprintf("os.waitpid(%d, 0)", pid))
   expect_equal(wait_res[[2]], 0)
 }
+
+# Dummy test so the file is non-empty
+expect_equal(1, 1)
