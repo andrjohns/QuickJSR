@@ -16,8 +16,14 @@ using RuntimeXPtr = cpp11::external_pointer<JSRuntime, JS_FreeRuntimeStdHandlers
 extern "C" {
   SEXP qjs_context_(SEXP stack_size_) {
     BEGIN_CPP11
-    int stack_size = Rf_isInteger(stack_size_) ? INTEGER_ELT(stack_size_, 0)
-                                               : static_cast<int>(REAL_ELT(stack_size_, 0));
+    int stack_size;
+    if (Rf_isInteger(stack_size_)) {
+      stack_size = INTEGER_ELT(stack_size_, 0);
+    } else if (Rf_isReal(stack_size_)) {
+      stack_size = static_cast<int>(REAL_ELT(stack_size_, 0));
+    } else {
+      cpp11::stop("stack_size must be integer or numeric");
+    }
     RuntimeXPtr rt(quickjsr::JS_NewCustomRuntime(stack_size));
     ContextXPtr ctx(quickjsr::JS_NewCustomContext(rt.get()));
 
@@ -35,6 +41,9 @@ extern "C" {
     ContextXPtr ctx(ctx_ptr_);
     int ret;
     const char* input = Rf_translateCharUTF8(STRING_ELT(input_, 0));
+    if (!Rf_isLogical(is_file_)) {
+      cpp11::stop("is_file must be a logical value");
+    }
     if (LOGICAL_ELT(is_file_, 0)) {
       ret = quickjsr::eval_file(ctx.get(), input, -1);
     } else {

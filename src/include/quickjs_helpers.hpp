@@ -102,9 +102,6 @@ namespace quickjsr {
 
     JS_SetModuleLoaderFunc2(rt, NULL, js_module_loader, js_module_check_attributes, NULL);
 
-    js_init_module_os(ctx, "os");
-    js_init_module_std(ctx, "std");
-
     js_std_add_helpers(ctx, 0, (char**)"");
 
     const char *str = "import * as std from 'std';\n"

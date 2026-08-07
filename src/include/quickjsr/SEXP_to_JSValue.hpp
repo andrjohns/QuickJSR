@@ -7,6 +7,8 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <vector>
+#include <ctime>
+#include <cmath>
 
 #if R_VERSION < R_Version(4, 5, 0)
 # define R_ClosureFormals(x) FORMALS(x)
@@ -16,13 +18,39 @@
 namespace quickjsr {
   // Forward declaration to allow for recursive calls
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
-  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index);
+  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index, bool is_factor = false, bool is_date_class = false);
+
+  // Format a POSIXct numeric value (seconds since epoch) as an ISO 8601 string
+  inline std::string format_posixct_iso(double val) {
+    if (std::isnan(val) || !std::isfinite(val)) return "null";
+    time_t t = static_cast<time_t>(val);
+    double frac = val - static_cast<double>(t);
+    if (frac < 0) { frac += 1.0; t -= 1; }
+
+    struct tm utc_tm;
+#ifdef _WIN32
+    gmtime_s(&utc_tm, &t);
+#else
+    gmtime_r(&t, &utc_tm);
+#endif
+
+    char buf[64];
+    int len = snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d",
+                       utc_tm.tm_year + 1900, utc_tm.tm_mon + 1, utc_tm.tm_mday,
+                       utc_tm.tm_hour, utc_tm.tm_min, utc_tm.tm_sec);
+    int ms = static_cast<int>(frac * 1000 + 0.5);
+    len += snprintf(buf + len, sizeof(buf) - len, ".%03d", ms);
+    snprintf(buf + len, sizeof(buf) - len, "Z");
+    return std::string(buf);
+  }
 
   inline JSValue SEXP_to_JSValue_array(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
     const int64_t n = Rf_xlength(x);
+    bool is_factor = Rf_inherits(x, "factor");
+    bool is_date_class = Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt") || Rf_inherits(x, "Date");
     std::vector<JSValue> jsvals(n);
     for (int64_t i = 0; i < n; i++) {
-      jsvals[i] = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
+      jsvals[i] = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i, is_factor, is_date_class);
     }
     return JS_NewArrayFrom(ctx, jsvals.size(), jsvals.data());
   }
@@ -41,8 +69,10 @@ namespace quickjsr {
     }
     SEXP names = Rf_getAttrib(x, R_NamesSymbol);
     PROTECT(names);
+    bool is_factor = Rf_inherits(x, "factor");
+    bool is_date_class = Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt") || Rf_inherits(x, "Date");
     for (int64_t i = 0; i < n; i++) {
-      JSValue value = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i);
+      JSValue value = SEXP_to_JSValue(ctx, x, auto_unbox, auto_unbox_curr, i, is_factor, is_date_class);
       JS_SetPropertyStr(ctx, obj, Rf_translateCharUTF8(STRING_ELT(names, i)), value);
     }
     UNPROTECT(1);
@@ -79,14 +109,18 @@ namespace quickjsr {
           SEXP df_names = Rf_getAttrib(col, R_NamesSymbol);
           PROTECT(df_names);
           JSValue dfcol_obj = JS_NewObject(ctx);
+          bool is_factor = Rf_inherits(col, "factor");
+          bool is_date_class = Rf_inherits(col, "POSIXct") || Rf_inherits(col, "POSIXt") || Rf_inherits(col, "Date");
           for (int64_t k = 0; k < nrow; k++) {
-            JSValue dfcol_val = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i);
+            JSValue dfcol_val = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i, is_factor, is_date_class);
             JS_SetPropertyStr(ctx, dfcol_obj, Rf_translateCharUTF8(STRING_ELT(df_names, k)), dfcol_val);
           }
           UNPROTECT(1);
           col_val = dfcol_obj;
         } else {
-          col_val = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i);
+          bool is_factor = Rf_inherits(col, "factor");
+          bool is_date_class = Rf_inherits(col, "POSIXct") || Rf_inherits(col, "POSIXt") || Rf_inherits(col, "Date");
+          col_val = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i, is_factor, is_date_class);
         }
         JS_SetPropertyStr(ctx, row_obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), col_val);
       }
@@ -104,6 +138,8 @@ namespace quickjsr {
     return JS_NewArrayFrom(ctx, rtn_vals.size(), rtn_vals.data());
   }
 
+  static SEXP s_do_call = NULL;
+
   static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
                                 JSValueConst* argv, int magic, JSValue* data) {
     // data[0] is owned by the enclosing JSCFunctionDataRecord (freed once,
@@ -116,12 +152,15 @@ namespace quickjsr {
     if (argc == 0) {
       return SEXP_to_JSValue(ctx, cpp11::function(x)(), true, true);
     }
+    if (!s_do_call) {
+      s_do_call = Rf_findFun(Rf_install("do.call"), R_BaseEnv);
+      R_PreserveObject(s_do_call);
+    }
     cpp11::writable::list args(argc);
     for (int i = 0; i < argc; i++) {
       args[i] = JSValue_to_SEXP(ctx, argv[i]);
     }
-    cpp11::function do_call = cpp11::package("base")["do.call"];
-    return SEXP_to_JSValue(ctx, do_call(x, args), true, true);
+    return SEXP_to_JSValue(ctx, cpp11::function(s_do_call)(x, args), true, true);
   }
 
   inline JSValue SEXP_to_JSValue_function(JSContext* ctx, const SEXP& x,
@@ -141,6 +180,7 @@ namespace quickjsr {
   }
 
   inline JSValue SEXP_to_JSValue_env(JSContext* ctx, const SEXP& x) {
+    R_PreserveObject(x);
     JSValue obj = JS_NewObjectClass(ctx, js_renv_class_id);
     JS_SetOpaque(obj, reinterpret_cast<void*>(x));
     return obj;
@@ -150,18 +190,20 @@ namespace quickjsr {
   inline JSValue SEXP_to_JSValue_matrix(JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false, bool auto_unbox = false) {
     const int64_t nrow = Rf_nrows(x);
     const int64_t ncol = Rf_ncols(x);
+    bool is_factor = Rf_inherits(x, "factor");
+    bool is_date_class = Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt") || Rf_inherits(x, "Date");
     std::vector<JSValue> row_vals(nrow);
     for (int64_t i = 0; i < nrow; i++) {
       std::vector<JSValue> values(ncol);
       for (int64_t j = 0; j < ncol; j++) {
-        values[j] = SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox, i + j * nrow);
+        values[j] = SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox, i + j * nrow, is_factor, is_date_class);
       }
       row_vals[i] = JS_NewArrayFrom(ctx, values.size(), values.data());
     }
     return JS_NewArrayFrom(ctx, row_vals.size(), row_vals.data());
   }
 
-  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index) {
+  inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index, bool is_factor, bool is_date_class) {
     if (Rf_isDataFrame(x)) {
       return SEXP_to_JSValue_df(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
     }
@@ -180,7 +222,7 @@ namespace quickjsr {
       case INTSXP: {
         if (INTEGER_ELT(x, index) == NA_INTEGER) {
           return JS_NULL;
-        } else if (Rf_inherits(x, "factor")) {
+        } else if (is_factor) {
           SEXP levels = Rf_getAttrib(x, R_LevelsSymbol);
           return JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(levels, INTEGER_ELT(x, index) - 1)));
         } else {
@@ -190,15 +232,12 @@ namespace quickjsr {
       case REALSXP: {
         if (ISNA(REAL_ELT(x, index))) {
           return JS_NULL;
-        } else if (Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt") || Rf_inherits(x, "Date")) {
-          cpp11::writable::doubles x_index(1);
-          x_index[0] = REAL_ELT(x, index);
-          // Match input classes
-          x_index.attr("class") = Rf_getAttrib(x, R_ClassSymbol);
-          cpp11::function format = cpp11::package("base")["format"];
-          using cpp11::literals::operator""_nm;
-          std::string formatted = cpp11::as_cpp<std::string>(format(x_index, "format"_nm = "%Y-%m-%dT%H:%M:%OSZ", "tz"_nm = "UTC"));
-          // Create new Date from ISO string using JS_CallConstructor
+        } else if (is_date_class) {
+          double val = REAL_ELT(x, index);
+          if (Rf_inherits(x, "Date")) {
+            val *= 86400.0;
+          }
+          std::string formatted = format_posixct_iso(val);
           JSValue global = JS_GetGlobalObject(ctx);
           JSValue date_ctor = JS_GetPropertyStr(ctx, global, "Date");
           JSValue iso_str = JS_NewString(ctx, formatted.c_str());
@@ -261,7 +300,9 @@ namespace quickjsr {
         return SEXP_to_JSValue_array(ctx, x, auto_unbox_inp, auto_unbox_curr);
       }
     }
-    return SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox_curr, 0);
+    bool is_factor = Rf_inherits(x, "factor");
+    bool is_date_class = Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt") || Rf_inherits(x, "Date");
+    return SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox_curr, 0, is_factor, is_date_class);
   }
 } // namespace quickjsr
 
