@@ -7,6 +7,13 @@
 # caller's R script. Run in a subprocess: a regression here manifests as a
 # duplicated log entry or a hang, not a crash of the test runner itself.
 
+# os.exec()/waitpid() are fork()-based and excluded entirely from quickjs-ng
+# on platforms without fork() (e.g. Windows) - see the `#if !defined(_WIN32)`
+# guard around js_os_exec in quickjs-libc.c. Nothing to test there.
+if (identical(qjs_eval("typeof os.exec"), "undefined")) {
+  exit_file("os.exec() is not available on this platform")
+}
+
 log_file <- tempfile()
 script <- tempfile(fileext = ".R")
 writeLines(
