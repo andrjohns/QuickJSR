@@ -1,8 +1,4 @@
-# Tests for the interop fixes: use-after-free guards, environment lifetime
-# (R_PreserveObject/finalizer), input validation, and the C-level date/string
-# conversion paths.
-
-# --- Fix 1.1/1.2: environment get/set property handlers survive repeated use ---
+# --- Environment get/set property handlers survive repeated use ---
 jsc <- JSContext$new()
 jsc$source(code = "function envget(e) { return e.x; }")
 jsc$source(code = "function envset(e) { e.y = 42; }")
@@ -16,7 +12,7 @@ for (i in 1:100) {
   expect_equal(jsc$call("envget", e), 7)
 }
 
-# --- Fix 1.4: environment SEXP survives R's GC while held by JS ---
+# --- Environment SEXP survives R's GC while held by JS ---
 jsc$source(code = "function envget2(e) { return e.v; }")
 env2 <- new.env()
 env2$v <- 123
@@ -31,20 +27,20 @@ env3 <- new.env()
 env3$v <- 456
 expect_equal(jsc$call("envget2", env3), 456)
 
-# --- Fix 1.3: R.package use-after-free guard ---
+# --- R.package use-after-free guard ---
 jsc$source(code = 'function useMean() { return R.package("base")["mean"]([1,2,3]); }')
 expect_equal(jsc$call("useMean"), 2)
 # Non-string argument must not crash
 jsc$source(code = 'function badpkg2() { return R.package(123); }')
 expect_error(jsc$call("badpkg2"))
 
-# --- Fix 1.5: std/os modules initialised exactly once ---
+# --- std/os modules initialised exactly once ---
 jsc$source(code = "function useStd() { return typeof std; }")
 expect_equal(jsc$call("useStd"), "object")
 jsc$source(code = "function useOs() { return typeof os; }")
 expect_equal(jsc$call("useOs"), "object")
 
-# --- Fix 2.1: stack_size input validation ---
+# --- stack_size input validation ---
 expect_error(JSContext$new(stack_size = "not_a_number"))
 expect_error(JSContext$new(stack_size = TRUE))
 expect_error(JSContext$new(stack_size = list(1)))
@@ -53,14 +49,14 @@ expect_true(inherits(JSContext$new(stack_size = -1), "JSContext"))
 expect_true(inherits(JSContext$new(stack_size = 1000000), "JSContext"))
 expect_true(inherits(JSContext$new(stack_size = 1000000.0), "JSContext"))
 
-# --- Fix 2.2: is_file input validation ---
+# --- is_file input validation ---
 ctx <- JSContext$new()
 expect_error(QuickJSR:::qjs_source(ctx$context, "1 + 1", is_file = "yes"))
 expect_error(QuickJSR:::qjs_source(ctx$context, "1 + 1", is_file = 1))
 # Valid logical still works
 expect_true(QuickJSR:::qjs_source(ctx$context, "1 + 1", is_file = FALSE))
 
-# --- Perf 3.2: C-level date formatting (POSIXct and Date) ---
+# --- C-level date formatting (POSIXct and Date) ---
 expect_equal(to_json(as.POSIXct("1985-06-18 12:34:56", tz = "UTC")),
              "[\"1985-06-18T12:34:56.000Z\"]")
 expect_equal(to_json(as.Date("1985-06-18")),
@@ -75,7 +71,7 @@ expect_equal(to_json(as.POSIXct(c("1985-06-18 12:34:56", NA), tz = "UTC")),
 expect_equal(to_json(as.POSIXct("1969-12-31 23:59:59", tz = "UTC")),
              "[\"1969-12-31T23:59:59.000Z\"]")
 
-# --- Perf 3.3: direct date SEXP construction from JS Date ---
+# --- direct date SEXP construction from JS Date ---
 expect_equal(as.numeric(qjs_eval("new Date('1985-06-18T12:34:56.000Z')")),
              as.numeric(as.POSIXct("1985-06-18 12:34:56", tz = "UTC")))
 expect_equal(as.numeric(qjs_eval("new Date('1985-06-18T12:34:56.500Z')")),
@@ -85,14 +81,14 @@ jsc$source(code = "function mkdate() { return new Date('1985-06-18T12:34:56.000Z
 expect_equal(as.numeric(jsc$call("mkdate")),
              as.numeric(as.POSIXct("1985-06-18 12:34:56", tz = "UTC")))
 
-# --- Perf 3.4: string conversion (UTF-8 preserved, no intermediate std::string) ---
+# --- string conversion (UTF-8 preserved, no intermediate std::string) ---
 expect_equal(from_json("[\"héllo\"]"), "héllo")
 expect_equal(from_json("[\"a\\\"b\"]"), "a\"b")
 expect_equal(qjs_eval("'café'"), "café")
 # Empty string
 expect_equal(from_json("[\"\"]"), "")
 
-# --- Perf 3.5: cached do.call for R function calls with arguments ---
+# --- cached do.call for R function calls with arguments ---
 jsc$source(code = "function callfun(f, a, b) { return f(a, b); }")
 expect_equal(jsc$call("callfun", function(x, y) x * y, 6, 7), 42)
 # Repeated calls exercise the cached lookup
