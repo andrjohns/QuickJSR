@@ -95,3 +95,4 @@ expect_equal(jsc$call("callfun", function(x, y) x * y, 6, 7), 42)
 for (i in 1:50) {
   expect_equal(jsc$call("callfun", function(x, y) x + y, i, 1), i + 1)
 }
+rm(list=ls())
