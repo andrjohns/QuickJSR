@@ -4,14 +4,23 @@
 #include <quickjs_helpers.hpp>
 #include <quickjsr.hpp>
 
-void JS_FreeRuntimeStdHandlers(JSRuntime* rt) {
-  js_std_free_handlers(rt);
-  JS_FreeRuntime(rt);
+// Bundles the runtime and its context so a single external pointer owns both,
+// guaranteeing the context is always freed before the runtime it depends on,
+// regardless of R's garbage collection order.
+struct QjsRuntimeContext {
+  JSContext* ctx;
+  JSRuntime* rt;
+};
+
+void JS_FreeRuntimeContext(QjsRuntimeContext* handle) {
+  JS_FreeContext(handle->ctx);
+  js_std_free_handlers(handle->rt);
+  JS_FreeRuntime(handle->rt);
+  delete handle;
 }
 
-// Register the cpp11 external pointer types with the correct cleanup/finaliser functions
-using ContextXPtr = cpp11::external_pointer<JSContext, JS_FreeContext>;
-using RuntimeXPtr = cpp11::external_pointer<JSRuntime, JS_FreeRuntimeStdHandlers>;
+// Register the cpp11 external pointer type with the correct cleanup/finaliser function
+using ContextXPtr = cpp11::external_pointer<QjsRuntimeContext, JS_FreeRuntimeContext>;
 
 extern "C" {
   SEXP qjs_context_(SEXP stack_size_) {
@@ -24,15 +33,11 @@ extern "C" {
     } else {
       cpp11::stop("stack_size must be integer or numeric");
     }
-    RuntimeXPtr rt(quickjsr::JS_NewCustomRuntime(stack_size));
-    ContextXPtr ctx(quickjsr::JS_NewCustomContext(rt.get()));
+    JSRuntime* rt = quickjsr::JS_NewCustomRuntime(stack_size);
+    JSContext* ctx = quickjsr::JS_NewCustomContext(rt);
+    ContextXPtr handle(new QjsRuntimeContext{ctx, rt});
 
-    cpp11::writable::list result;
-    using cpp11::literals::operator""_nm;
-    result.push_back({"runtime_ptr"_nm = rt});
-    result.push_back({"context_ptr"_nm = ctx});
-
-    return cpp11::as_sexp(result);
+    return cpp11::as_sexp(handle);
     END_CPP11
   }
 
@@ -45,9 +50,9 @@ extern "C" {
       cpp11::stop("is_file must be a logical value");
     }
     if (LOGICAL_ELT(is_file_, 0)) {
-      ret = quickjsr::eval_file(ctx.get(), input, -1);
+      ret = quickjsr::eval_file(ctx->ctx, input, -1);
     } else {
-      ret = quickjsr::eval_buf(ctx.get(), input, strlen(input), "<input>", JS_EVAL_TYPE_GLOBAL);
+      ret = quickjsr::eval_buf(ctx->ctx, input, strlen(input), "<input>", JS_EVAL_TYPE_GLOBAL);
     }
     return cpp11::as_sexp(!ret);
     END_CPP11
@@ -57,9 +62,9 @@ extern "C" {
     BEGIN_CPP11
     ContextXPtr ctx(ctx_ptr_);
     const char* code_string = Rf_translateCharUTF8(STRING_ELT(code_string_, 0));
-    JSValue val = JS_Eval(ctx.get(), code_string, strlen(code_string), "<input>", JS_EVAL_TYPE_GLOBAL);
+    JSValue val = JS_Eval(ctx->ctx, code_string, strlen(code_string), "<input>", JS_EVAL_TYPE_GLOBAL);
     cpp11::sexp rtn = cpp11::as_sexp(!JS_IsException(val));
-    JS_FreeValue(ctx.get(), val);
+    JS_FreeValue(ctx->ctx, val);
     return rtn;
     END_CPP11
   }
@@ -71,21 +76,21 @@ extern "C" {
     int64_t n_args = Rf_xlength(args_list_);
     std::vector<JSValue> args(n_args);
     for (int64_t i = 0; i < n_args; i++) {
-      args[i] = quickjsr::SEXP_to_JSValue(ctx.get(), VECTOR_ELT(args_list_, i), true);
+      args[i] = quickjsr::SEXP_to_JSValue(ctx->ctx, VECTOR_ELT(args_list_, i), true);
     }
 
-    JSValue global = JS_GetGlobalObject(ctx.get());
-    JSValue fun = quickjsr::JS_GetPropertyRecursive(ctx.get(), global, Rf_translateCharUTF8(STRING_ELT(fun_name_, 0)));
-    JSValue result_js = JS_Call(ctx.get(), fun, global, args.size(), args.data());
+    JSValue global = JS_GetGlobalObject(ctx->ctx);
+    JSValue fun = quickjsr::JS_GetPropertyRecursive(ctx->ctx, global, Rf_translateCharUTF8(STRING_ELT(fun_name_, 0)));
+    JSValue result_js = JS_Call(ctx->ctx, fun, global, args.size(), args.data());
 
     for (auto&& arg : args) {
-      JS_FreeValue(ctx.get(), arg);
+      JS_FreeValue(ctx->ctx, arg);
     }
 
-    cpp11::sexp result = quickjsr::JSValue_to_SEXP(ctx.get(), result_js);
-    JS_FreeValue(ctx.get(), fun);
-    JS_FreeValue(ctx.get(), global);
-    JS_FreeValue(ctx.get(), result_js);
+    cpp11::sexp result = quickjsr::JSValue_to_SEXP(ctx->ctx, result_js);
+    JS_FreeValue(ctx->ctx, fun);
+    JS_FreeValue(ctx->ctx, global);
+    JS_FreeValue(ctx->ctx, result_js);
     return result;
     END_CPP11
   }
@@ -93,11 +98,11 @@ extern "C" {
   SEXP qjs_get_(SEXP ctx_ptr_, SEXP js_obj_name) {
     BEGIN_CPP11
     ContextXPtr ctx(ctx_ptr_);
-    JSValue global = JS_GetGlobalObject(ctx.get());
-    JSValue result = quickjsr::JS_GetPropertyRecursive(ctx.get(), global, Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0)));
-    cpp11::sexp rtn = quickjsr::JSValue_to_SEXP(ctx.get(), result);
-    JS_FreeValue(ctx.get(), result);
-    JS_FreeValue(ctx.get(), global);
+    JSValue global = JS_GetGlobalObject(ctx->ctx);
+    JSValue result = quickjsr::JS_GetPropertyRecursive(ctx->ctx, global, Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0)));
+    cpp11::sexp rtn = quickjsr::JSValue_to_SEXP(ctx->ctx, result);
+    JS_FreeValue(ctx->ctx, result);
+    JS_FreeValue(ctx->ctx, global);
     return rtn;
     END_CPP11
   }
@@ -105,14 +110,14 @@ extern "C" {
   SEXP qjs_assign_(SEXP ctx_ptr_, SEXP js_obj_name_, SEXP value_) {
     BEGIN_CPP11
     ContextXPtr ctx(ctx_ptr_);
-    JSValue global = JS_GetGlobalObject(ctx.get());
-    JSValue value = quickjsr::SEXP_to_JSValue(ctx.get(), value_, true);
+    JSValue global = JS_GetGlobalObject(ctx->ctx);
+    JSValue value = quickjsr::SEXP_to_JSValue(ctx->ctx, value_, true);
     // JS_SetPropertyRecursive() bottoms out in JS_SetPropertyStr(), which
     // always consumes (frees) `value`'s reference itself; freeing it again
     // here double-frees any heap-allocated value (string/array/object).
-    int result = quickjsr::JS_SetPropertyRecursive(ctx.get(), global, Rf_translateCharUTF8(STRING_ELT(js_obj_name_, 0)), value);
+    int result = quickjsr::JS_SetPropertyRecursive(ctx->ctx, global, Rf_translateCharUTF8(STRING_ELT(js_obj_name_, 0)), value);
 
-    JS_FreeValue(ctx.get(), global);
+    JS_FreeValue(ctx->ctx, global);
 
     return cpp11::as_sexp(result);
     END_CPP11

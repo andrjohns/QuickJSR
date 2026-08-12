@@ -110,10 +110,11 @@ assign <- NULL
 
 new_JSContext <- function(stack_size = NULL) {
   stack_size_int <- ifelse(is.null(stack_size), -1, stack_size)
-  rt_and_ctx <- qjs_context(stack_size_int)
+  # A single pointer owning both the runtime and its context, so that
+  # freeing always happens in the correct order (context before runtime)
+  # regardless of R's garbage collection order.
   ContextList <- list(
-    runtime = rt_and_ctx$runtime_ptr,
-    context = rt_and_ctx$context_ptr
+    context = qjs_context(stack_size_int)
   )
 
   ContextList$validate <- function(code_string) {
