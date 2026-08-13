@@ -21,24 +21,10 @@ jobs:
           - { name: "gcc-asan" }
           - { name: "valgrind" }
           - { name: "rchk" }
-          - { name: "rhel9" }
 
     env:
       MAKEFLAGS: -j4
     steps:
-      - uses: r-hub/actions/register-redhat@main
-        if: matrix.config.name == 'rhel9'
-        env:
-          REDHAT_ORG: ${{ secrets.REDHAT_ORG }}
-          REDHAT_KEY: ${{ secrets.REDHAT_KEY }}
-
-      - name: install git & qpdf for rhel9
-        if: matrix.config.name == 'rhel9'
-        run: |
-          subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms
-          dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y
-          yum --enablerepo=epel install -y git qpdf
-
       - uses: r-hub/actions/checkout@main
         with:
           submodules: true
