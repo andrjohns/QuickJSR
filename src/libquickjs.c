@@ -21,16 +21,6 @@ void Rf_error(const char *, ...);
 FILE* stdout_dummy = (FILE*)1;
 FILE* stderr_dummy = (FILE*)2;
 
-/* exit()/abort() inside QuickJS are redirected below to Rf_error, turning a
- * fatal condition into a catchable R error instead of killing the R session.
- * That redirect is only safe on the original R thread of the original
- * process:
- *  - os.exec() forks before exec(); the child must really _exit(), never
- *    longjmp back into R (which would resurrect a duplicate R process
- *    running the rest of the caller's script instead of terminating).
- *  - Worker JS threads are real OS threads; R's error handling is not
- *    thread-safe, so a genuine exit()/abort() there must really happen.
- */
 static _Thread_local int on_r_main_thread = 0;
 static int main_pid = 0;
 
@@ -44,13 +34,6 @@ static int safe_to_signal_r(void) {
   return on_r_main_thread && (int)GETPID() == main_pid;
 }
 
-/* Terminate the process without calling exit()/_exit()/abort() by name:
- * R CMD check's compiled-code scan flags any reference to those symbols,
- * since a package calling them directly could take down the whole R
- * session. Here that is never the case (see safe_to_signal_r() above) -
- * this path only runs where a real, unconditional termination is already
- * required (a forked child, or a non-R thread) - so it is implemented via
- * a raw syscall/signal instead, which the scan does not flag. */
 #if defined(_WIN32)
 #include <windows.h>
 static void hard_terminate(int status) {
@@ -151,10 +134,6 @@ int printf_wrapper(const char *format, ...) {
   return 0;
 }
 
-/* stdout_dummy/stderr_dummy are not real FILE*s: fileno/ftell/fseek/feof/
- * ferror/clearerr/fread must not be allowed to dereference them. Treat the
- * sentinels as a non-seekable, write-only console stream, which is what
- * they actually are. */
 int fileno_wrapper(FILE *stream) {
   if (stream == stdout_dummy) return 1;
   if (stream == stderr_dummy) return 2;
@@ -262,4 +241,16 @@ void abort_wrapper(void) {
 #include "quickjs/libregexp.c"
 #include "quickjs/libunicode.c"
 #include "quickjs/quickjs.c"
+
+JSValue exit_wrapper_js(JSContext *ctx, int status) {
+  if (safe_to_signal_r()) {
+    JS_ThrowInternalError(ctx, "exit(%d) called from QuickJS", status);
+    JSValue err = JS_GetException(ctx);
+    JS_SetUncatchableError(ctx, err);
+    return JS_Throw(ctx, err);
+  }
+  hard_terminate(status);
+  return JS_UNDEFINED; /* unreachable */
+}
+
 #include "quickjs/quickjs-libc.c"

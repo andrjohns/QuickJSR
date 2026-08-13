@@ -43,7 +43,11 @@ namespace quickjsr {
     const char *property_name = JS_AtomToCString(ctx, atom);
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(this_val, js_renv_class_id));
     cpp11::environment env(x);
-    SEXP fun = property_name ? env[property_name] : R_NilValue;
+    if (!property_name || !env.exists(property_name)) {
+      JS_FreeCString(ctx, property_name);
+      return JS_UNDEFINED;
+    }
+    SEXP fun = env[property_name];
     JS_FreeCString(ctx, property_name);
     if (TYPEOF(fun) == PROMSXP) {
       fun = Rf_eval(fun, env);
@@ -100,8 +104,12 @@ namespace quickjsr {
     if (strcmp(package_name, "base") == 0) {
       pkg_ns = R_BaseEnv;
     } else {
-      SEXP pkg_name_sexp = Rf_mkString(package_name);
-      pkg_ns = R_FindNamespace(pkg_name_sexp);
+      pkg_ns = cpp11::detail::r_ns_env(package_name);
+      if (pkg_ns == R_NilValue) {
+        JSValue exc = JS_ThrowTypeError(ctx, "Can't find namespace '%s' - the package must already be loaded", package_name);
+        JS_FreeCString(ctx, package_name);
+        return exc;
+      }
     }
     JS_FreeCString(ctx, package_name);
     return SEXP_to_JSValue(ctx, pkg_ns, true, true);

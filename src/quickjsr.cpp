@@ -19,6 +19,15 @@ void JS_FreeRuntimeContext(QjsRuntimeContext* handle) {
   delete handle;
 }
 
+struct ScopedRuntime {
+  JSRuntime* rt;
+  JSContext* ctx;
+  ~ScopedRuntime() {
+    JS_FreeContext(ctx);
+    JS_FreeRuntime(rt);
+  }
+};
+
 // Register the cpp11 external pointer type with the correct cleanup/finaliser function
 using ContextXPtr = cpp11::external_pointer<QjsRuntimeContext, JS_FreeRuntimeContext>;
 
@@ -86,10 +95,10 @@ extern "C" {
     for (auto&& arg : args) {
       JS_FreeValue(ctx->ctx, arg);
     }
-
-    cpp11::sexp result = quickjsr::JSValue_to_SEXP(ctx->ctx, result_js);
     JS_FreeValue(ctx->ctx, fun);
     JS_FreeValue(ctx->ctx, global);
+
+    cpp11::sexp result = quickjsr::JSValue_to_SEXP(ctx->ctx, result_js);
     JS_FreeValue(ctx->ctx, result_js);
     return result;
     END_CPP11
@@ -100,9 +109,9 @@ extern "C" {
     ContextXPtr ctx(ctx_ptr_);
     JSValue global = JS_GetGlobalObject(ctx->ctx);
     JSValue result = quickjsr::JS_GetPropertyRecursive(ctx->ctx, global, Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0)));
+    JS_FreeValue(ctx->ctx, global);
     cpp11::sexp rtn = quickjsr::JSValue_to_SEXP(ctx->ctx, result);
     JS_FreeValue(ctx->ctx, result);
-    JS_FreeValue(ctx->ctx, global);
     return rtn;
     END_CPP11
   }
@@ -110,11 +119,8 @@ extern "C" {
   SEXP qjs_assign_(SEXP ctx_ptr_, SEXP js_obj_name_, SEXP value_) {
     BEGIN_CPP11
     ContextXPtr ctx(ctx_ptr_);
-    JSValue global = JS_GetGlobalObject(ctx->ctx);
     JSValue value = quickjsr::SEXP_to_JSValue(ctx->ctx, value_, true);
-    // JS_SetPropertyRecursive() bottoms out in JS_SetPropertyStr(), which
-    // always consumes (frees) `value`'s reference itself; freeing it again
-    // here double-frees any heap-allocated value (string/array/object).
+    JSValue global = JS_GetGlobalObject(ctx->ctx);
     int result = quickjsr::JS_SetPropertyRecursive(ctx->ctx, global, Rf_translateCharUTF8(STRING_ELT(js_obj_name_, 0)), value);
 
     JS_FreeValue(ctx->ctx, global);
@@ -128,12 +134,11 @@ extern "C" {
     const char* eval_string = Rf_translateCharUTF8(STRING_ELT(eval_string_, 0));
     JSRuntime* rt = quickjsr::JS_NewCustomRuntime(-1);
     JSContext* rt_ctx = quickjsr::JS_NewCustomContext(rt);
+    ScopedRuntime guard{rt, rt_ctx};
 
     JSValue val = JS_Eval(rt_ctx, eval_string, strlen(eval_string), "<input>", JS_EVAL_TYPE_GLOBAL);
     cpp11::sexp rtn = quickjsr::JSValue_to_SEXP(rt_ctx, val);
     JS_FreeValue(rt_ctx, val);
-    JS_FreeContext(rt_ctx);
-    JS_FreeRuntime(rt);
 
     return rtn;
     END_CPP11
@@ -143,6 +148,7 @@ extern "C" {
     BEGIN_CPP11
     JSRuntime* rt = JS_NewRuntime();
     JSContext* rt_ctx = JS_NewContext(rt);
+    ScopedRuntime guard{rt, rt_ctx};
 
     JSValue arg = quickjsr::SEXP_to_JSValue(rt_ctx, arg_, LOGICAL_ELT(auto_unbox_, 0));
     JSValue result_js = JS_JSONStringify(rt_ctx, arg, JS_UNDEFINED, JS_UNDEFINED);
@@ -152,8 +158,6 @@ extern "C" {
     JS_FreeCString(rt_ctx, res_str);
     JS_FreeValue(rt_ctx, result_js);
     JS_FreeValue(rt_ctx, arg);
-    JS_FreeContext(rt_ctx);
-    JS_FreeRuntime(rt);
 
     return json;
     END_CPP11
@@ -163,14 +167,13 @@ extern "C" {
     BEGIN_CPP11
     JSRuntime* rt = JS_NewRuntime();
     JSContext* rt_ctx = JS_NewContext(rt);
+    ScopedRuntime guard{rt, rt_ctx};
 
     const char* json = Rf_translateCharUTF8(STRING_ELT(json_, 0));
     JSValue result = JS_ParseJSON(rt_ctx, json, strlen(json), "<input>");
     cpp11::sexp rtn = quickjsr::JSValue_to_SEXP(rt_ctx, result);
 
     JS_FreeValue(rt_ctx, result);
-    JS_FreeContext(rt_ctx);
-    JS_FreeRuntime(rt);
 
     return rtn;
     END_CPP11

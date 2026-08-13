@@ -7,5 +7,6 @@ do
   sed -i.bak 's/#pragma GCC diagnostic.*//' "$file"
   sed -i.bak 's/return js_free_cstring(rt, ptr);/js_free_cstring(rt, ptr);/' "$file"
   sed -i.bak 's/return js_free_cstring(ctx->rt, ptr);/js_free_cstring(ctx->rt, ptr);/' "$file"
+  sed -i.bak '/^    exit(status);$/{s//    return exit_wrapper_js(ctx, status);/;n;/^    return JS_UNDEFINED;$/d;}' "$file"
   rm -f "$file.bak"
 done

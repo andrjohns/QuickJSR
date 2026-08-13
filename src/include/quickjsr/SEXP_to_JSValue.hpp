@@ -138,7 +138,7 @@ namespace quickjsr {
     return JS_NewArrayFrom(ctx, rtn_vals.size(), rtn_vals.data());
   }
 
-  static SEXP s_do_call = NULL;
+  static SEXP s_safe_call = NULL;
 
   static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
                                 JSValueConst* argv, int magic, JSValue* data) {
@@ -149,18 +149,20 @@ namespace quickjsr {
     // a dangling opaque pointer after the second call.
     JSValue data_val = data[0];
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(data_val, js_sexp_class_id));
-    if (argc == 0) {
-      return SEXP_to_JSValue(ctx, cpp11::function(x)(), true, true);
-    }
-    if (!s_do_call) {
-      s_do_call = Rf_findFun(Rf_install("do.call"), R_BaseEnv);
-      R_PreserveObject(s_do_call);
+
+    if (!s_safe_call) {
+      s_safe_call = Rf_findFun(Rf_install("qjs_safe_call"), cpp11::detail::r_ns_env("QuickJSR"));
+      R_PreserveObject(s_safe_call);
     }
     cpp11::writable::list args(argc);
     for (int i = 0; i < argc; i++) {
       args[i] = JSValue_to_SEXP(ctx, argv[i]);
     }
-    return SEXP_to_JSValue(ctx, cpp11::function(s_do_call)(x, args), true, true);
+    cpp11::sexp result = cpp11::function(s_safe_call)(x, args);
+    if (!LOGICAL_ELT(VECTOR_ELT(result, 0), 0)) {
+      return JS_ThrowPlainError(ctx, "%s", Rf_translateCharUTF8(STRING_ELT(VECTOR_ELT(result, 1), 0)));
+    }
+    return SEXP_to_JSValue(ctx, VECTOR_ELT(result, 1), true, true);
   }
 
   inline JSValue SEXP_to_JSValue_function(JSContext* ctx, const SEXP& x,
