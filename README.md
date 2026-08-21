@@ -52,7 +52,7 @@ library(QuickJSR)
 qjs_eval("1 + 1")
 #> [1] 2
 qjs_eval("Math.random()")
-#> [1] 0.2441212
+#> [1] 0.816737
 ```
 
 For more complex interactions, you can create a QuickJS context and
@@ -126,5 +126,5 @@ objects and functions from various R packages:
 
 ``` r
 qjs_eval('R.package("base")["Sys.Date"]()')
-#> [1] "2025-09-17 08:00:00 AWST"
+#> [1] "2026-08-21 08:00:00 AWST"
 ```
