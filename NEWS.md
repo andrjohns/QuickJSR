@@ -1,6 +1,6 @@
 # QuickJSR 1.11.0
-  * Update bundled QuickJS-NG engine to v0.16.1 (see https://github.com/quickjs-ng/quickjs/releases/tag/v0.16.1 for release notes)
-  * Properly divert loggig and IO through R interfaces
+  * Update bundled QuickJS-NG engine to v0.16.2 (see https://github.com/quickjs-ng/quickjs/releases/tag/v0.16.2 for release notes)
+  * Properly divert logging and IO through R interfaces
   * Resolve several bugs with R/JS object lifetime management
 
 # QuickJSR 1.10.0
