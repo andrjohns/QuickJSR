@@ -7,8 +7,9 @@
 #include <quickjsr/JSValueRef.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
-#include <vector>
+#include <algorithm>
 #include <cmath>
+#include <vector>
 
 #if R_VERSION < R_Version(4, 5, 0)
 # define R_ClosureFormals(x) FORMALS(x)
@@ -19,6 +20,40 @@ namespace quickjsr {
   // Forward declaration to allow for recursive calls
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index, bool is_factor = false, bool is_date_class = false);
+
+  inline JSValue SEXP_to_JSValue_typed_array(JSContext* ctx, const SEXP& x) {
+    size_t size = static_cast<size_t>(Rf_xlength(x));
+    if (TYPEOF(x) == RAWSXP) {
+      return JS_NewUint8ArrayCopy(ctx, RAW(x), size);
+    }
+
+    JSTypedArrayEnum type;
+    size_t bytes;
+    if (TYPEOF(x) == INTSXP) {
+      const int* values = INTEGER(x);
+      if (size > 0 && std::find(values, values + size, NA_INTEGER) != values + size) {
+        cpp11::stop("integer typed arrays cannot contain NA");
+      }
+      type = JS_TYPED_ARRAY_INT32;
+      bytes = size * sizeof(int);
+    } else if (TYPEOF(x) == REALSXP) {
+      type = JS_TYPED_ARRAY_FLOAT64;
+      bytes = size * sizeof(double);
+    } else {
+      cpp11::stop("typed arrays require raw, integer, or double vectors");
+    }
+
+    JSValue buffer = JS_NewArrayBufferCopy(
+      ctx, static_cast<const uint8_t*>(DATAPTR_RO(x)), bytes
+    );
+    if (JS_IsException(buffer)) {
+      return buffer;
+    }
+    JSValue args[3] = {buffer, JS_UNDEFINED, JS_UNDEFINED};
+    JSValue result = JS_NewTypedArray(ctx, 3, args, type);
+    JS_FreeValue(ctx, buffer);
+    return result;
+  }
 
   inline JSValue SEXP_to_JSValue_array(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
     const int64_t n = Rf_xlength(x);
@@ -71,47 +106,141 @@ namespace quickjsr {
     SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
     PROTECT(row_names);
     const int64_t ncol = Rf_xlength(x);
-
     const int64_t nrow = ncol > 0 ? Rf_xlength(VECTOR_ELT(x, 0)) : 0;
-    std::vector<JSValue> rtn_vals(nrow);
-    for (int64_t i = 0; i < nrow; i++) {
-      JSValue row_obj = JS_NewObject(ctx);
+    const bool has_row_names = Rf_isString(row_names);
+    const int64_t property_count = ncol + has_row_names;
 
-      for (int64_t j = 0; j < ncol; j++) {
-        SEXP col = VECTOR_ELT(x, j);
-        JSValue col_val;
-        if (Rf_isDataFrame(col)) {
-          const int64_t nrow = Rf_xlength(col);
-          SEXP df_names = Rf_getAttrib(col, R_NamesSymbol);
-          PROTECT(df_names);
-          JSValue dfcol_obj = JS_NewObject(ctx);
-          bool is_factor = Rf_inherits(col, "factor");
-          bool is_date_class = Rf_inherits(col, "POSIXct") || Rf_inherits(col, "POSIXt") || Rf_inherits(col, "Date");
-          for (int64_t k = 0; k < nrow; k++) {
-            JSValue dfcol_val = SEXP_to_JSValue(ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i, is_factor, is_date_class);
-            JS_SetPropertyStr(ctx, dfcol_obj, Rf_translateCharUTF8(STRING_ELT(df_names, k)), dfcol_val);
-          }
-          UNPROTECT(1);
-          col_val = dfcol_obj;
-        } else {
-          bool is_factor = Rf_inherits(col, "factor");
-          bool is_date_class = Rf_inherits(col, "POSIXct") || Rf_inherits(col, "POSIXt") || Rf_inherits(col, "Date");
-          col_val = SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox, i, is_factor, is_date_class);
+    std::vector<SEXP> columns(ncol);
+    std::vector<JSAtom> property_atoms(property_count);
+    std::vector<uint8_t> factors(ncol);
+    std::vector<uint8_t> dates(ncol);
+    std::vector<uint8_t> data_frames(ncol);
+    std::vector<std::vector<JSAtom>> nested_atoms(ncol);
+    std::vector<std::vector<uint8_t>> nested_factors(ncol);
+    std::vector<std::vector<uint8_t>> nested_dates(ncol);
+    std::vector<std::vector<JSValue>> nested_values(ncol);
+
+    for (int64_t j = 0; j < ncol; j++) {
+      SEXP col = VECTOR_ELT(x, j);
+      columns[j] = col;
+      property_atoms[j] = JS_NewAtom(
+        ctx, Rf_translateCharUTF8(STRING_ELT(col_names, j))
+      );
+      data_frames[j] = Rf_isDataFrame(col);
+      factors[j] = Rf_inherits(col, "factor");
+      dates[j] = Rf_inherits(col, "POSIXct") || Rf_inherits(col, "POSIXt") ||
+        Rf_inherits(col, "Date");
+
+      if (data_frames[j]) {
+        const int64_t nested_count = Rf_xlength(col);
+        SEXP names = Rf_getAttrib(col, R_NamesSymbol);
+        nested_atoms[j].resize(nested_count);
+        nested_factors[j].resize(nested_count);
+        nested_dates[j].resize(nested_count);
+        nested_values[j].resize(nested_count);
+        for (int64_t k = 0; k < nested_count; k++) {
+          SEXP nested = VECTOR_ELT(col, k);
+          nested_atoms[j][k] = JS_NewAtom(
+            ctx, Rf_translateCharUTF8(STRING_ELT(names, k))
+          );
+          nested_factors[j][k] = Rf_inherits(nested, "factor");
+          nested_dates[j][k] = Rf_inherits(nested, "POSIXct") ||
+            Rf_inherits(nested, "POSIXt") || Rf_inherits(nested, "Date");
         }
-        JS_SetPropertyStr(ctx, row_obj, Rf_translateCharUTF8(STRING_ELT(col_names, j)), col_val);
       }
-
-      // If row names are present and a character vector, add them to the object
-      if (Rf_isString(row_names)) {
-        JSValue row_name = JS_NewString(ctx, Rf_translateCharUTF8(STRING_ELT(row_names, i)));
-        JS_SetPropertyStr(ctx, row_obj, "_row", row_name);
-      }
-      rtn_vals[i] = row_obj;
+    }
+    if (has_row_names) {
+      property_atoms[ncol] = JS_NewAtom(ctx, "_row");
     }
 
-    UNPROTECT(2);
+    std::vector<JSValue> rtn_vals(nrow);
+    std::vector<JSValue> values(property_count);
+    for (int64_t i = 0; i < nrow; i++) {
+      for (int64_t j = 0; j < ncol; j++) {
+        SEXP col = columns[j];
+        if (data_frames[j]) {
+          const int64_t nested_count = Rf_xlength(col);
+          for (int64_t k = 0; k < nested_count; k++) {
+            nested_values[j][k] = SEXP_to_JSValue(
+              ctx, VECTOR_ELT(col, k), auto_unbox_inp, auto_unbox, i,
+              nested_factors[j][k], nested_dates[j][k]
+            );
+          }
+          values[j] = JS_NewObjectFrom(
+            ctx, nested_count, nested_atoms[j].data(), nested_values[j].data()
+          );
+        } else {
+          values[j] = SEXP_to_JSValue(
+            ctx, col, auto_unbox_inp, auto_unbox, i, factors[j], dates[j]
+          );
+        }
+      }
+      if (has_row_names) {
+        values[ncol] = JS_NewString(
+          ctx, Rf_translateCharUTF8(STRING_ELT(row_names, i))
+        );
+      }
+      rtn_vals[i] = JS_NewObjectFrom(
+        ctx, property_count, property_atoms.data(), values.data()
+      );
+    }
 
-    return JS_NewArrayFrom(ctx, rtn_vals.size(), rtn_vals.data());
+    JSValue result = JS_NewArrayFrom(ctx, rtn_vals.size(), rtn_vals.data());
+    for (JSAtom atom : property_atoms) JS_FreeAtom(ctx, atom);
+    for (const auto& atoms : nested_atoms) {
+      for (JSAtom atom : atoms) JS_FreeAtom(ctx, atom);
+    }
+    UNPROTECT(2);
+    return result;
+  }
+
+  inline JSValue SEXP_to_JSValue_columnar_df(
+    JSContext* ctx, const SEXP& x, bool auto_unbox_inp = false,
+    bool auto_unbox = false
+  ) {
+    const int64_t ncol = Rf_xlength(x);
+    SEXP names = Rf_getAttrib(x, R_NamesSymbol);
+    SEXP row_names = Rf_getAttrib(x, R_RowNamesSymbol);
+    const bool has_row_names = Rf_isString(row_names);
+    const int64_t property_count = ncol + has_row_names;
+    const bool typed = Rf_asLogical(Rf_getAttrib(
+      x, Rf_install("quickjs_typed_columns")
+    )) == TRUE;
+    std::vector<JSAtom> atoms(property_count);
+    std::vector<JSValue> values(property_count);
+
+    for (int64_t j = 0; j < ncol; j++) {
+      SEXP col = VECTOR_ELT(x, j);
+      atoms[j] = JS_NewAtom(
+        ctx, Rf_translateCharUTF8(STRING_ELT(names, j))
+      );
+      bool use_typed = typed && !Rf_inherits(col, "factor") &&
+        !Rf_inherits(col, "POSIXct") && !Rf_inherits(col, "POSIXt") &&
+        !Rf_inherits(col, "Date") &&
+        (TYPEOF(col) == RAWSXP || TYPEOF(col) == INTSXP || TYPEOF(col) == REALSXP);
+      if (use_typed && TYPEOF(col) == INTSXP) {
+        const int* data = INTEGER(col);
+        const R_xlen_t size = Rf_xlength(col);
+        if (size > 0 && std::find(data, data + size, NA_INTEGER) != data + size) {
+          use_typed = false;
+        }
+      }
+      values[j] = use_typed
+        ? SEXP_to_JSValue_typed_array(ctx, col)
+        : SEXP_to_JSValue(ctx, col, auto_unbox_inp, auto_unbox);
+    }
+    if (has_row_names) {
+      atoms[ncol] = JS_NewAtom(ctx, "_row");
+      values[ncol] = SEXP_to_JSValue(
+        ctx, row_names, auto_unbox_inp, auto_unbox
+      );
+    }
+
+    JSValue result = JS_NewObjectFrom(
+      ctx, property_count, atoms.data(), values.data()
+    );
+    for (JSAtom atom : atoms) JS_FreeAtom(ctx, atom);
+    return result;
   }
 
   static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
@@ -174,8 +303,8 @@ namespace quickjsr {
     bool is_factor = Rf_inherits(x, "factor");
     bool is_date_class = Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt") || Rf_inherits(x, "Date");
     std::vector<JSValue> row_vals(nrow);
+    std::vector<JSValue> values(ncol);
     for (int64_t i = 0; i < nrow; i++) {
-      std::vector<JSValue> values(ncol);
       for (int64_t j = 0; j < ncol; j++) {
         values[j] = SEXP_to_JSValue(ctx, x, auto_unbox_inp, auto_unbox, i + j * nrow, is_factor, is_date_class);
       }
@@ -260,6 +389,12 @@ namespace quickjsr {
         cpp11::stop("JSValueRef belongs to a different context");
       }
       return JS_DupValue(ctx, ref->value);
+    }
+    if (Rf_inherits(x, "quickjs_typed_array")) {
+      return SEXP_to_JSValue_typed_array(ctx, x);
+    }
+    if (Rf_inherits(x, "quickjs_columnar_data_frame")) {
+      return SEXP_to_JSValue_columnar_df(ctx, x, auto_unbox_inp, auto_unbox);
     }
     bool auto_unbox_curr = static_cast<bool>(Rf_inherits(x, "AsIs")) ? false : auto_unbox_inp;
     if (Rf_isNull(x)) {

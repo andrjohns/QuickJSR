@@ -4,6 +4,8 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <quickjsr/JSValue_to_SEXP.hpp>
+#include <iterator>
+#include <string_view>
 
 // Need to redefine the JS_CFUNC_DEF macro as it uses C features
 // (designated initializers) which are not supported in C++ (until C++20)
@@ -11,10 +13,6 @@
   name, JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE, JS_DEF_CFUNC, 0, \
   { { length, JS_CFUNC_generic, { func1 } } } \
   }
-
-#ifndef countof
-#define countof(x) (sizeof(x) / sizeof((x)[0]))
-#endif
 
 namespace quickjsr {
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox,
@@ -124,7 +122,7 @@ namespace quickjsr {
         return JS_EXCEPTION;
     }
     SEXP pkg_ns;
-    if (strcmp(package_name, "base") == 0) {
+    if (std::string_view(package_name) == "base") {
       pkg_ns = R_BaseEnv;
     } else {
       pkg_ns = cpp11::detail::r_ns_env(package_name);
@@ -147,7 +145,9 @@ namespace quickjsr {
     if (JS_IsException(r_obj)) {
       return r_obj;
     }
-    JS_SetPropertyFunctionList(ctx, r_obj, js_r_funcs, countof(js_r_funcs));
+    JS_SetPropertyFunctionList(
+      ctx, r_obj, js_r_funcs, static_cast<int>(std::size(js_r_funcs))
+    );
     return r_obj;
   }
 }

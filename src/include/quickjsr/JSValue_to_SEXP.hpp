@@ -5,9 +5,15 @@
 #include "quickjs.h"
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
+#include <algorithm>
+#include <climits>
+#include <cstdint>
 
 extern "C" int quickjsr_get_date_epoch_ms(JSContext* ctx, JSValueConst value,
                                            double* result);
+extern "C" int quickjsr_get_fast_array_data(JSContext* ctx, JSValueConst value,
+                                             const JSValue** result,
+                                             uint32_t* size);
 
 namespace quickjsr {
   enum BaseType {
@@ -82,6 +88,99 @@ namespace quickjsr {
   }
   SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val);
 
+  inline SEXP typed_array_sexp(JSContext* ctx, const JSValue& val, int type) {
+    size_t offset = 0;
+    size_t byte_length = 0;
+    size_t element_size = 0;
+    JSValue buffer = JS_GetTypedArrayBuffer(
+      ctx, val, &offset, &byte_length, &element_size
+    );
+    if (JS_IsException(buffer)) {
+      return JSValue_to_SEXP(ctx, buffer);
+    }
+    size_t buffer_size = 0;
+    uint8_t* buffer_data = JS_GetArrayBuffer(ctx, &buffer_size, buffer);
+    JS_FreeValue(ctx, buffer);
+    if (!buffer_data && byte_length > 0) {
+      return JSValue_to_SEXP(ctx, JS_EXCEPTION);
+    }
+    const uint8_t* data = buffer_data ? buffer_data + offset : nullptr;
+    R_xlen_t size = static_cast<R_xlen_t>(byte_length / element_size);
+
+    if (type == JS_TYPED_ARRAY_UINT8 || type == JS_TYPED_ARRAY_UINT8C) {
+      cpp11::writable::raws out(size);
+      if (size > 0) std::copy_n(data, size, RAW(out));
+      return out;
+    }
+    if (type == JS_TYPED_ARRAY_INT32) {
+      cpp11::writable::integers out(size);
+      const int32_t* values = reinterpret_cast<const int32_t*>(data);
+      if (size > 0) std::copy_n(values, size, INTEGER(out));
+      return out;
+    }
+    if (type == JS_TYPED_ARRAY_FLOAT64) {
+      cpp11::writable::doubles out(size);
+      const double* values = reinterpret_cast<const double*>(data);
+      if (size > 0) std::copy_n(values, size, REAL(out));
+      return out;
+    }
+    if (type == JS_TYPED_ARRAY_INT8) {
+      cpp11::writable::integers out(size);
+      const int8_t* values = reinterpret_cast<const int8_t*>(data);
+      if (size > 0) std::copy_n(values, size, INTEGER(out));
+      return out;
+    }
+    if (type == JS_TYPED_ARRAY_INT16) {
+      cpp11::writable::integers out(size);
+      const int16_t* values = reinterpret_cast<const int16_t*>(data);
+      if (size > 0) std::copy_n(values, size, INTEGER(out));
+      return out;
+    }
+    if (type == JS_TYPED_ARRAY_UINT16) {
+      cpp11::writable::integers out(size);
+      const uint16_t* values = reinterpret_cast<const uint16_t*>(data);
+      if (size > 0) std::copy_n(values, size, INTEGER(out));
+      return out;
+    }
+    if (type == JS_TYPED_ARRAY_UINT32) {
+      cpp11::writable::doubles out(size);
+      const uint32_t* values = reinterpret_cast<const uint32_t*>(data);
+      if (size > 0) std::copy_n(values, size, REAL(out));
+      return out;
+    }
+    if (type == JS_TYPED_ARRAY_FLOAT32) {
+      cpp11::writable::doubles out(size);
+      const float* values = reinterpret_cast<const float*>(data);
+      if (size > 0) std::copy_n(values, size, REAL(out));
+      return out;
+    }
+    if (type == JS_TYPED_ARRAY_BIG_INT64) {
+      cpp11::writable::doubles out(size);
+      const int64_t* values = reinterpret_cast<const int64_t*>(data);
+      if (size > 0) std::copy_n(values, size, REAL(out));
+      return out;
+    }
+    if (type == JS_TYPED_ARRAY_BIG_UINT64) {
+      cpp11::writable::doubles out(size);
+      const uint64_t* values = reinterpret_cast<const uint64_t*>(data);
+      if (size > 0) std::copy_n(values, size, REAL(out));
+      return out;
+    }
+
+    cpp11::writable::doubles out(size);
+    for (R_xlen_t i = 0; i < size; i++) {
+      JSValue element = JS_GetPropertyInt64(ctx, val, i);
+      double value;
+      if (JS_ToFloat64(ctx, &value, element)) {
+        JS_FreeValue(ctx, element);
+        return JSValue_to_SEXP(ctx, JS_EXCEPTION);
+      }
+      JS_FreeValue(ctx, element);
+      out[i] = value;
+    }
+    return out;
+  }
+
   inline SEXP date_sexp(JSContext* ctx, const JSValue& val) {
     double epoch_ms;
     if (quickjsr_get_date_epoch_ms(ctx, val, &epoch_ms)) {
@@ -96,18 +195,37 @@ namespace quickjsr {
   }
 
   inline SEXP array_sexp(JSContext* ctx, const JSValue& val) {
-    // Handle as array
     int64_t len;
-    JS_GetLength(ctx, val, &len);
+    const JSValue* fast_values = nullptr;
+    uint32_t fast_size = 0;
+    bool is_fast = quickjsr_get_fast_array_data(ctx, val, &fast_values, &fast_size);
+    if (is_fast) {
+      len = fast_size;
+    } else if (JS_GetLength(ctx, val, &len)) {
+      return JSValue_to_SEXP(ctx, JS_EXCEPTION);
+    }
 
-    JSValue base_val = JS_GetPropertyInt64(ctx, val, 0);
-    BaseType prev_type = value_to_base_type(base_val);
-    JS_FreeValue(ctx, base_val);
+    JSValue base_val = JS_UNDEFINED;
+    BaseType prev_type = Null;
+    if (len > 0) {
+      if (is_fast) {
+        prev_type = value_to_base_type(fast_values[0]);
+      } else {
+        base_val = JS_GetPropertyInt64(ctx, val, 0);
+        prev_type = value_to_base_type(base_val);
+        JS_FreeValue(ctx, base_val);
+      }
+    }
 
     for (int64_t i = 1; i < len; i++) {
-      base_val = JS_GetPropertyInt64(ctx, val, i);
-      BaseType curr_type = value_to_base_type(base_val);
-      JS_FreeValue(ctx, base_val);
+      BaseType curr_type;
+      if (is_fast) {
+        curr_type = value_to_base_type(fast_values[i]);
+      } else {
+        base_val = JS_GetPropertyInt64(ctx, val, i);
+        curr_type = value_to_base_type(base_val);
+        JS_FreeValue(ctx, base_val);
+      }
       prev_type = combine_array_types(prev_type, curr_type);
       if (prev_type == Mixed) {
         // No need to continue checking types, we know it's mixed
@@ -118,7 +236,7 @@ namespace quickjsr {
     if (prev_type == Number) {
       cpp11::writable::doubles out(len);
       for (int64_t i = 0; i < len; i++) {
-        base_val = JS_GetPropertyInt64(ctx, val, i);
+        base_val = is_fast ? fast_values[i] : JS_GetPropertyInt64(ctx, val, i);
         if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
           out[static_cast<R_xlen_t>(i)] = NA_REAL;
         } else {
@@ -126,13 +244,13 @@ namespace quickjsr {
           JS_ToFloat64(ctx, &res, base_val);
           out[static_cast<R_xlen_t>(i)] = res;
         }
-        JS_FreeValue(ctx, base_val);
+        if (!is_fast) JS_FreeValue(ctx, base_val);
       }
       return out;
     } else if (prev_type == String) {
       cpp11::writable::strings out(len);
       for (int64_t i = 0; i < len; i++) {
-        base_val = JS_GetPropertyInt64(ctx, val, i);
+        base_val = is_fast ? fast_values[i] : JS_GetPropertyInt64(ctx, val, i);
         if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
           out[static_cast<R_xlen_t>(i)] = NA_STRING;
         } else if (JS_IsBool(base_val)) {
@@ -170,19 +288,19 @@ namespace quickjsr {
           out[static_cast<R_xlen_t>(i)] = res;
           JS_FreeCString(ctx, res);
         }
-        JS_FreeValue(ctx, base_val);
+        if (!is_fast) JS_FreeValue(ctx, base_val);
       }
       return out;
     } else if (prev_type == Boolean || prev_type == Null) {
       cpp11::writable::logicals out(len);
       for (int64_t i = 0; i < len; i++) {
-        base_val = JS_GetPropertyInt64(ctx, val, i);
+        base_val = is_fast ? fast_values[i] : JS_GetPropertyInt64(ctx, val, i);
         if (JS_IsNull(base_val) || JS_IsUndefined(base_val)) {
           out[static_cast<R_xlen_t>(i)] = NA_LOGICAL;
         } else {
           out[static_cast<R_xlen_t>(i)] = static_cast<bool>(JS_ToBool(ctx, base_val));
         }
-        JS_FreeValue(ctx, base_val);
+        if (!is_fast) JS_FreeValue(ctx, base_val);
       }
       return out;
     } else {
@@ -192,7 +310,7 @@ namespace quickjsr {
       bool all_same_size = true;
       int64_t first_size = -1;
       for (int64_t i = 0; i < len; i++) {
-        JSValue elem = JS_GetPropertyInt64(ctx, val, i);
+        JSValue elem = is_fast ? fast_values[i] : JS_GetPropertyInt64(ctx, val, i);
         SEXP elem_sexp = JSValue_to_SEXP(ctx, elem);
         if (all_double && all_same_size) {
           if (TYPEOF(elem_sexp) != REALSXP) {
@@ -207,13 +325,23 @@ namespace quickjsr {
         }
 
         out[static_cast<R_xlen_t>(i)] = elem_sexp;
-        JS_FreeValue(ctx, elem);
+        if (!is_fast) JS_FreeValue(ctx, elem);
       }
 
-      if (all_double && all_same_size) {
-        cpp11::function unlist = cpp11::package("base")["unlist"];
-        cpp11::function matrix = cpp11::package("base")["matrix"];
-        return matrix(unlist(out), len, first_size, true);
+      if (all_double && all_same_size && len <= INT_MAX && first_size <= INT_MAX) {
+        SEXP matrix = PROTECT(Rf_allocMatrix(
+          REALSXP, static_cast<int>(len), static_cast<int>(first_size)
+        ));
+        double* target = REAL(matrix);
+        for (int64_t i = 0; i < len; i++) {
+          SEXP row = out[static_cast<R_xlen_t>(i)];
+          const double* source = REAL(row);
+          for (int64_t j = 0; j < first_size; j++) {
+            target[i + j * len] = source[j];
+          }
+        }
+        UNPROTECT(1);
+        return matrix;
       } else {
         return out;
       }
@@ -308,7 +436,10 @@ inline SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
       return out;
     }
     case JS_TAG_OBJECT: {
-      if (JS_IsDate(val)) {
+      int typed_array_type = JS_GetTypedArrayType(val);
+      if (typed_array_type >= 0) {
+        return typed_array_sexp(ctx, val, typed_array_type);
+      } else if (JS_IsDate(val)) {
         return date_sexp(ctx, val);
       } else if (JS_IsArray(val)) {
         return array_sexp(ctx, val);

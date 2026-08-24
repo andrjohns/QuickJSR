@@ -3,6 +3,7 @@
 #include <quickjs-libc.h>
 #include <quickjs_helpers.hpp>
 #include <quickjsr.hpp>
+#include <utility>
 
 // Bundles the runtime and its context so a single external pointer owns both,
 // guaranteeing the context is always freed before the runtime it depends on,
@@ -45,9 +46,7 @@ struct ScopedJSValue {
 
   JSValue get() const { return value; }
   JSValue release() {
-    JSValue result = value;
-    value = JS_UNDEFINED;
-    return result;
+    return std::exchange(value, JS_UNDEFINED);
   }
 };
 

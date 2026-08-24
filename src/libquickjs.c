@@ -247,6 +247,14 @@ int quickjsr_get_date_epoch_ms(JSContext *ctx, JSValueConst value, double *resul
   return JS_ToFloat64(ctx, result, JS_VALUE_GET_OBJ(value)->u.object_data);
 }
 
+int quickjsr_get_fast_array_data(JSContext *ctx, JSValueConst value,
+                                 const JSValue **result, uint32_t *size) {
+  JSValue *values;
+  if (!js_get_fast_array(ctx, value, &values, size)) return 0;
+  *result = values;
+  return 1;
+}
+
 JSValue exit_wrapper_js(JSContext *ctx, int status) {
   if (safe_to_signal_r()) {
     JS_ThrowInternalError(ctx, "exit(%d) called from QuickJS", status);

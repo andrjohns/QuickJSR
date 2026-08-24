@@ -66,6 +66,61 @@ df <- data.frame(a = 1:3, b = c("x", "y", "z"))
 cat(to_json(df))
 ```
 
+## Typed Arrays
+
+Use `js_typed_array()` when a raw, integer, or double vector should cross the
+boundary as contiguous typed storage rather than as an ordinary JavaScript
+array.
+
+```{r}
+ctx <- JSContext$new()
+ctx$source(code = paste(
+  "function typeName(x) { return x.constructor.name; }",
+  "function total(x) { return x.reduce((a, b) => a + b, 0); }"
+))
+
+values <- js_typed_array(as.double(1:1000))
+ctx$call("typeName", values)
+ctx$call("total", values)
+```
+
+Raw vectors become `Uint8Array`, integer vectors become `Int32Array`, and
+double vectors become `Float64Array`. Integer vectors containing `NA` are
+rejected because `Int32Array` has no missing-value representation. Double
+`NA` and `NaN` values are both treated as JavaScript `NaN`. On return, the
+`Int32Array` value `-2147483648` becomes R's `NA_integer_` sentinel. JavaScript
+64-bit BigInt arrays return as doubles and can lose precision outside the
+exact integer range of an R double.
+
+JavaScript typed arrays are copied directly into matching R vector storage on
+return. Use a persistent reference when the value should remain in JavaScript
+across several operations, and materialise it only when R needs the result.
+
+## Column-oriented Data Frames
+
+The compatibility conversion represents a data frame as an array of row
+objects. Use `js_columnar_data_frame()` when JavaScript can operate on whole
+columns instead.
+
+```{r}
+df <- data.frame(
+  value = as.double(1:1000),
+  group = rep(c("a", "b"), 500)
+)
+
+ctx$source(code = paste(
+  "function columnTypes(x) {",
+  "  return [x.value.constructor.name, x.group.constructor.name];",
+  "}"
+))
+ctx$call("columnTypes", js_columnar_data_frame(df))
+```
+
+Eligible numeric columns become typed arrays by default. Integer columns with
+missing values, factors, and date-time columns remain ordinary arrays so their
+missing-value and class semantics are preserved. Set `typed = FALSE` to use
+ordinary arrays for every column.
+
 Note that the `to_json()` function operates by converting R objects to their JS equivalents, and then calling `JSON.stringify()` on the result. This allows you to explore how different types are being converted to JS.
 
 ### Functions and Closures

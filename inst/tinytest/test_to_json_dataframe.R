@@ -20,3 +20,16 @@ expect_equal(
   to_json(test),
   '[{"foo":1,"bar":[123],"baz":{"z":456}},{"foo":2,"bar":[123],"baz":{"z":457}}]'
 )
+
+test <- data.frame(id = 1:2)
+test$nested <- data.frame(
+  category = factor(c("a", "b")),
+  date = as.Date(c("2026-01-01", "2026-01-02"))
+)
+expect_equal(
+  to_json(test),
+  paste0(
+    '[{"id":1,"nested":{"category":"a","date":"2026-01-01T00:00:00.000Z"}},',
+    '{"id":2,"nested":{"category":"b","date":"2026-01-02T00:00:00.000Z"}}]'
+  )
+)

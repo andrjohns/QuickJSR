@@ -5,19 +5,17 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <quickjsr/JS_SEXP.hpp>
+#include <memory>
+#include <string_view>
 
 /**
  * These functions were adapted from the qjs.c file in the QuickJS source code.
 */
-static inline int js__has_suffix(const char *str, const char *suffix)
-{
-    size_t len = strlen(str);
-    size_t slen = strlen(suffix);
-    return (len >= slen && !memcmp(str + len - slen, suffix, slen));
+static inline bool js__has_suffix(std::string_view value,
+                                  std::string_view suffix) {
+    return value.size() >= suffix.size() &&
+      value.substr(value.size() - suffix.size()) == suffix;
 }
-#ifndef countof
-#define countof(x) (sizeof(x) / sizeof((x)[0]))
-#endif
 
 namespace quickjsr {
   static int eval_buf(JSContext *ctx, const char* buf, int buf_len,
@@ -63,14 +61,17 @@ namespace quickjsr {
   }
 
   static int eval_file(JSContext *ctx, const char *filename, int module) {
-    const char* buf;
     int ret, eval_flags;
     size_t buf_len;
 
-    buf = (const char*)js_load_file(ctx, &buf_len, filename);
-    if (!buf) {
+    uint8_t* raw_buffer = js_load_file(ctx, &buf_len, filename);
+    if (!raw_buffer) {
       cpp11::stop("Could not load '%s'\n", filename);
     }
+    auto free_buffer = [ctx](uint8_t* buffer) { js_free(ctx, buffer); };
+    std::unique_ptr<uint8_t, decltype(free_buffer)> buffer(
+      raw_buffer, free_buffer
+    );
 
     if (module < 0) {
       module = js__has_suffix(filename, ".mjs");
@@ -80,8 +81,10 @@ namespace quickjsr {
     } else {
       eval_flags = JS_EVAL_TYPE_GLOBAL;
     }
-    ret = eval_buf(ctx, buf, buf_len, "<input>", eval_flags);
-    js_free(ctx, (void*)buf);
+    ret = eval_buf(
+      ctx, reinterpret_cast<const char*>(buffer.get()), buf_len, "<input>",
+      eval_flags
+    );
     return ret;
   }
 
