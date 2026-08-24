@@ -43,7 +43,13 @@ namespace {
     } else {
       bytes = static_cast<size_t>(data->length) * sizeof(double);
     }
-    if (bytes > 0) std::memcpy(DATAPTR_RW(result), data->data, bytes);
+    if (bytes > 0) {
+#if R_VERSION >= R_Version(4, 6, 0)
+      std::memcpy(DATAPTR_RW(result), data->data, bytes);
+#else
+      std::memcpy(DATAPTR(result), data->data, bytes);
+#endif
+    }
     R_set_altrep_data2(x, result);
     data->data = nullptr;
     R_SetExternalPtrProtected(R_altrep_data1(x), R_NilValue);
@@ -62,7 +68,11 @@ namespace {
 
   void* view_dataptr(SEXP x, Rboolean writeable) {
     if (writeable || materialized(x) != R_NilValue) {
+#if R_VERSION >= R_Version(4, 6, 0)
       return DATAPTR_RW(materialize(x));
+#else
+      return DATAPTR(materialize(x));
+#endif
     }
     return const_cast<uint8_t*>(altrep_data(x)->data);
   }

@@ -382,8 +382,14 @@ namespace quickjsr {
     JSValue data_val = data[0];
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(data_val, js_sexp_class_id));
 
+#if R_VERSION >= R_Version(4, 4, 1)
+    SEXP call = PROTECT(Rf_allocLang(argc + 1));
+    int call_protections = 1;
+#else
     SEXP args = PROTECT(Rf_allocList(argc));
     SEXP call = PROTECT(Rf_lcons(x, args));
+    int call_protections = 2;
+#endif
     SETCAR(call, x);
     SEXP node = CDR(call);
     for (int i = 0; i < argc; i++) {
@@ -394,12 +400,12 @@ namespace quickjsr {
     SEXP result = R_tryEvalSilent(call, R_GlobalEnv, &error);
     if (error) {
       std::string message = R_curErrorBuf();
-      UNPROTECT(2);
+      UNPROTECT(call_protections);
       return JS_ThrowPlainError(ctx, "%s", message.c_str());
     }
     PROTECT(result);
     JSValue value = SEXP_to_JSValue(ctx, result, true, true);
-    UNPROTECT(3);
+    UNPROTECT(call_protections + 1);
     return value;
   }
 

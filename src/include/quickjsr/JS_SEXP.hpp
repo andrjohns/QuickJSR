@@ -258,7 +258,11 @@ namespace quickjsr {
           JS_ThrowTypeError(ctx, "raw view values must be integers from 0 to 255");
           return -1;
         }
+#if R_VERSION >= R_Version(4, 2, 0)
         SET_RAW_ELT(data->value, index, static_cast<Rbyte>(converted));
+#else
+        RAW(data->value)[index] = static_cast<Rbyte>(converted);
+#endif
         return 1;
       }
       case LGLSXP:
