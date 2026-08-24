@@ -11,6 +11,10 @@ semicolon_delimited_script
 Makefile
 ^README\.Rmd$
 ^compile_commands\.json$
+^benchmarks$
 ^\.cache$
 inst/include
 inst/lib
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
