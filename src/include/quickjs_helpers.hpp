@@ -5,6 +5,7 @@
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <quickjsr/JS_SEXP.hpp>
+#include <cstdint>
 #include <memory>
 #include <string_view>
 
@@ -18,6 +19,12 @@ static inline bool js__has_suffix(std::string_view value,
 }
 
 namespace quickjsr {
+  enum ContextProfile {
+    CONTEXT_BARE,
+    CONTEXT_STANDARD,
+    CONTEXT_HOST
+  };
+
   static int eval_buf(JSContext *ctx, const char* buf, int buf_len,
                       const char *filename, int eval_flags) {
     JSValue val;
@@ -88,8 +95,7 @@ namespace quickjsr {
     return ret;
   }
 
-  /* also used to initialize the worker context */
-  static JSContext* JS_NewCustomContext(JSRuntime *rt) {
+  static JSContext* JS_NewProfileContext(JSRuntime *rt, int profile) {
     JSContext *ctx;
     ctx = JS_NewContext(rt);
     if (!ctx){
@@ -102,6 +108,10 @@ namespace quickjsr {
 
     JSValue proto = JS_NewObject(ctx);
     JS_SetClassProto(ctx, quickjsr::js_renv_class_id, proto);
+
+    if (profile == CONTEXT_BARE) {
+      return ctx;
+    }
 
     JS_SetModuleLoaderFunc2(rt, NULL, js_module_loader, js_module_check_attributes, NULL);
 
@@ -118,15 +128,24 @@ namespace quickjsr {
         "};\n";
     eval_buf(ctx, str, strlen(str), "<input>", JS_EVAL_TYPE_MODULE);
 
-    JSValue global_obj = JS_GetGlobalObject(ctx);
-    JSValue r_obj = quickjsr::create_r_object(ctx);
-    JS_SetPropertyStr(ctx, global_obj, "R", r_obj);
-    JS_FreeValue(ctx, global_obj);
+    if (profile == CONTEXT_HOST) {
+      JSValue global_obj = JS_GetGlobalObject(ctx);
+      JSValue r_obj = quickjsr::create_r_object(ctx);
+      JS_SetPropertyStr(ctx, global_obj, "R", r_obj);
+      JS_FreeValue(ctx, global_obj);
+    }
 
     return ctx;
   }
 
-  inline JSRuntime* JS_NewCustomRuntime(int stack_size) {
+  static JSContext* JS_NewWorkerContext(JSRuntime *rt) {
+    int profile = static_cast<int>(reinterpret_cast<intptr_t>(
+      JS_GetRuntimeOpaque(rt)
+    ));
+    return JS_NewProfileContext(rt, profile);
+  }
+
+  inline JSRuntime* JS_NewProfileRuntime(int stack_size, int profile) {
     JSRuntime *rt;
     rt = JS_NewRuntime();
     if (!rt){
@@ -136,8 +155,13 @@ namespace quickjsr {
     if (stack_size != -1) {
       JS_SetMaxStackSize(rt, stack_size);
     }
-    js_std_set_worker_new_context_func(JS_NewCustomContext);
-    js_std_init_handlers(rt);
+    JS_SetRuntimeOpaque(
+      rt, reinterpret_cast<void*>(static_cast<intptr_t>(profile))
+    );
+    if (profile != CONTEXT_BARE) {
+      js_std_set_worker_new_context_func(JS_NewWorkerContext);
+      js_std_init_handlers(rt);
+    }
 
     JS_NewClassID(rt, &quickjsr::js_sexp_class_id);
     JS_NewClassID(rt, &quickjsr::js_renv_class_id);
@@ -147,6 +171,14 @@ namespace quickjsr {
     JS_NewClass(rt, quickjsr::js_renv_class_id, &quickjsr::js_renv_class_def);
 
     return rt;
+  }
+
+  static JSContext* JS_NewCustomContext(JSRuntime *rt) {
+    return JS_NewProfileContext(rt, CONTEXT_HOST);
+  }
+
+  inline JSRuntime* JS_NewCustomRuntime(int stack_size) {
+    return JS_NewProfileRuntime(stack_size, CONTEXT_HOST);
   }
 }
 

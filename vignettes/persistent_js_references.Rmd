@@ -23,6 +23,22 @@ A `JSValueRef` keeps a value inside its JavaScript context. Property access and
 function calls can then operate on the original value without converting it to
 R. Conversion only occurs when `js_ref_to_r()` is called.
 
+## Context profiles
+
+`JSContext$new()` uses the `"host"` profile by default. It includes the
+QuickJS `std` and `os` modules, console helpers, and the global `R` bridge.
+Use `"standard"` when JavaScript needs the standard modules but not the global
+R bridge, or `"bare"` for only the core JavaScript runtime.
+
+```{r}
+bare_ctx <- JSContext$new(profile = "bare")
+bare_ctx$source(code = "function add(a, b) { return a + b; }")
+bare_ctx$call("add", 2, 3)
+```
+
+All profiles support ordinary R-to-JavaScript value transfer. References
+remain owned by the context that created them.
+
 ## Creating references
 
 A context can create references by evaluating code, retrieving a global value,

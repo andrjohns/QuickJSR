@@ -3,7 +3,12 @@
 #include <quickjs-libc.h>
 #include <quickjs_helpers.hpp>
 #include <quickjsr.hpp>
+#include <algorithm>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 // Bundles the runtime and its context so a single external pointer owns both,
 // guaranteeing the context is always freed before the runtime it depends on,
@@ -11,12 +16,60 @@
 struct QjsRuntimeContext {
   JSContext* ctx;
   JSRuntime* rt;
+  bool has_std_handlers;
+  std::unordered_map<std::string, std::vector<JSAtom>> property_paths;
+
+  const std::vector<JSAtom>* path_atoms(std::string_view name) {
+    auto [entry, inserted] = property_paths.try_emplace(std::string(name));
+    if (!inserted) return &entry->second;
+
+    std::vector<JSAtom>& atoms = entry->second;
+    atoms.reserve(static_cast<size_t>(std::count(name.begin(), name.end(), '.')) + 1);
+    size_t start = 0;
+    while (true) {
+      size_t dot = name.find('.', start);
+      size_t length = dot == std::string_view::npos ? name.size() - start : dot - start;
+      JSAtom atom = JS_NewAtomLen(ctx, name.data() + start, length);
+      if (atom == JS_ATOM_NULL) {
+        for (JSAtom value : atoms) JS_FreeAtom(ctx, value);
+        property_paths.erase(entry);
+        return nullptr;
+      }
+      atoms.push_back(atom);
+      if (dot == std::string_view::npos) return &atoms;
+      start = dot + 1;
+    }
+  }
+
+  JSValue get_property(JSValue obj, std::string_view name,
+                       JSValue* receiver = nullptr) {
+    const std::vector<JSAtom>* path = path_atoms(name);
+    if (!path) return JS_EXCEPTION;
+    return quickjsr::JS_GetPropertyRecursive(ctx, obj, *path, receiver);
+  }
+
+  int set_property(JSValue obj, std::string_view name, JSValue value) {
+    const std::vector<JSAtom>* path = path_atoms(name);
+    if (!path) {
+      JS_FreeValue(ctx, value);
+      return -1;
+    }
+    return quickjsr::JS_SetPropertyRecursive(ctx, obj, *path, value);
+  }
+
+  void free_property_paths() {
+    for (const auto& entry : property_paths) {
+      for (JSAtom atom : entry.second) JS_FreeAtom(ctx, atom);
+    }
+    property_paths.clear();
+  }
 };
 
 void JS_FreeRuntimeContext(QjsRuntimeContext* handle) {
   if (!handle) return;
+  handle->free_property_paths();
   JS_FreeContext(handle->ctx);
-  js_std_free_handlers(handle->rt);
+  if (handle->has_std_handlers) js_std_free_handlers(handle->rt);
   JS_FreeRuntime(handle->rt);
   delete handle;
 }
@@ -36,6 +89,33 @@ struct ScopedRuntime {
     has_std_handlers = false;
   }
 };
+
+struct JsonRuntimeContext {
+  JSRuntime* rt = nullptr;
+  JSContext* ctx = nullptr;
+
+  ~JsonRuntimeContext() {
+    if (ctx) JS_FreeContext(ctx);
+    if (rt) JS_FreeRuntime(rt);
+  }
+};
+
+JsonRuntimeContext& json_runtime_context() {
+  static JsonRuntimeContext state;
+  if (state.ctx) return state;
+
+  state.rt = quickjsr::JS_NewProfileRuntime(-1, quickjsr::CONTEXT_BARE);
+  if (!state.rt) cpp11::stop("Could not create QuickJS runtime");
+  state.ctx = quickjsr::JS_NewProfileContext(
+    state.rt, quickjsr::CONTEXT_BARE
+  );
+  if (!state.ctx) {
+    JS_FreeRuntime(state.rt);
+    state.rt = nullptr;
+    cpp11::stop("Could not create QuickJS context");
+  }
+  return state;
+}
 
 struct ScopedJSValue {
   JSContext* ctx;
@@ -100,7 +180,7 @@ SEXP make_value_ref(SEXP context_ptr, JSContext* ctx, ScopedJSValue& value,
 }
 
 extern "C" {
-  SEXP qjs_context_(SEXP stack_size_) {
+  SEXP qjs_context_(SEXP stack_size_, SEXP profile_) {
     BEGIN_CPP11
     int stack_size;
     if (Rf_isInteger(stack_size_)) {
@@ -110,13 +190,21 @@ extern "C" {
     } else {
       cpp11::stop("stack_size must be integer or numeric");
     }
-    JSRuntime* rt = quickjsr::JS_NewCustomRuntime(stack_size);
+    if (!Rf_isInteger(profile_) || Rf_xlength(profile_) != 1) {
+      cpp11::stop("profile must be an integer scalar");
+    }
+    int profile = INTEGER_ELT(profile_, 0);
+    if (profile < quickjsr::CONTEXT_BARE || profile > quickjsr::CONTEXT_HOST) {
+      cpp11::stop("unknown context profile");
+    }
+    bool has_std_handlers = profile != quickjsr::CONTEXT_BARE;
+    JSRuntime* rt = quickjsr::JS_NewProfileRuntime(stack_size, profile);
     if (!rt) cpp11::stop("Could not create QuickJS runtime");
-    ScopedRuntime guard{rt, nullptr, true};
-    JSContext* ctx = quickjsr::JS_NewCustomContext(rt);
+    ScopedRuntime guard{rt, nullptr, has_std_handlers};
+    JSContext* ctx = quickjsr::JS_NewProfileContext(rt, profile);
     guard.ctx = ctx;
     if (!ctx) cpp11::stop("Could not create QuickJS context");
-    ContextXPtr handle(new QjsRuntimeContext{ctx, rt});
+    ContextXPtr handle(new QjsRuntimeContext{ctx, rt, has_std_handlers, {}});
     guard.release();
 
     return cpp11::as_sexp(handle);
@@ -172,8 +260,8 @@ extern "C" {
     JSValue receiver_value = JS_UNDEFINED;
     ScopedJSValue fun(
       ctx->ctx,
-      quickjsr::JS_GetPropertyRecursive(
-        ctx->ctx, global.get(), Rf_translateCharUTF8(STRING_ELT(fun_name_, 0)),
+      ctx->get_property(
+        global.get(), Rf_translateCharUTF8(STRING_ELT(fun_name_, 0)),
         &receiver_value
       )
     );
@@ -203,8 +291,8 @@ extern "C" {
     JSValue receiver_value = JS_UNDEFINED;
     ScopedJSValue fun(
       ctx->ctx,
-      quickjsr::JS_GetPropertyRecursive(
-        ctx->ctx, global.get(), Rf_translateCharUTF8(STRING_ELT(fun_name_, 0)),
+      ctx->get_property(
+        global.get(), Rf_translateCharUTF8(STRING_ELT(fun_name_, 0)),
         &receiver_value
       )
     );
@@ -230,8 +318,8 @@ extern "C" {
     ScopedJSValue global(ctx->ctx, JS_GetGlobalObject(ctx->ctx));
     ScopedJSValue result(
       ctx->ctx,
-      quickjsr::JS_GetPropertyRecursive(
-        ctx->ctx, global.get(), Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0))
+      ctx->get_property(
+        global.get(), Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0))
       )
     );
     return quickjsr::JSValue_to_SEXP(ctx->ctx, result.get());
@@ -245,8 +333,8 @@ extern "C" {
     JSValue receiver_value = JS_UNDEFINED;
     ScopedJSValue result(
       ctx->ctx,
-      quickjsr::JS_GetPropertyRecursive(
-        ctx->ctx, global.get(), Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0)),
+      ctx->get_property(
+        global.get(), Rf_translateCharUTF8(STRING_ELT(js_obj_name, 0)),
         &receiver_value
       )
     );
@@ -277,11 +365,12 @@ extern "C" {
   SEXP qjs_value_ref_get_(SEXP ref_ptr_, SEXP name_) {
     BEGIN_CPP11
     quickjsr::JSValueRefData* ref = quickjsr::get_value_ref(ref_ptr_);
+    ContextXPtr owner(R_ExternalPtrProtected(ref_ptr_));
     JSValue receiver_value = JS_UNDEFINED;
     ScopedJSValue result(
       ref->ctx,
-      quickjsr::JS_GetPropertyRecursive(
-        ref->ctx, ref->value, Rf_translateCharUTF8(STRING_ELT(name_, 0)),
+      owner->get_property(
+        ref->value, Rf_translateCharUTF8(STRING_ELT(name_, 0)),
         &receiver_value
       )
     );
@@ -326,8 +415,8 @@ extern "C" {
     ContextXPtr ctx(ctx_ptr_);
     ScopedJSValue value(ctx->ctx, quickjsr::SEXP_to_JSValue(ctx->ctx, value_, true));
     ScopedJSValue global(ctx->ctx, JS_GetGlobalObject(ctx->ctx));
-    int result = quickjsr::JS_SetPropertyRecursive(
-      ctx->ctx, global.get(), Rf_translateCharUTF8(STRING_ELT(js_obj_name_, 0)),
+    int result = ctx->set_property(
+      global.get(), Rf_translateCharUTF8(STRING_ELT(js_obj_name_, 0)),
       value.release()
     );
     if (result < 0) {
@@ -357,12 +446,7 @@ extern "C" {
 
   SEXP to_json_(SEXP arg_, SEXP auto_unbox_) {
     BEGIN_CPP11
-    JSRuntime* rt = JS_NewRuntime();
-    if (!rt) cpp11::stop("Could not create QuickJS runtime");
-    ScopedRuntime guard{rt, nullptr, false};
-    JSContext* rt_ctx = JS_NewContext(rt);
-    guard.ctx = rt_ctx;
-    if (!rt_ctx) cpp11::stop("Could not create QuickJS context");
+    JSContext* rt_ctx = json_runtime_context().ctx;
 
     ScopedJSValue arg(
       rt_ctx,
@@ -385,12 +469,7 @@ extern "C" {
 
   SEXP from_json_(SEXP json_) {
     BEGIN_CPP11
-    JSRuntime* rt = JS_NewRuntime();
-    if (!rt) cpp11::stop("Could not create QuickJS runtime");
-    ScopedRuntime guard{rt, nullptr, false};
-    JSContext* rt_ctx = JS_NewContext(rt);
-    guard.ctx = rt_ctx;
-    if (!rt_ctx) cpp11::stop("Could not create QuickJS context");
+    JSContext* rt_ctx = json_runtime_context().ctx;
 
     const char* json = Rf_translateCharUTF8(STRING_ELT(json_, 0));
     ScopedJSValue result(rt_ctx, JS_ParseJSON(rt_ctx, json, strlen(json), "<input>"));

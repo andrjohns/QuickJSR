@@ -111,13 +111,16 @@ call_ref <- NULL
 get_ref <- NULL
 eval_ref <- NULL
 
-new_JSContext <- function(stack_size = NULL) {
+new_JSContext <- function(stack_size = NULL, profile = c("host", "standard", "bare")) {
   stack_size_int <- ifelse(is.null(stack_size), -1, stack_size)
+  profile <- match.arg(profile)
+  profile_id <- switch(profile, bare = 0L, standard = 1L, host = 2L)
   # A single pointer owning both the runtime and its context, so that
   # freeing always happens in the correct order (context before runtime)
   # regardless of R's garbage collection order.
   ContextList <- list(
-    context = qjs_context(stack_size_int)
+    context = qjs_context(stack_size_int, profile_id),
+    profile = profile
   )
 
   ContextList$validate <- function(code_string) {

@@ -2,57 +2,51 @@
 #define QUICKJSR_JS_GET_PROPERTY_RECURSIVE_HPP
 
 #include <quickjs-libc.h>
-#include <string_view>
+#include <vector>
 
 namespace quickjsr {
   inline JSValue JS_GetPropertyRecursive(JSContext* ctx, JSValue obj,
-                                         std::string_view name,
+                                         const std::vector<JSAtom>& path,
                                          JSValue* receiver = nullptr) {
-    const size_t dot = name.find('.');
-    const size_t length = dot == std::string_view::npos ? name.size() : dot;
-    JSAtom atom = JS_NewAtomLen(ctx, name.data(), length);
-    if (atom == JS_ATOM_NULL) {
+    if (path.empty()) {
       return JS_EXCEPTION;
     }
-    if (dot == std::string_view::npos && receiver) {
-      *receiver = JS_DupValue(ctx, obj);
+    JSValue current = obj;
+    bool owns_current = false;
+    for (size_t i = 0; i < path.size(); i++) {
+      if (i + 1 == path.size() && receiver) {
+        *receiver = JS_DupValue(ctx, current);
+      }
+      JSValue next = JS_GetProperty(ctx, current, path[i]);
+      if (owns_current) JS_FreeValue(ctx, current);
+      if (JS_IsException(next)) return next;
+      current = next;
+      owns_current = true;
     }
-    JSValue property = JS_GetProperty(ctx, obj, atom);
-    JS_FreeAtom(ctx, atom);
-    if (dot == std::string_view::npos || JS_IsException(property)) {
-      return property;
-    }
-    JSValue result = JS_GetPropertyRecursive(
-      ctx, property, name.substr(dot + 1), receiver
-    );
-    JS_FreeValue(ctx, property);
-    return result;
+    return current;
   }
 
   inline int JS_SetPropertyRecursive(JSContext* ctx, JSValue obj,
-                                     std::string_view name, JSValue value) {
-    const size_t dot = name.find('.');
-    const size_t length = dot == std::string_view::npos ? name.size() : dot;
-    JSAtom atom = JS_NewAtomLen(ctx, name.data(), length);
-    if (atom == JS_ATOM_NULL) {
+                                     const std::vector<JSAtom>& path,
+                                     JSValue value) {
+    if (path.empty()) {
       JS_FreeValue(ctx, value);
       return -1;
     }
-    if (dot != std::string_view::npos) {
-      JSValue property = JS_GetProperty(ctx, obj, atom);
-      JS_FreeAtom(ctx, atom);
-      if (JS_IsException(property)) {
+    JSValue current = obj;
+    bool owns_current = false;
+    for (size_t i = 0; i + 1 < path.size(); i++) {
+      JSValue next = JS_GetProperty(ctx, current, path[i]);
+      if (owns_current) JS_FreeValue(ctx, current);
+      if (JS_IsException(next)) {
         JS_FreeValue(ctx, value);
         return -1;
       }
-      int result = JS_SetPropertyRecursive(
-        ctx, property, name.substr(dot + 1), value
-      );
-      JS_FreeValue(ctx, property);
-      return result;
+      current = next;
+      owns_current = true;
     }
-    int result = JS_SetProperty(ctx, obj, atom, value);
-    JS_FreeAtom(ctx, atom);
+    int result = JS_SetProperty(ctx, current, path.back(), value);
+    if (owns_current) JS_FreeValue(ctx, current);
     return result;
   }
 }

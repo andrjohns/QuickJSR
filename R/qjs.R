@@ -24,8 +24,8 @@ qjs_eval <- function(eval_string) {
   res
 }
 
-qjs_context <- function(stack_size) {
-  .Call(`qjs_context_`, stack_size)
+qjs_context <- function(stack_size, profile) {
+  .Call(`qjs_context_`, stack_size, profile)
 }
 
 qjs_source <- function(ctx_ptr, input, is_file) {
