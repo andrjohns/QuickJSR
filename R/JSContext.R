@@ -108,7 +108,9 @@ get <- NULL
 #' }
 assign <- NULL
 call_ref <- NULL
+compile <- NULL
 get_ref <- NULL
+eval <- NULL
 eval_ref <- NULL
 
 new_JSContext <- function(stack_size = NULL, profile = c("host", "standard", "bare")) {
@@ -169,8 +171,14 @@ new_JSContext <- function(stack_size = NULL, profile = c("host", "standard", "ba
   ContextList$get_ref <- function(var_name) {
     qjs_get_ref(ContextList$context, var_name)
   }
+  ContextList$eval <- function(code) {
+    qjs_context_eval(ContextList$context, code)
+  }
   ContextList$eval_ref <- function(code) {
     qjs_eval_ref(ContextList$context, code)
+  }
+  ContextList$compile <- function(code) {
+    qjs_compile(ContextList$context, code)
   }
   ContextList$assign <- function(var_name, value) {
     qjs_assign(ContextList$context, var_name, value)

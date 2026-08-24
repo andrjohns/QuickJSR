@@ -52,8 +52,16 @@ qjs_get_ref <- function(ctx_ptr, var_name) {
   .Call(`qjs_get_ref_`, ctx_ptr, var_name)
 }
 
+qjs_context_eval <- function(ctx_ptr, code) {
+  .Call(`qjs_context_eval_`, ctx_ptr, code)
+}
+
 qjs_eval_ref <- function(ctx_ptr, code) {
   .Call(`qjs_eval_ref_`, ctx_ptr, code)
+}
+
+qjs_compile <- function(ctx_ptr, code) {
+  .Call(`qjs_compile_`, ctx_ptr, code)
 }
 
 qjs_assign <- function(ctx_ptr, var_name, value) {

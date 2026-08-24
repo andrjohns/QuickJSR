@@ -167,16 +167,34 @@ void JS_FreeValueRef(quickjsr::JSValueRefData* ref) {
 using ValueXPtr = cpp11::external_pointer<quickjsr::JSValueRefData, JS_FreeValueRef>;
 
 SEXP make_value_ref(SEXP context_ptr, JSContext* ctx, ScopedJSValue& value,
-                    ScopedJSValue& receiver) {
+                    ScopedJSValue& receiver, bool compiled = false) {
   quickjsr::JSValueRefData* data = new quickjsr::JSValueRefData{
     ctx, value.release(), receiver.release()
   };
   ValueXPtr handle(data);
   SEXP result = PROTECT(cpp11::as_sexp(handle));
   R_SetExternalPtrProtected(result, context_ptr);
-  Rf_classgets(result, Rf_mkString("JSValueRef"));
-  UNPROTECT(1);
+  int class_count = compiled ? 2 : 1;
+  SEXP classes = PROTECT(Rf_allocVector(STRSXP, class_count));
+  if (compiled) SET_STRING_ELT(classes, 0, Rf_mkChar("JSCompiledScript"));
+  SET_STRING_ELT(classes, class_count - 1, Rf_mkChar("JSValueRef"));
+  Rf_classgets(result, classes);
+  UNPROTECT(2);
   return result;
+}
+
+quickjsr::JSValueRefData* get_compiled_script(SEXP x) {
+  if (!Rf_inherits(x, "JSCompiledScript")) {
+    cpp11::stop("Expected a JSCompiledScript");
+  }
+  return quickjsr::get_value_ref(x);
+}
+
+quickjsr::JSValueRefData* get_regular_value_ref(SEXP x) {
+  if (Rf_inherits(x, "JSCompiledScript")) {
+    cpp11::stop("compiled scripts must be executed with js_script_run()");
+  }
+  return quickjsr::get_value_ref(x);
 }
 
 extern "C" {
@@ -346,6 +364,18 @@ extern "C" {
     END_CPP11
   }
 
+  SEXP qjs_context_eval_(SEXP ctx_ptr_, SEXP code_) {
+    BEGIN_CPP11
+    ContextXPtr ctx(ctx_ptr_);
+    const char* code = Rf_translateCharUTF8(STRING_ELT(code_, 0));
+    ScopedJSValue result(
+      ctx->ctx,
+      JS_Eval(ctx->ctx, code, strlen(code), "<input>", JS_EVAL_TYPE_GLOBAL)
+    );
+    return quickjsr::JSValue_to_SEXP(ctx->ctx, result.get());
+    END_CPP11
+  }
+
   SEXP qjs_eval_ref_(SEXP ctx_ptr_, SEXP code_) {
     BEGIN_CPP11
     ContextXPtr ctx(ctx_ptr_);
@@ -362,9 +392,56 @@ extern "C" {
     END_CPP11
   }
 
+  SEXP qjs_compile_(SEXP ctx_ptr_, SEXP code_) {
+    BEGIN_CPP11
+    ContextXPtr ctx(ctx_ptr_);
+    const char* code = Rf_translateCharUTF8(STRING_ELT(code_, 0));
+    ScopedJSValue result(
+      ctx->ctx,
+      JS_Eval(
+        ctx->ctx, code, strlen(code), "<input>",
+        JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_COMPILE_ONLY
+      )
+    );
+    if (JS_IsException(result.get())) {
+      return quickjsr::JSValue_to_SEXP(ctx->ctx, result.get());
+    }
+    ScopedJSValue receiver(ctx->ctx, JS_UNDEFINED);
+    return make_value_ref(ctx_ptr_, ctx->ctx, result, receiver, true);
+    END_CPP11
+  }
+
+  SEXP qjs_script_run_(SEXP script_) {
+    BEGIN_CPP11
+    quickjsr::JSValueRefData* script = get_compiled_script(script_);
+    ScopedJSValue bytecode(script->ctx, JS_DupValue(script->ctx, script->value));
+    ScopedJSValue result(
+      script->ctx, JS_EvalFunction(script->ctx, bytecode.release())
+    );
+    return quickjsr::JSValue_to_SEXP(script->ctx, result.get());
+    END_CPP11
+  }
+
+  SEXP qjs_script_run_ref_(SEXP script_) {
+    BEGIN_CPP11
+    quickjsr::JSValueRefData* script = get_compiled_script(script_);
+    ScopedJSValue bytecode(script->ctx, JS_DupValue(script->ctx, script->value));
+    ScopedJSValue result(
+      script->ctx, JS_EvalFunction(script->ctx, bytecode.release())
+    );
+    if (JS_IsException(result.get())) {
+      return quickjsr::JSValue_to_SEXP(script->ctx, result.get());
+    }
+    ScopedJSValue receiver(script->ctx, JS_UNDEFINED);
+    return make_value_ref(
+      R_ExternalPtrProtected(script_), script->ctx, result, receiver
+    );
+    END_CPP11
+  }
+
   SEXP qjs_value_ref_get_(SEXP ref_ptr_, SEXP name_) {
     BEGIN_CPP11
-    quickjsr::JSValueRefData* ref = quickjsr::get_value_ref(ref_ptr_);
+    quickjsr::JSValueRefData* ref = get_regular_value_ref(ref_ptr_);
     ContextXPtr owner(R_ExternalPtrProtected(ref_ptr_));
     JSValue receiver_value = JS_UNDEFINED;
     ScopedJSValue result(
@@ -384,7 +461,7 @@ extern "C" {
 
   SEXP qjs_value_ref_call_(SEXP ref_ptr_, SEXP args_list_) {
     BEGIN_CPP11
-    quickjsr::JSValueRefData* ref = quickjsr::get_value_ref(ref_ptr_);
+    quickjsr::JSValueRefData* ref = get_regular_value_ref(ref_ptr_);
     R_xlen_t n_args = Rf_xlength(args_list_);
     ScopedJSValues args(ref->ctx);
     args.values.reserve(static_cast<size_t>(n_args));
@@ -405,7 +482,7 @@ extern "C" {
 
   SEXP qjs_value_ref_to_r_(SEXP ref_ptr_) {
     BEGIN_CPP11
-    quickjsr::JSValueRefData* ref = quickjsr::get_value_ref(ref_ptr_);
+    quickjsr::JSValueRefData* ref = get_regular_value_ref(ref_ptr_);
     return quickjsr::JSValue_to_SEXP(ref->ctx, ref->value);
     END_CPP11
   }

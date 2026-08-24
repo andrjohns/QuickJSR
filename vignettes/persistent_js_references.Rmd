@@ -39,6 +39,38 @@ bare_ctx$call("add", 2, 3)
 All profiles support ordinary R-to-JavaScript value transfer. References
 remain owned by the context that created them.
 
+## Persistent and compiled evaluation
+
+Use `ctx$eval()` when source should execute in an existing context and return
+an R value. Unlike `qjs_eval()`, it preserves global state between calls.
+
+```{r}
+bare_ctx$eval("globalThis.count = 0; count")
+bare_ctx$eval("count += 1; count")
+```
+
+Use `ctx$compile()` when the same global script will execute repeatedly.
+Compilation parses the source without running it. `js_script_run()` converts
+each result to R, while `js_script_run_ref()` retains the result in JavaScript.
+
+```{r}
+increment <- bare_ctx$compile("count += 1; count")
+js_script_run(increment)
+js_script_run(increment)
+
+array_script <- bare_ctx$compile("[count, count + 1]")
+array_result <- js_script_run_ref(array_script)
+js_ref_to_r(array_result)
+```
+
+Compiled scripts take no arguments. For parameterised repeated work, evaluate
+a function once with `eval_ref()` and invoke it with `js_ref_call()`.
+
+```{r}
+double <- bare_ctx$eval_ref("value => value * 2")
+js_ref_to_r(js_ref_call(double, 21))
+```
+
 ## Creating references
 
 A context can create references by evaluating code, retrieving a global value,

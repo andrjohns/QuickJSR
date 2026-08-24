@@ -9,7 +9,11 @@ extern "C" {
   SEXP qjs_call_ref_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_list_);
   SEXP qjs_get_(SEXP ctx_ptr_, SEXP js_obj_name);
   SEXP qjs_get_ref_(SEXP ctx_ptr_, SEXP js_obj_name);
+  SEXP qjs_context_eval_(SEXP ctx_ptr_, SEXP code_);
   SEXP qjs_eval_ref_(SEXP ctx_ptr_, SEXP code_);
+  SEXP qjs_compile_(SEXP ctx_ptr_, SEXP code_);
+  SEXP qjs_script_run_(SEXP script_);
+  SEXP qjs_script_run_ref_(SEXP script_);
   SEXP qjs_value_ref_get_(SEXP ref_ptr_, SEXP name_);
   SEXP qjs_value_ref_call_(SEXP ref_ptr_, SEXP args_list_);
   SEXP qjs_value_ref_to_r_(SEXP ref_ptr_);
@@ -28,7 +32,11 @@ extern "C" {
     {"qjs_validate_", (DL_FUNC) &qjs_validate_, 2},
     {"qjs_get_",      (DL_FUNC) &qjs_get_,      2},
     {"qjs_get_ref_",  (DL_FUNC) &qjs_get_ref_,  2},
+    {"qjs_context_eval_", (DL_FUNC) &qjs_context_eval_, 2},
     {"qjs_eval_ref_", (DL_FUNC) &qjs_eval_ref_, 2},
+    {"qjs_compile_",   (DL_FUNC) &qjs_compile_,   2},
+    {"qjs_script_run_", (DL_FUNC) &qjs_script_run_, 1},
+    {"qjs_script_run_ref_", (DL_FUNC) &qjs_script_run_ref_, 1},
     {"qjs_value_ref_get_",  (DL_FUNC) &qjs_value_ref_get_,  2},
     {"qjs_value_ref_call_", (DL_FUNC) &qjs_value_ref_call_, 2},
     {"qjs_value_ref_to_r_", (DL_FUNC) &qjs_value_ref_to_r_, 1},

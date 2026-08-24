@@ -383,6 +383,9 @@ namespace quickjsr {
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x,
                           bool auto_unbox_inp = false,
                           bool auto_unbox = false) {
+    if (Rf_inherits(x, "JSCompiledScript")) {
+      cpp11::stop("compiled scripts cannot be used as JavaScript values");
+    }
     if (Rf_inherits(x, "JSValueRef")) {
       JSValueRefData* ref = get_value_ref(x);
       if (ref->ctx != ctx) {
