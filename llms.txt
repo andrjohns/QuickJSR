@@ -1,0 +1,191 @@
+# QuickJSR
+
+A portable, lightweight, zero-dependency JavaScript engine for R, using
+[QuickJS](https://bellard.org/quickjs/).
+
+Values and objects are directly passed between R and QuickJS, with no
+need for serialization or deserialization. This both reduces overhead
+and allows for more complex data structures to be passed between R and
+JavaScript - including functions.
+
+## Installation
+
+You can install the development version of QuickJSR from
+[GitHub](https://github.com/) with:
+
+``` r
+
+# install.packages("remotes")
+remotes::install_github("andrjohns/QuickJSR")
+```
+
+Or you can install pre-built binaries from R-Universe:
+
+``` r
+
+install.packages("QuickJSR", repos = c("https://andrjohns.r-universe.dev",
+                                        "https://cran.r-project.org"))
+```
+
+## Usage
+
+For standalone or simple JavaScript code, you can use the
+[`qjs_eval()`](https://andrjohns.github.io/QuickJSR/reference/qjs_eval.md)
+function:
+
+``` r
+
+library(QuickJSR)
+
+qjs_eval("1 + 1")
+#> [1] 2
+qjs_eval("Math.random()")
+#> [1] 0.816737
+```
+
+For more complex interactions, you can create a QuickJS context and
+evaluate code within that context:
+
+``` r
+
+ctx <- JSContext$new()
+```
+
+Use the `$source()` method to load JavaScript code into the context:
+
+``` r
+
+# Code can be provided as a string
+ctx$source(code = "function add(a, b) { return a + b; }")
+
+# Or read from a file
+subtract_js <- tempfile(fileext = ".js")
+writeLines("function subtract(a, b) { return a - b; }", subtract_js)
+ctx$source(file = subtract_js)
+```
+
+Then use the `$call()` method to call a specified function with
+arguments:
+
+``` r
+
+ctx$call("add", 1, 2)
+#> [1] 3
+ctx$call("subtract", 5, 3)
+#> [1] 2
+```
+
+### Interacting with R objects, environments, and functions
+
+As QuickJSR uses the respective C APIs of R and QuickJS to pass values
+between the two, this allows for more complex data structures to be
+passed between R and JavaScript.
+
+For example, you can also pass R functions to be evaluated using
+JavaScript arguments:
+
+``` r
+
+ctx$source(code = "function callRFunction(f, x, y) { return f(x, y); }")
+ctx$call("callRFunction", function(x, y) x + y, 1, 2)
+#> [1] 3
+ctx$call("callRFunction", function(x, y) paste0(x, ",", y), "a", "b")
+#> [1] "a,b"
+```
+
+You can pass R environments to JavaScript, and both access and update
+their contents:
+
+``` r
+
+env <- new.env()
+env$x <- 1
+env$y <- 2
+
+ctx$source(code = "function accessEnv(env) { return env.x + env.y; }")
+ctx$call("accessEnv", env)
+#> [1] 3
+
+ctx$source(code = "function updateEnv(env) { env.z = env.x * env.y; return env.z;}")
+ctx$call("updateEnv", env)
+#> [1] 2
+
+env$z
+#> [1] 2
+```
+
+QuickJSR also provides a global `R` object, which you can use to access
+objects and functions from various R packages:
+
+``` r
+
+qjs_eval('R.package("base")["Sys.Date"]()')
+#> [1] "2026-08-21 08:00:00 AWST"
+```
+
+# Package index
+
+## All functions
+
+- [`js_script_run()`](https://andrjohns.github.io/QuickJSR/reference/JSCompiledScript.md)
+  [`js_script_run_ref()`](https://andrjohns.github.io/QuickJSR/reference/JSCompiledScript.md)
+  : Compile and repeatedly execute JavaScript
+- [`assign()`](https://andrjohns.github.io/QuickJSR/reference/JSContext-method-assign.md)
+  : Assign a value to a variable in the current context
+- [`call()`](https://andrjohns.github.io/QuickJSR/reference/JSContext-method-call.md)
+  : Call a JS function in the current context
+- [`eval()`](https://andrjohns.github.io/QuickJSR/reference/JSContext-method-eval.md)
+  : Evaluate code in a persistent JavaScript context
+- [`get()`](https://andrjohns.github.io/QuickJSR/reference/JSContext-method-get.md)
+  : Get a variable from the current context
+- [`source()`](https://andrjohns.github.io/QuickJSR/reference/JSContext-method-source.md)
+  : Evaluate JS string or file in the current context
+- [`validate()`](https://andrjohns.github.io/QuickJSR/reference/JSContext-method-validate.md)
+  : Assess validity of JS code without evaluating
+- [`new_JSContext()`](https://andrjohns.github.io/QuickJSR/reference/JSContext-new.md)
+  : Create a JavaScript context
+- [`call_ref()`](https://andrjohns.github.io/QuickJSR/reference/JSContext-reference-methods.md)
+  [`get_ref()`](https://andrjohns.github.io/QuickJSR/reference/JSContext-reference-methods.md)
+  [`eval_ref()`](https://andrjohns.github.io/QuickJSR/reference/JSContext-reference-methods.md)
+  : Create persistent JavaScript references
+- [`JSContext`](https://andrjohns.github.io/QuickJSR/reference/JSContext.md)
+  : JSContext object
+- [`js_ref_get()`](https://andrjohns.github.io/QuickJSR/reference/JSValueRef.md)
+  [`js_ref_call()`](https://andrjohns.github.io/QuickJSR/reference/JSValueRef.md)
+  [`js_ref_to_r()`](https://andrjohns.github.io/QuickJSR/reference/JSValueRef.md)
+  : Persistent JavaScript value references
+- [`QuickJSR-package`](https://andrjohns.github.io/QuickJSR/reference/QuickJSR-package.md)
+  [`QuickJSR`](https://andrjohns.github.io/QuickJSR/reference/QuickJSR-package.md)
+  : The QuickJSR package.
+- [`from_json()`](https://andrjohns.github.io/QuickJSR/reference/from_json.md)
+  : from_json
+- [`js_columnar_data_frame()`](https://andrjohns.github.io/QuickJSR/reference/js_columnar_data_frame.md)
+  : Transfer a data frame as an object of columns
+- [`js_masked_typed_array()`](https://andrjohns.github.io/QuickJSR/reference/js_masked_typed_array.md)
+  : Transfer missing typed values with a validity mask
+- [`js_mutable_view()`](https://andrjohns.github.io/QuickJSR/reference/js_mutable_view.md)
+  : Expose owned R vector storage as a mutable JavaScript view
+- [`js_readonly_view()`](https://andrjohns.github.io/QuickJSR/reference/js_readonly_view.md)
+  : Expose an R vector as a read-only JavaScript view
+- [`js_ref_to_altrep()`](https://andrjohns.github.io/QuickJSR/reference/js_ref_to_altrep.md)
+  : Create an R ALTREP view over a JavaScript typed array
+- [`js_typed_array()`](https://andrjohns.github.io/QuickJSR/reference/js_typed_array.md)
+  : Transfer an R vector as a JavaScript typed array
+- [`qjs_eval()`](https://andrjohns.github.io/QuickJSR/reference/qjs_eval.md)
+  : qjs_eval
+- [`cppflags()`](https://andrjohns.github.io/QuickJSR/reference/quickjs_flags.md)
+  [`ldflags()`](https://andrjohns.github.io/QuickJSR/reference/quickjs_flags.md)
+  : QuickJS-NG Compiler and Linker Flags
+- [`quickjs_version()`](https://andrjohns.github.io/QuickJSR/reference/quickjs_version.md)
+  : Get the version of the bundled QuickJS library
+- [`to_json()`](https://andrjohns.github.io/QuickJSR/reference/to_json.md)
+  : to_json
+
+# Articles
+
+### All vignettes
+
+- [Persistent JavaScript
+  References](https://andrjohns.github.io/QuickJSR/articles/persistent_js_references.md):
+- [Working with R and JS
+  Types](https://andrjohns.github.io/QuickJSR/articles/working_with_js_types.md):
