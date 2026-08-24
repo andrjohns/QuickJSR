@@ -41,7 +41,7 @@ expect_equal(jsc$call("callFn", "fn20"), 2000)
 # An error raised inside an R callback must surface as an R error rather than
 # unwinding through the QuickJS C stack.
 jsc$source(code = "function callf(f) { return f(); }")
-expect_error(jsc$call("callf", function() stop("boom")))
+expect_error(jsc$call("callf", function() stop("boom")), "boom")
 
 # The engine remains usable after a trapped callback error
 expect_equal(jsc$call("applyN", function(x) x, 3L), 3)

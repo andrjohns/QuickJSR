@@ -29,6 +29,16 @@ namespace {
     return R_altrep_data2(x);
   }
 
+  void* writable_data(SEXP x, SEXPTYPE type) {
+#if R_VERSION >= R_Version(4, 6, 0)
+    return DATAPTR_RW(x);
+#else
+    if (type == RAWSXP) return RAW(x);
+    if (type == INTSXP) return INTEGER(x);
+    return REAL(x);
+#endif
+  }
+
   SEXP materialize(SEXP x) {
     SEXP existing = materialized(x);
     if (existing != R_NilValue) return existing;
@@ -44,11 +54,7 @@ namespace {
       bytes = static_cast<size_t>(data->length) * sizeof(double);
     }
     if (bytes > 0) {
-#if R_VERSION >= R_Version(4, 6, 0)
-      std::memcpy(DATAPTR_RW(result), data->data, bytes);
-#else
-      std::memcpy(DATAPTR(result), data->data, bytes);
-#endif
+      std::memcpy(writable_data(result, data->type), data->data, bytes);
     }
     R_set_altrep_data2(x, result);
     data->data = nullptr;
@@ -68,11 +74,7 @@ namespace {
 
   void* view_dataptr(SEXP x, Rboolean writeable) {
     if (writeable || materialized(x) != R_NilValue) {
-#if R_VERSION >= R_Version(4, 6, 0)
-      return DATAPTR_RW(materialize(x));
-#else
-      return DATAPTR(materialize(x));
-#endif
+      return writable_data(materialize(x), altrep_data(x)->type);
     }
     return const_cast<uint8_t*>(altrep_data(x)->data);
   }

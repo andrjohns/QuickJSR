@@ -9,6 +9,7 @@
 #include <climits>
 #include <cmath>
 #include <iterator>
+#include <string>
 #include <string_view>
 
 extern "C" int quickjsr_atom_to_array_index(JSContext* ctx, JSAtom atom,
@@ -22,6 +23,55 @@ extern "C" int quickjsr_atom_to_array_index(JSContext* ctx, JSAtom atom,
   }
 
 namespace quickjsr {
+  inline bool env_has(SEXP env, const char* name) {
+#if R_VERSION >= R_Version(4, 2, 0)
+    return R_existsVarInFrame(env, Rf_install(name));
+#else
+    SEXP key = PROTECT(Rf_mkString(name));
+    SEXP inherits = PROTECT(Rf_ScalarLogical(FALSE));
+    SEXP call = PROTECT(Rf_lang4(Rf_install("exists"), key, env, inherits));
+    SET_TAG(CDDR(call), Rf_install("envir"));
+    SET_TAG(CDDDR(call), Rf_install("inherits"));
+    int error = 0;
+    SEXP value = R_tryEvalSilent(call, R_BaseEnv, &error);
+    bool result = !error && Rf_asLogical(value) == TRUE;
+    UNPROTECT(3);
+    return result;
+#endif
+  }
+
+  inline SEXP registered_namespace(const char* name) {
+#if R_VERSION >= R_Version(4, 6, 0)
+    return R_getRegisteredNamespace(name);
+#else
+    SEXP package = PROTECT(Rf_mkString(name));
+    SEXP call = PROTECT(Rf_lang2(Rf_install("getNamespace"), package));
+    int error = 0;
+    SEXP value = R_tryEvalSilent(call, R_BaseEnv, &error);
+    if (error || TYPEOF(value) != ENVSXP) {
+      UNPROTECT(2);
+      return R_NilValue;
+    }
+    PROTECT(value);
+    UNPROTECT(3);
+    return value;
+#endif
+  }
+
+  inline std::string current_r_error() {
+    SEXP call = PROTECT(Rf_lang1(Rf_install("geterrmessage")));
+    int error = 0;
+    SEXP value = R_tryEvalSilent(call, R_BaseEnv, &error);
+    if (error || TYPEOF(value) != STRSXP || Rf_xlength(value) == 0) {
+      UNPROTECT(1);
+      return "R evaluation failed";
+    }
+    PROTECT(value);
+    std::string result = Rf_translateCharUTF8(STRING_ELT(value, 0));
+    UNPROTECT(2);
+    return result;
+  }
+
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox,
                                   bool auto_unbox_curr);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox,
@@ -56,7 +106,7 @@ namespace quickjsr {
     if (!property_name) {
       return JS_EXCEPTION;
     }
-    if (!cpp11::detail::r_env_has(x, Rf_install(property_name))) {
+    if (!env_has(x, property_name)) {
       JS_FreeCString(ctx, property_name);
       return JS_UNDEFINED;
     }
@@ -65,7 +115,7 @@ namespace quickjsr {
     int error = 0;
     SEXP result = R_tryEvalSilent(call, R_BaseEnv, &error);
     if (error) {
-      std::string message = R_curErrorBuf();
+      std::string message = current_r_error();
       UNPROTECT(2);
       JS_FreeCString(ctx, property_name);
       return JS_ThrowPlainError(ctx, "%s", message.c_str());
@@ -89,7 +139,7 @@ namespace quickjsr {
     int error = 0;
     R_tryEvalSilent(call, R_BaseEnv, &error);
     if (error) {
-      std::string message = R_curErrorBuf();
+      std::string message = current_r_error();
       UNPROTECT(3);
       JS_FreeCString(ctx, property_name);
       JS_ThrowPlainError(ctx, "%s", message.c_str());
@@ -371,7 +421,7 @@ namespace quickjsr {
     if (std::string_view(package_name) == "base") {
       pkg_ns = R_BaseEnv;
     } else {
-      pkg_ns = cpp11::detail::r_ns_env(package_name);
+      pkg_ns = registered_namespace(package_name);
       if (pkg_ns == R_NilValue) {
         JSValue exc = JS_ThrowTypeError(ctx, "Can't find namespace '%s' - the package must already be loaded", package_name);
         JS_FreeCString(ctx, package_name);

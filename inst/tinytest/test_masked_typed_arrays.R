@@ -92,8 +92,8 @@ expect_identical(
 )
 
 masked_ref <- ctx$call_ref("identity", integer_masked)
-values_view <- js_ref_get(masked_ref, "values") |> js_ref_to_altrep()
-validity_view <- js_ref_get(masked_ref, "validity") |> js_ref_to_altrep()
+values_view <- js_ref_to_altrep(js_ref_get(masked_ref, "values"))
+validity_view <- js_ref_to_altrep(js_ref_get(masked_ref, "validity"))
 expect_identical(values_view, c(-2L, 0L, 3L))
 expect_identical(validity_view, as.raw(c(1, 0, 1)))
 expect_identical(js_ref_to_r(masked_ref), integer)

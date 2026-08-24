@@ -13,12 +13,23 @@
 #include <cmath>
 #include <vector>
 
-#if R_VERSION < R_Version(4, 5, 0)
-# define R_ClosureFormals(x) FORMALS(x)
-# define Rf_isDataFrame(x) Rf_isFrame(x)
-#endif
-
 namespace quickjsr {
+  inline bool is_data_frame(SEXP x) {
+#if R_VERSION >= R_Version(4, 5, 0)
+    return Rf_isDataFrame(x);
+#else
+    return Rf_inherits(x, "data.frame");
+#endif
+  }
+
+  inline int closure_arity(SEXP x) {
+#if R_VERSION >= R_Version(4, 5, 0)
+    return static_cast<int>(Rf_xlength(R_ClosureFormals(x)));
+#else
+    return 0;
+#endif
+  }
+
   // Forward declaration to allow for recursive calls
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index, bool is_factor = false, bool is_date_class = false);
@@ -255,7 +266,7 @@ namespace quickjsr {
       property_atoms[j] = JS_NewAtom(
         ctx, Rf_translateCharUTF8(STRING_ELT(col_names, j))
       );
-      data_frames[j] = Rf_isDataFrame(col);
+      data_frames[j] = is_data_frame(col);
       factors[j] = Rf_inherits(col, "factor");
       dates[j] = Rf_inherits(col, "POSIXct") || Rf_inherits(col, "POSIXt") ||
         Rf_inherits(col, "Date");
@@ -399,7 +410,7 @@ namespace quickjsr {
     int error = 0;
     SEXP result = R_tryEvalSilent(call, R_GlobalEnv, &error);
     if (error) {
-      std::string message = R_curErrorBuf();
+      std::string message = current_r_error();
       UNPROTECT(call_protections);
       return JS_ThrowPlainError(ctx, "%s", message.c_str());
     }
@@ -419,7 +430,7 @@ namespace quickjsr {
     JS_SetOpaque(obj, reinterpret_cast<void*>(x));
     // JS_NewCFunctionData() dups `obj` into its own storage, so the local
     // reference created above must still be freed here to avoid leaking it.
-    JSValue fun = JS_NewCFunctionData(ctx, js_fun_static, Rf_xlength(R_ClosureFormals(x)),
+    JSValue fun = JS_NewCFunctionData(ctx, js_fun_static, closure_arity(x),
                                        JS_CFUNC_generic, 1, &obj);
     JS_FreeValue(ctx, obj);
     return fun;
@@ -498,7 +509,7 @@ namespace quickjsr {
   }
 
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index, bool is_factor, bool is_date_class) {
-    if (Rf_isDataFrame(x)) {
+    if (is_data_frame(x)) {
       return SEXP_to_JSValue_df(ctx, VECTOR_ELT(x, index), auto_unbox, auto_unbox_curr);
     }
     if (Rf_isNewList(x)) {
@@ -599,7 +610,7 @@ namespace quickjsr {
       return SEXP_to_JSValue_null(ctx, auto_unbox_curr);
     }
 
-    if (Rf_isDataFrame(x)) {
+    if (is_data_frame(x)) {
       return SEXP_to_JSValue_df(ctx, x, auto_unbox_inp, auto_unbox_curr);
     }
     if (Rf_isNewList(x)) {

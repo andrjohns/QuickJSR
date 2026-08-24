@@ -72,8 +72,9 @@ expect_identical(serialized, 1:3)
 
 orphan_view <- local({
   local_ctx <- JSContext$new(profile = "bare")
-  local_ctx$eval_ref("new Float64Array([10, 20, 30])") |>
-    js_ref_to_altrep()
+  js_ref_to_altrep(
+    local_ctx$eval_ref("new Float64Array([10, 20, 30])")
+  )
 })
 gc()
 gc()
