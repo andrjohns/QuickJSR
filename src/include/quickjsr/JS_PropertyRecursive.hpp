@@ -6,17 +6,22 @@
 #include <cstring>
 
 namespace quickjsr {
-  inline JSValue JS_GetPropertyRecursive(JSContext* ctx, JSValue obj, const char* name) {
+  inline JSValue JS_GetPropertyRecursive(JSContext* ctx, JSValue obj, const char* name,
+                                         JSValue* receiver = nullptr) {
     const char* dot = strchr(name, '.');
     if (dot) {
-      // The name contains a ".", so we extract the first property and recurse on the rest of the name
       std::string first_property_name(name, dot - name);
       JSValue first_property = JS_GetPropertyStr(ctx, obj, first_property_name.c_str());
-      JSValue result = JS_GetPropertyRecursive(ctx, first_property, dot + 1);
+      if (JS_IsException(first_property)) {
+        return first_property;
+      }
+      JSValue result = JS_GetPropertyRecursive(ctx, first_property, dot + 1, receiver);
       JS_FreeValue(ctx, first_property);
       return result;
     } else {
-      // The name does not contain a ".", so we get the property from the object
+      if (receiver) {
+        *receiver = JS_DupValue(ctx, obj);
+      }
       return JS_GetPropertyStr(ctx, obj, name);
     }
   }
@@ -24,14 +29,16 @@ namespace quickjsr {
   inline int JS_SetPropertyRecursive(JSContext* ctx, JSValue obj, const char* name, JSValue value) {
     const char* dot = strchr(name, '.');
     if (dot) {
-      // The name contains a ".", so we extract the first property and recurse on the rest of the name
       std::string first_property_name(name, dot - name);
       JSValue first_property = JS_GetPropertyStr(ctx, obj, first_property_name.c_str());
+      if (JS_IsException(first_property)) {
+        JS_FreeValue(ctx, value);
+        return -1;
+      }
       int result = JS_SetPropertyRecursive(ctx, first_property, dot + 1, value);
       JS_FreeValue(ctx, first_property);
       return result;
     } else {
-      // The name does not contain a ".", so we set the property on the object
       return JS_SetPropertyStr(ctx, obj, name, value);
     }
   }

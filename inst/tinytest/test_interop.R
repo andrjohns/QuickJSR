@@ -56,6 +56,19 @@ expect_error(QuickJSR:::qjs_source(ctx$context, "1 + 1", is_file = 1))
 # Valid logical still works
 expect_true(QuickJSR:::qjs_source(ctx$context, "1 + 1", is_file = FALSE))
 
+validation_ctx <- JSContext$new()
+expect_true(validation_ctx$validate("globalThis.validation_value = 42"))
+expect_equal(validation_ctx$get("validation_value"), NULL)
+expect_false(validation_ctx$validate("function ("))
+validation_ctx$source(code = "globalThis.after_validation = 7")
+expect_equal(validation_ctx$get("after_validation"), 7)
+
+receiver_ctx <- JSContext$new()
+receiver_ctx$source(
+  code = "globalThis.receiverObject = { value: 9, read: function() { return this.value; } }"
+)
+expect_equal(receiver_ctx$call("receiverObject.read"), 9)
+
 # --- C-level date formatting (POSIXct and Date) ---
 expect_equal(to_json(as.POSIXct("1985-06-18 12:34:56", tz = "UTC")),
              "[\"1985-06-18T12:34:56.000Z\"]")

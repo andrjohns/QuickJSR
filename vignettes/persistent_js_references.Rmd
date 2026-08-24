@@ -1,0 +1,174 @@
+---
+title: "Persistent JavaScript References"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Persistent JavaScript References}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(QuickJSR)
+```
+
+QuickJSR normally converts JavaScript results to R objects immediately. This
+is convenient for scalar results and final outputs, but repeated conversion is
+expensive when large values pass through several JavaScript operations.
+
+A `JSValueRef` keeps a value inside its JavaScript context. Property access and
+function calls can then operate on the original value without converting it to
+R. Conversion only occurs when `js_ref_to_r()` is called.
+
+## Creating references
+
+A context can create references by evaluating code, retrieving a global value,
+or calling a function.
+
+```{r}
+ctx <- JSContext$new()
+ctx$source(code = paste(
+  "function identity(x) { return x; }",
+  "function doubleValues(x) { return x.map(value => value * 2); }",
+  "function sumValues(x) { return x.reduce((a, b) => a + b, 0); }"
+))
+
+evaluated <- ctx$eval_ref("[1, 2, 3, 4]")
+retrieved <- ctx$get_ref("Math")
+called <- ctx$call_ref("doubleValues", evaluated)
+
+evaluated
+called
+```
+
+The three context methods are:
+
+| Method | Operation |
+|---|---|
+| `ctx$eval_ref(code)` | Evaluate code and retain its result |
+| `ctx$get_ref(name)` | Retrieve a global value or dotted property path |
+| `ctx$call_ref(name, ...)` | Call a global function or dotted method and retain its result |
+
+## Passing references back to JavaScript
+
+A reference from a context can be passed to ordinary or reference-returning
+calls on that same context. The referenced value is reused directly.
+
+```{r}
+ctx$call("sumValues", evaluated)
+
+doubled <- ctx$call_ref("doubleValues", evaluated)
+ctx$call("sumValues", doubled)
+```
+
+This is the main performance benefit: intermediate arrays and objects do not
+cross the R and JavaScript boundary.
+
+## Property access and callable references
+
+Use `js_ref_get()` to retain a property and `js_ref_call()` to call a retained
+function. Both return another `JSValueRef`.
+
+```{r}
+pipeline <- ctx$eval_ref(
+  "({
+    values: [1, 2, 3],
+    scale(multiplier) {
+      this.values = this.values.map(value => value * multiplier);
+      return this;
+    },
+    total() {
+      return this.values.reduce((a, b) => a + b, 0);
+    }
+  })"
+)
+
+scale <- js_ref_get(pipeline, "scale")
+scaled <- js_ref_call(scale, 10)
+total <- js_ref_call(js_ref_get(scaled, "total"))
+
+js_ref_to_r(total)
+```
+
+The reference returned for `scale` retains `pipeline` as its method receiver,
+so JavaScript evaluates the call with the correct `this` value. Dotted context
+paths retain receivers in the same way.
+
+```{r}
+ctx$source(code = "globalThis.counter = { value: 5, read() { return this.value; } }")
+read <- ctx$get_ref("counter.read")
+js_ref_to_r(js_ref_call(read))
+```
+
+## Materialising a value in R
+
+Call `js_ref_to_r()` when the value is needed in R.
+
+```{r}
+js_ref_to_r(doubled)
+```
+
+Materialisation uses the normal QuickJSR conversion rules. Keeping it explicit
+makes the location and cost of conversion visible.
+
+## Context ownership
+
+Every reference belongs to one context. Passing it to another context raises
+an error because QuickJS values cannot move between runtimes.
+
+```{r error = TRUE}
+other_ctx <- JSContext$new()
+other_ctx$source(code = "function identity(x) { return x; }")
+other_ctx$call("identity", evaluated)
+```
+
+A reference keeps its original context alive. It remains valid even if the
+context object is no longer otherwise reachable from R.
+
+```{r}
+detached <- local({
+  local_ctx <- JSContext$new()
+  local_ctx$eval_ref("({ answer: 42 })")
+})
+
+gc()
+js_ref_to_r(detached)
+```
+
+## Cyclic and non-convertible values
+
+References can retain cyclic objects, functions, promises, maps, sets, and
+class instances without flattening them into R data structures.
+
+```{r}
+cycle <- ctx$eval_ref(
+  "(() => {
+    const value = { name: 'cycle' };
+    value.self = value;
+    return value;
+  })()"
+)
+
+self <- js_ref_get(cycle, "self")
+self
+```
+
+Do not materialise a cyclic graph unless the conversion policy supports its
+shape. Continue operating on it through references instead.
+
+## Choosing between values and references
+
+Use ordinary `call()` and `get()` for scalars, small final results, and values
+that are immediately needed in R. Use references when values are large, when
+several JavaScript operations are chained, or when JavaScript identity and
+structure must be preserved.
+
+A typical high-performance workflow is:
+
+1. Transfer or create data once with `eval_ref()`, `get_ref()`, or `call_ref()`.
+2. Chain JavaScript work with `js_ref_get()` and `js_ref_call()`.
+3. Return small scalar summaries through ordinary `call()` where practical.
+4. Materialise large results once with `js_ref_to_r()`.

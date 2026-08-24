@@ -24,6 +24,14 @@ jsc$source(
 )
 expect_equal(jsc$call("useId"), 99)
 
+error_env <- new.env()
+makeActiveBinding("x", function(value) stop("active get failed"), error_env)
+expect_error(jsc$call("envget", error_env), "active get failed")
+
+makeActiveBinding("y", function(value) stop("active set failed"), error_env)
+expect_error(jsc$call("envset", error_env), "active set failed")
+expect_equal(jsc$call("useId"), 99)
+
 # A non-existent package must error cleanly rather than crash
 jsc$source(
   code = 'function badpkg() { return R.package("no_such_pkg_xyz_123"); }'

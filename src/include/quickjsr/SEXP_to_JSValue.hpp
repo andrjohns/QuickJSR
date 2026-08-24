@@ -4,10 +4,10 @@
 #include "quickjs.h"
 #include <quickjsr/JSValue_to_SEXP.hpp>
 #include <quickjsr/JS_SEXP.hpp>
+#include <quickjsr/JSValueRef.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <vector>
-#include <ctime>
 #include <cmath>
 
 #if R_VERSION < R_Version(4, 5, 0)
@@ -19,30 +19,6 @@ namespace quickjsr {
   // Forward declaration to allow for recursive calls
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr);
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr, int64_t index, bool is_factor = false, bool is_date_class = false);
-
-  // Format a POSIXct numeric value (seconds since epoch) as an ISO 8601 string
-  inline std::string format_posixct_iso(double val) {
-    if (std::isnan(val) || !std::isfinite(val)) return "null";
-    time_t t = static_cast<time_t>(val);
-    double frac = val - static_cast<double>(t);
-    if (frac < 0) { frac += 1.0; t -= 1; }
-
-    struct tm utc_tm;
-#ifdef _WIN32
-    gmtime_s(&utc_tm, &t);
-#else
-    gmtime_r(&t, &utc_tm);
-#endif
-
-    char buf[64];
-    int len = snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d",
-                       utc_tm.tm_year + 1900, utc_tm.tm_mon + 1, utc_tm.tm_mday,
-                       utc_tm.tm_hour, utc_tm.tm_min, utc_tm.tm_sec);
-    int ms = static_cast<int>(frac * 1000 + 0.5);
-    len += snprintf(buf + len, sizeof(buf) - len, ".%03d", ms);
-    snprintf(buf + len, sizeof(buf) - len, "Z");
-    return std::string(buf);
-  }
 
   inline JSValue SEXP_to_JSValue_array(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
     const int64_t n = Rf_xlength(x);
@@ -138,8 +114,6 @@ namespace quickjsr {
     return JS_NewArrayFrom(ctx, rtn_vals.size(), rtn_vals.data());
   }
 
-  static SEXP s_safe_call = NULL;
-
   static JSValue js_fun_static(JSContext* ctx, JSValueConst this_val, int argc,
                                 JSValueConst* argv, int magic, JSValue* data) {
     // data[0] is owned by the enclosing JSCFunctionDataRecord (freed once,
@@ -150,19 +124,24 @@ namespace quickjsr {
     JSValue data_val = data[0];
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(data_val, js_sexp_class_id));
 
-    if (!s_safe_call) {
-      s_safe_call = Rf_findFun(Rf_install("qjs_safe_call"), cpp11::detail::r_ns_env("QuickJSR"));
-      R_PreserveObject(s_safe_call);
-    }
-    cpp11::writable::list args(argc);
+    SEXP call = PROTECT(Rf_allocLang(argc + 1));
+    SETCAR(call, x);
+    SEXP node = CDR(call);
     for (int i = 0; i < argc; i++) {
-      args[i] = JSValue_to_SEXP(ctx, argv[i]);
+      SETCAR(node, JSValue_to_SEXP(ctx, argv[i]));
+      node = CDR(node);
     }
-    cpp11::sexp result = cpp11::function(s_safe_call)(x, args);
-    if (!LOGICAL_ELT(VECTOR_ELT(result, 0), 0)) {
-      return JS_ThrowPlainError(ctx, "%s", Rf_translateCharUTF8(STRING_ELT(VECTOR_ELT(result, 1), 0)));
+    int error = 0;
+    SEXP result = R_tryEvalSilent(call, R_GlobalEnv, &error);
+    if (error) {
+      std::string message = R_curErrorBuf();
+      UNPROTECT(1);
+      return JS_ThrowPlainError(ctx, "%s", message.c_str());
     }
-    return SEXP_to_JSValue(ctx, VECTOR_ELT(result, 1), true, true);
+    PROTECT(result);
+    JSValue value = SEXP_to_JSValue(ctx, result, true, true);
+    UNPROTECT(2);
+    return value;
   }
 
   inline JSValue SEXP_to_JSValue_function(JSContext* ctx, const SEXP& x,
@@ -239,15 +218,7 @@ namespace quickjsr {
           if (Rf_inherits(x, "Date")) {
             val *= 86400.0;
           }
-          std::string formatted = format_posixct_iso(val);
-          JSValue global = JS_GetGlobalObject(ctx);
-          JSValue date_ctor = JS_GetPropertyStr(ctx, global, "Date");
-          JSValue iso_str = JS_NewString(ctx, formatted.c_str());
-          JSValue date_obj = JS_CallConstructor(ctx, date_ctor, 1, &iso_str);
-          JS_FreeValue(ctx, iso_str);
-          JS_FreeValue(ctx, date_ctor);
-          JS_FreeValue(ctx, global);
-          return date_obj;
+          return JS_NewDate(ctx, val * 1000.0);
         } else {
           return JS_NewFloat64(ctx, REAL_ELT(x, index));
         }
@@ -283,6 +254,13 @@ namespace quickjsr {
   inline JSValue SEXP_to_JSValue(JSContext* ctx, const SEXP& x,
                           bool auto_unbox_inp = false,
                           bool auto_unbox = false) {
+    if (Rf_inherits(x, "JSValueRef")) {
+      JSValueRefData* ref = get_value_ref(x);
+      if (ref->ctx != ctx) {
+        cpp11::stop("JSValueRef belongs to a different context");
+      }
+      return JS_DupValue(ctx, ref->value);
+    }
     bool auto_unbox_curr = static_cast<bool>(Rf_inherits(x, "AsIs")) ? false : auto_unbox_inp;
     if (Rf_isNull(x)) {
       return SEXP_to_JSValue_null(ctx, auto_unbox_curr);

@@ -107,6 +107,9 @@ get <- NULL
 #' ctx$get("a")
 #' }
 assign <- NULL
+call_ref <- NULL
+get_ref <- NULL
+eval_ref <- NULL
 
 new_JSContext <- function(stack_size = NULL) {
   stack_size_int <- ifelse(is.null(stack_size), -1, stack_size)
@@ -154,8 +157,17 @@ new_JSContext <- function(stack_size = NULL) {
   ContextList$call <- function(function_name, ...) {
     qjs_call(ContextList$context, function_name, ...)
   }
+  ContextList$call_ref <- function(function_name, ...) {
+    qjs_call_ref(ContextList$context, function_name, ...)
+  }
   ContextList$get <- function(var_name) {
     qjs_get(ContextList$context, var_name)
+  }
+  ContextList$get_ref <- function(var_name) {
+    qjs_get_ref(ContextList$context, var_name)
+  }
+  ContextList$eval_ref <- function(code) {
+    qjs_eval_ref(ContextList$context, code)
   }
   ContextList$assign <- function(var_name, value) {
     qjs_assign(ContextList$context, var_name, value)

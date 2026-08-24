@@ -6,7 +6,13 @@ extern "C" {
   SEXP qjs_source_(SEXP ctx_ptr_, SEXP input_, SEXP is_file_);
   SEXP qjs_validate_(SEXP ctx_ptr_, SEXP code_string_);
   SEXP qjs_call_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_json_);
+  SEXP qjs_call_ref_(SEXP ctx_ptr_, SEXP function_name_, SEXP args_list_);
   SEXP qjs_get_(SEXP ctx_ptr_, SEXP js_obj_name);
+  SEXP qjs_get_ref_(SEXP ctx_ptr_, SEXP js_obj_name);
+  SEXP qjs_eval_ref_(SEXP ctx_ptr_, SEXP code_);
+  SEXP qjs_value_ref_get_(SEXP ref_ptr_, SEXP name_);
+  SEXP qjs_value_ref_call_(SEXP ref_ptr_, SEXP args_list_);
+  SEXP qjs_value_ref_to_r_(SEXP ref_ptr_);
   SEXP qjs_assign_(SEXP ctx_ptr_, SEXP js_obj_name_, SEXP value_);
   SEXP qjs_eval_(SEXP eval_string_);
   SEXP to_json_(SEXP arg_, SEXP auto_unbox_);
@@ -15,11 +21,17 @@ extern "C" {
 
   static const R_CallMethodDef CallEntries[] = {
     {"qjs_call_",     (DL_FUNC) &qjs_call_,     3},
+    {"qjs_call_ref_", (DL_FUNC) &qjs_call_ref_, 3},
     {"qjs_context_",  (DL_FUNC) &qjs_context_,  1},
     {"qjs_eval_",     (DL_FUNC) &qjs_eval_,     1},
     {"qjs_source_",   (DL_FUNC) &qjs_source_,   3},
     {"qjs_validate_", (DL_FUNC) &qjs_validate_, 2},
     {"qjs_get_",      (DL_FUNC) &qjs_get_,      2},
+    {"qjs_get_ref_",  (DL_FUNC) &qjs_get_ref_,  2},
+    {"qjs_eval_ref_", (DL_FUNC) &qjs_eval_ref_, 2},
+    {"qjs_value_ref_get_",  (DL_FUNC) &qjs_value_ref_get_,  2},
+    {"qjs_value_ref_call_", (DL_FUNC) &qjs_value_ref_call_, 2},
+    {"qjs_value_ref_to_r_", (DL_FUNC) &qjs_value_ref_to_r_, 1},
     {"qjs_assign_",   (DL_FUNC) &qjs_assign_,   3},
     {"to_json_",      (DL_FUNC) &to_json_,      2},
     {"from_json_",    (DL_FUNC) &from_json_,    1},

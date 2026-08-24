@@ -36,6 +36,10 @@ qjs_call <- function(ctx_ptr, function_name, ...) {
   .Call(`qjs_call_`, ctx_ptr, function_name, list(...))
 }
 
+qjs_call_ref <- function(ctx_ptr, function_name, ...) {
+  .Call(`qjs_call_ref_`, ctx_ptr, function_name, list(...))
+}
+
 qjs_validate <- function(ctx_ptr, function_name) {
   .Call(`qjs_validate_`, ctx_ptr, function_name)
 }
@@ -44,19 +48,17 @@ qjs_get <- function(ctx_ptr, var_name) {
   .Call(`qjs_get_`, ctx_ptr, var_name)
 }
 
+qjs_get_ref <- function(ctx_ptr, var_name) {
+  .Call(`qjs_get_ref_`, ctx_ptr, var_name)
+}
+
+qjs_eval_ref <- function(ctx_ptr, code) {
+  .Call(`qjs_eval_ref_`, ctx_ptr, code)
+}
+
 qjs_assign <- function(ctx_ptr, var_name, value) {
   res <- .Call(`qjs_assign_`, ctx_ptr, var_name, value)
   invisible(NULL)
-}
-
-# Used by js_fun_static() (SEXP_to_JSValue.hpp) so an R-level error raised
-# while JS calls back into R surfaces as a value instead of unwinding
-# through QuickJS's C interpreter, which would skip its cleanup.
-qjs_safe_call <- function(f, args) {
-  tryCatch(
-    list(TRUE, do.call(f, args)),
-    error = function(e) list(FALSE, conditionMessage(e))
-  )
 }
 
 #' to_json

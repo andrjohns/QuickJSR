@@ -242,6 +242,11 @@ void abort_wrapper(void) {
 #include "quickjs/libunicode.c"
 #include "quickjs/quickjs.c"
 
+int quickjsr_get_date_epoch_ms(JSContext *ctx, JSValueConst value, double *result) {
+  if (!JS_IsDate(value)) return -1;
+  return JS_ToFloat64(ctx, result, JS_VALUE_GET_OBJ(value)->u.object_data);
+}
+
 JSValue exit_wrapper_js(JSContext *ctx, int status) {
   if (safe_to_signal_r()) {
     JS_ThrowInternalError(ctx, "exit(%d) called from QuickJS", status);

@@ -42,26 +42,49 @@ namespace quickjsr {
   static JSValue js_renv_get_property(JSContext *ctx, JSValueConst this_val, JSAtom atom, JSValueConst receiver) {
     const char *property_name = JS_AtomToCString(ctx, atom);
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(this_val, js_renv_class_id));
-    cpp11::environment env(x);
-    if (!property_name || !env.exists(property_name)) {
+    if (!property_name) {
+      return JS_EXCEPTION;
+    }
+    if (!cpp11::detail::r_env_has(x, Rf_install(property_name))) {
       JS_FreeCString(ctx, property_name);
       return JS_UNDEFINED;
     }
-    SEXP fun = env[property_name];
-    JS_FreeCString(ctx, property_name);
-    if (TYPEOF(fun) == PROMSXP) {
-      fun = Rf_eval(fun, env);
+    SEXP name = PROTECT(Rf_mkString(property_name));
+    SEXP call = PROTECT(Rf_lang3(Rf_install("[["), x, name));
+    int error = 0;
+    SEXP result = R_tryEvalSilent(call, R_BaseEnv, &error);
+    if (error) {
+      std::string message = R_curErrorBuf();
+      UNPROTECT(2);
+      JS_FreeCString(ctx, property_name);
+      return JS_ThrowPlainError(ctx, "%s", message.c_str());
     }
-    return SEXP_to_JSValue(ctx, fun, true, true);
+    PROTECT(result);
+    JSValue value = SEXP_to_JSValue(ctx, result, true, true);
+    UNPROTECT(3);
+    JS_FreeCString(ctx, property_name);
+    return value;
   }
 
   static int js_renv_set_property(JSContext *ctx, JSValueConst this_val, JSAtom atom, JSValueConst value, JSValueConst receiver, int flags) {
     const char *property_name = JS_AtomToCString(ctx, atom);
-    SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(this_val, js_renv_class_id));
-    cpp11::environment env(x);
-    if (property_name) {
-      env[property_name] = JSValue_to_SEXP(ctx, value);
+    if (!property_name) {
+      return -1;
     }
+    SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(this_val, js_renv_class_id));
+    SEXP converted = PROTECT(JSValue_to_SEXP(ctx, value));
+    SEXP name = PROTECT(Rf_mkString(property_name));
+    SEXP call = PROTECT(Rf_lang4(Rf_install("[[<-"), x, name, converted));
+    int error = 0;
+    R_tryEvalSilent(call, R_BaseEnv, &error);
+    if (error) {
+      std::string message = R_curErrorBuf();
+      UNPROTECT(3);
+      JS_FreeCString(ctx, property_name);
+      JS_ThrowPlainError(ctx, "%s", message.c_str());
+      return -1;
+    }
+    UNPROTECT(3);
     JS_FreeCString(ctx, property_name);
     return 0;
   }

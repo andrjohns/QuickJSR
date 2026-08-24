@@ -5,7 +5,9 @@
 #include "quickjs.h"
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
-#include <ctime>
+
+extern "C" int quickjsr_get_date_epoch_ms(JSContext* ctx, JSValueConst value,
+                                           double* result);
 
 namespace quickjsr {
   enum BaseType {
@@ -81,46 +83,13 @@ namespace quickjsr {
   SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val);
 
   inline SEXP date_sexp(JSContext* ctx, const JSValue& val) {
-    // Extract getIsoString from the Date object
-    JSValue iso_str_func = JS_GetPropertyStr(ctx, val, "toISOString");
-    if (JS_IsException(iso_str_func) || !JS_IsFunction(ctx, iso_str_func)) {
-      JS_FreeValue(ctx, iso_str_func);
+    double epoch_ms;
+    if (quickjsr_get_date_epoch_ms(ctx, val, &epoch_ms)) {
       return R_NilValue;
     }
-    JSValue iso_str_val = JS_Call(ctx, iso_str_func, val, 0, NULL);
-    JS_FreeValue(ctx, iso_str_func);
-    if (JS_IsException(iso_str_val) || !JS_IsString(iso_str_val)) {
-      JS_FreeValue(ctx, iso_str_val);
-      return R_NilValue;
-    }
-    const char* res = JS_ToCString(ctx, iso_str_val);
-
-    // Parse ISO 8601: "2024-01-15T12:30:45.123Z"
-    double secs = 0.0;
-    if (res) {
-      struct tm utc_tm = {};
-      int ms = 0;
-      int n = sscanf(res, "%d-%d-%dT%d:%d:%d.%dZ",
-                     &utc_tm.tm_year, &utc_tm.tm_mon, &utc_tm.tm_mday,
-                     &utc_tm.tm_hour, &utc_tm.tm_min, &utc_tm.tm_sec, &ms);
-      if (n >= 6) {
-        utc_tm.tm_year -= 1900;
-        utc_tm.tm_mon -= 1;
-        utc_tm.tm_isdst = 0;
-#ifdef _WIN32
-        time_t t = _mkgmtime(&utc_tm);
-#else
-        time_t t = timegm(&utc_tm);
-#endif
-        secs = static_cast<double>(t) + ms / 1000.0;
-      }
-    }
-
-    JS_FreeCString(ctx, res);
-    JS_FreeValue(ctx, iso_str_val);
 
     SEXP out = PROTECT(Rf_allocVector(REALSXP, 1));
-    REAL(out)[0] = secs;
+    REAL(out)[0] = epoch_ms / 1000.0;
     Rf_setAttrib(out, R_ClassSymbol, Rf_mkString("POSIXct"));
     UNPROTECT(1);
     return out;
