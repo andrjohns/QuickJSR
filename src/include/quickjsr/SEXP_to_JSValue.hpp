@@ -5,6 +5,8 @@
 #include <quickjsr/JSValue_to_SEXP.hpp>
 #include <quickjsr/JS_SEXP.hpp>
 #include <quickjsr/JSValueRef.hpp>
+#include <quickjsr/MaskedTypedArray.hpp>
+#include <quickjsr/RVectorView.hpp>
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
 #include <algorithm>
@@ -53,6 +55,133 @@ namespace quickjsr {
     JSValue result = JS_NewTypedArray(ctx, 3, args, type);
     JS_FreeValue(ctx, buffer);
     return result;
+  }
+
+  inline JSValue JS_NewTypedArrayCopy(
+    JSContext* ctx, const void* data, size_t bytes, JSTypedArrayEnum type
+  ) {
+    JSValue buffer = JS_NewArrayBufferCopy(
+      ctx, static_cast<const uint8_t*>(data), bytes
+    );
+    if (JS_IsException(buffer)) return buffer;
+    JSValue args[3] = {buffer, JS_UNDEFINED, JS_UNDEFINED};
+    JSValue result = JS_NewTypedArray(ctx, 3, args, type);
+    JS_FreeValue(ctx, buffer);
+    return result;
+  }
+
+  inline JSValue SEXP_to_JSValue_masked_typed_array(
+    JSContext* ctx, const SEXP& wrapper
+  ) {
+    if (TYPEOF(wrapper) != VECSXP || Rf_xlength(wrapper) != 1) {
+      cpp11::stop("invalid masked typed array");
+    }
+    SEXP x = VECTOR_ELT(wrapper, 0);
+    if (Rf_inherits(x, "factor") || Rf_inherits(x, "Date") ||
+        Rf_inherits(x, "POSIXct") || Rf_inherits(x, "POSIXt")) {
+      cpp11::stop("masked typed arrays do not support factors or dates");
+    }
+
+    size_t size = static_cast<size_t>(Rf_xlength(x));
+    std::vector<uint8_t> validity(size, 1);
+    JSValue values;
+    if (TYPEOF(x) == LGLSXP) {
+      std::vector<uint8_t> data(size);
+      for (size_t i = 0; i < size; i++) {
+        int value = LOGICAL_ELT(x, i);
+        if (value == NA_LOGICAL) {
+          validity[i] = 0;
+          data[i] = 0;
+        } else {
+          data[i] = static_cast<uint8_t>(value);
+        }
+      }
+      values = JS_NewUint8ArrayCopy(ctx, data.data(), size);
+    } else if (TYPEOF(x) == INTSXP) {
+      const int* source = INTEGER(x);
+      JSValue buffer = JS_NewArrayBufferCopy(
+        ctx, reinterpret_cast<const uint8_t*>(source), size * sizeof(int32_t)
+      );
+      if (JS_IsException(buffer)) return buffer;
+      size_t buffer_size = 0;
+      auto* data = reinterpret_cast<int32_t*>(
+        JS_GetArrayBuffer(ctx, &buffer_size, buffer)
+      );
+      if (!data && size > 0) {
+        JS_FreeValue(ctx, buffer);
+        return JS_EXCEPTION;
+      }
+      for (size_t i = 0; i < size; i++) {
+        if (source[i] == NA_INTEGER) {
+          validity[i] = 0;
+          data[i] = 0;
+        }
+      }
+      JSValue args[3] = {buffer, JS_UNDEFINED, JS_UNDEFINED};
+      values = JS_NewTypedArray(ctx, 3, args, JS_TYPED_ARRAY_INT32);
+      JS_FreeValue(ctx, buffer);
+    } else if (TYPEOF(x) == REALSXP) {
+      const double* source = REAL(x);
+      JSValue buffer = JS_NewArrayBufferCopy(
+        ctx, reinterpret_cast<const uint8_t*>(source), size * sizeof(double)
+      );
+      if (JS_IsException(buffer)) return buffer;
+      size_t buffer_size = 0;
+      auto* data = reinterpret_cast<double*>(
+        JS_GetArrayBuffer(ctx, &buffer_size, buffer)
+      );
+      if (!data && size > 0) {
+        JS_FreeValue(ctx, buffer);
+        return JS_EXCEPTION;
+      }
+      for (size_t i = 0; i < size; i++) {
+        if (ISNA(source[i])) {
+          validity[i] = 0;
+          data[i] = 0;
+        }
+      }
+      JSValue args[3] = {buffer, JS_UNDEFINED, JS_UNDEFINED};
+      values = JS_NewTypedArray(ctx, 3, args, JS_TYPED_ARRAY_FLOAT64);
+      JS_FreeValue(ctx, buffer);
+    } else {
+      cpp11::stop("masked typed arrays require a logical, integer, or double vector");
+    }
+    if (JS_IsException(values)) return values;
+
+    JSValue mask = JS_NewUint8ArrayCopy(ctx, validity.data(), size);
+    if (JS_IsException(mask)) {
+      JS_FreeValue(ctx, values);
+      return mask;
+    }
+    JSValue obj = JS_NewObjectClass(ctx, js_masked_typed_array_class_id);
+    if (JS_IsException(obj)) {
+      JS_FreeValue(ctx, values);
+      JS_FreeValue(ctx, mask);
+      return obj;
+    }
+    JS_SetOpaque(
+      obj, new MaskedTypedArrayData{static_cast<SEXPTYPE>(TYPEOF(x))}
+    );
+    if (JS_DefinePropertyValueStr(
+      ctx, obj, "values", values, JS_PROP_ENUMERABLE
+    ) < 0) {
+      JS_FreeValue(ctx, mask);
+      JS_FreeValue(ctx, obj);
+      return JS_EXCEPTION;
+    }
+    if (JS_DefinePropertyValueStr(
+      ctx, obj, "validity", mask, JS_PROP_ENUMERABLE
+    ) < 0) {
+      JS_FreeValue(ctx, obj);
+      return JS_EXCEPTION;
+    }
+    if (JS_DefinePropertyValueStr(
+      ctx, obj, "length", JS_NewInt64(ctx, Rf_xlength(x)), 0
+    ) < 0) {
+      JS_FreeValue(ctx, obj);
+      return JS_EXCEPTION;
+    }
+    return obj;
   }
 
   inline JSValue SEXP_to_JSValue_array(JSContext* ctx, const SEXP& x, bool auto_unbox, bool auto_unbox_curr) {
@@ -253,7 +382,8 @@ namespace quickjsr {
     JSValue data_val = data[0];
     SEXP x = reinterpret_cast<SEXP>(JS_GetOpaque(data_val, js_sexp_class_id));
 
-    SEXP call = PROTECT(Rf_allocLang(argc + 1));
+    SEXP args = PROTECT(Rf_allocList(argc));
+    SEXP call = PROTECT(Rf_lcons(x, args));
     SETCAR(call, x);
     SEXP node = CDR(call);
     for (int i = 0; i < argc; i++) {
@@ -264,12 +394,12 @@ namespace quickjsr {
     SEXP result = R_tryEvalSilent(call, R_GlobalEnv, &error);
     if (error) {
       std::string message = R_curErrorBuf();
-      UNPROTECT(1);
+      UNPROTECT(2);
       return JS_ThrowPlainError(ctx, "%s", message.c_str());
     }
     PROTECT(result);
     JSValue value = SEXP_to_JSValue(ctx, result, true, true);
-    UNPROTECT(2);
+    UNPROTECT(3);
     return value;
   }
 
@@ -293,6 +423,54 @@ namespace quickjsr {
     R_PreserveObject(x);
     JSValue obj = JS_NewObjectClass(ctx, js_renv_class_id);
     JS_SetOpaque(obj, reinterpret_cast<void*>(x));
+    return obj;
+  }
+
+  inline JSValue SEXP_to_JSValue_vector_view(
+    JSContext* ctx, const SEXP& x, bool mutable_view
+  ) {
+    if (TYPEOF(x) != VECSXP || Rf_xlength(x) != 1) {
+      cpp11::stop("invalid R vector view");
+    }
+    SEXP value = VECTOR_ELT(x, 0);
+    if (mutable_view && Rf_isObject(value)) {
+      cpp11::stop("mutable R vector views require an unclassed vector");
+    }
+    switch (TYPEOF(value)) {
+      case RAWSXP:
+      case LGLSXP:
+      case INTSXP:
+      case REALSXP:
+      case STRSXP:
+        break;
+      default:
+        cpp11::stop("invalid R vector view");
+    }
+    auto* data = new RVectorViewData{
+      x,
+      value,
+      static_cast<bool>(Rf_inherits(value, "factor")),
+      static_cast<bool>(
+        Rf_inherits(value, "POSIXct") || Rf_inherits(value, "POSIXt") ||
+        Rf_inherits(value, "Date")
+      ),
+      mutable_view
+    };
+    R_PreserveObject(x);
+    MARK_NOT_MUTABLE(value);
+    JSValue obj = JS_NewObjectClass(ctx, js_rvector_view_class_id);
+    if (JS_IsException(obj)) {
+      R_ReleaseObject(x);
+      delete data;
+      return obj;
+    }
+    JS_SetOpaque(obj, data);
+    if (JS_DefinePropertyValueStr(
+      ctx, obj, "length", JS_NewInt64(ctx, Rf_xlength(value)), 0
+    ) < 0 || JS_PreventExtensions(ctx, obj) < 0) {
+      JS_FreeValue(ctx, obj);
+      return JS_EXCEPTION;
+    }
     return obj;
   }
 
@@ -323,6 +501,8 @@ namespace quickjsr {
     switch (TYPEOF(x)) {
       case NILSXP:
         return JS_NULL;
+      case RAWSXP:
+        return JS_NewInt32(ctx, RAW_ELT(x, index));
       case LGLSXP: {
         if (LOGICAL_ELT(x, index) == NA_LOGICAL) {
           return JS_NULL;
@@ -392,6 +572,15 @@ namespace quickjsr {
         cpp11::stop("JSValueRef belongs to a different context");
       }
       return JS_DupValue(ctx, ref->value);
+    }
+    if (Rf_inherits(x, "quickjs_readonly_view")) {
+      return SEXP_to_JSValue_vector_view(ctx, x, false);
+    }
+    if (Rf_inherits(x, "quickjs_mutable_view")) {
+      return SEXP_to_JSValue_vector_view(ctx, x, true);
+    }
+    if (Rf_inherits(x, "quickjs_masked_typed_array")) {
+      return SEXP_to_JSValue_masked_typed_array(ctx, x);
     }
     if (Rf_inherits(x, "quickjs_typed_array")) {
       return SEXP_to_JSValue_typed_array(ctx, x);

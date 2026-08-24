@@ -33,7 +33,7 @@ else
 	endif
 endif
 
-SOURCES = quickjsr.cpp init.cpp
+SOURCES = quickjsr.cpp altrep.cpp init.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 
 $(SHLIB): $(OBJECTS)

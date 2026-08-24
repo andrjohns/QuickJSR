@@ -10,6 +10,8 @@ jsc$source(
 )
 expect_equal(jsc$call("applyN", function(x) x, 5L), sum(0:4))
 expect_equal(jsc$call("applyN", function(x) x * 2, 20L), sum((0:19) * 2))
+jsc$source(code = "function callThree(f) { return f(1, 2, 3); }")
+expect_equal(jsc$call("callThree", function(x, y, z) x + y * 10 + z * 100), 321)
 
 # Closures/captures still resolve
 mult <- 10

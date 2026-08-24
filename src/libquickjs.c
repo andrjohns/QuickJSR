@@ -255,6 +255,10 @@ int quickjsr_get_fast_array_data(JSContext *ctx, JSValueConst value,
   return 1;
 }
 
+int quickjsr_atom_to_array_index(JSContext *ctx, JSAtom atom, uint32_t *index) {
+  return JS_AtomIsArrayIndex(ctx, index, atom);
+}
+
 JSValue exit_wrapper_js(JSContext *ctx, int status) {
   if (safe_to_signal_r()) {
     JS_ThrowInternalError(ctx, "exit(%d) called from QuickJS", status);

@@ -10,6 +10,10 @@ js_ref_to_r <- function(ref) {
   .Call(`qjs_value_ref_to_r_`, ref)
 }
 
+js_ref_to_altrep <- function(ref) {
+  .Call(`qjs_value_ref_to_altrep_`, ref)
+}
+
 js_script_run <- function(script) {
   .Call(`qjs_script_run_`, script)
 }

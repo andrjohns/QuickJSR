@@ -17,11 +17,13 @@ extern "C" {
   SEXP qjs_value_ref_get_(SEXP ref_ptr_, SEXP name_);
   SEXP qjs_value_ref_call_(SEXP ref_ptr_, SEXP args_list_);
   SEXP qjs_value_ref_to_r_(SEXP ref_ptr_);
+  SEXP qjs_value_ref_to_altrep_(SEXP ref_ptr_);
   SEXP qjs_assign_(SEXP ctx_ptr_, SEXP js_obj_name_, SEXP value_);
   SEXP qjs_eval_(SEXP eval_string_);
   SEXP to_json_(SEXP arg_, SEXP auto_unbox_);
   SEXP from_json_(SEXP json_);
   SEXP qjs_version_();
+  void quickjsr_init_altrep(DllInfo* dll);
 
   static const R_CallMethodDef CallEntries[] = {
     {"qjs_call_",     (DL_FUNC) &qjs_call_,     3},
@@ -40,6 +42,7 @@ extern "C" {
     {"qjs_value_ref_get_",  (DL_FUNC) &qjs_value_ref_get_,  2},
     {"qjs_value_ref_call_", (DL_FUNC) &qjs_value_ref_call_, 2},
     {"qjs_value_ref_to_r_", (DL_FUNC) &qjs_value_ref_to_r_, 1},
+    {"qjs_value_ref_to_altrep_", (DL_FUNC) &qjs_value_ref_to_altrep_, 1},
     {"qjs_assign_",   (DL_FUNC) &qjs_assign_,   3},
     {"to_json_",      (DL_FUNC) &to_json_,      2},
     {"from_json_",    (DL_FUNC) &from_json_,    1},
@@ -48,6 +51,7 @@ extern "C" {
   };
 
   attribute_visible void R_init_QuickJSR(DllInfo* dll){
+    quickjsr_init_altrep(dll);
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
     R_forceSymbols(dll, TRUE);

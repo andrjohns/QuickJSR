@@ -5,6 +5,8 @@
 #include "quickjs.h"
 #include <cpp11.hpp>
 #include <quickjs-libc.h>
+#include <quickjsr/MaskedTypedArray.hpp>
+#include <quickjsr/RVectorView.hpp>
 #include <algorithm>
 #include <climits>
 #include <cstdint>
@@ -190,6 +192,113 @@ namespace quickjsr {
     SEXP out = PROTECT(Rf_allocVector(REALSXP, 1));
     REAL(out)[0] = epoch_ms / 1000.0;
     Rf_setAttrib(out, R_ClassSymbol, Rf_mkString("POSIXct"));
+    UNPROTECT(1);
+    return out;
+  }
+
+  inline SEXP masked_typed_array_sexp(
+    JSContext* ctx, const JSValue& val, MaskedTypedArrayData* metadata
+  ) {
+    JSValue values = JS_GetPropertyStr(ctx, val, "values");
+    if (JS_IsException(values)) return JSValue_to_SEXP(ctx, values);
+    JSValue validity = JS_GetPropertyStr(ctx, val, "validity");
+    if (JS_IsException(validity)) {
+      JS_FreeValue(ctx, values);
+      return JSValue_to_SEXP(ctx, validity);
+    }
+
+    int expected_type = metadata->type == LGLSXP
+      ? JS_TYPED_ARRAY_UINT8
+      : metadata->type == INTSXP
+        ? JS_TYPED_ARRAY_INT32
+        : JS_TYPED_ARRAY_FLOAT64;
+    if (JS_GetTypedArrayType(values) != expected_type ||
+        JS_GetTypedArrayType(validity) != JS_TYPED_ARRAY_UINT8) {
+      JS_FreeValue(ctx, values);
+      JS_FreeValue(ctx, validity);
+      cpp11::stop("masked typed array buffers have invalid types");
+    }
+
+    size_t value_offset = 0;
+    size_t value_bytes = 0;
+    size_t value_element_size = 0;
+    JSValue value_buffer = JS_GetTypedArrayBuffer(
+      ctx, values, &value_offset, &value_bytes, &value_element_size
+    );
+    if (JS_IsException(value_buffer)) {
+      JS_FreeValue(ctx, values);
+      JS_FreeValue(ctx, validity);
+      return JSValue_to_SEXP(ctx, value_buffer);
+    }
+
+    size_t validity_offset = 0;
+    size_t validity_bytes = 0;
+    size_t validity_element_size = 0;
+    JSValue validity_buffer = JS_GetTypedArrayBuffer(
+      ctx, validity, &validity_offset, &validity_bytes,
+      &validity_element_size
+    );
+    if (JS_IsException(validity_buffer)) {
+      JS_FreeValue(ctx, value_buffer);
+      JS_FreeValue(ctx, values);
+      JS_FreeValue(ctx, validity);
+      return JSValue_to_SEXP(ctx, validity_buffer);
+    }
+
+    size_t value_buffer_size = 0;
+    size_t validity_buffer_size = 0;
+    uint8_t* value_buffer_data = JS_GetArrayBuffer(
+      ctx, &value_buffer_size, value_buffer
+    );
+    uint8_t* validity_buffer_data = JS_GetArrayBuffer(
+      ctx, &validity_buffer_size, validity_buffer
+    );
+    size_t size = value_bytes / value_element_size;
+    bool invalid = (!value_buffer_data && value_bytes > 0) ||
+      (!validity_buffer_data && validity_bytes > 0) ||
+      value_offset > value_buffer_size ||
+      value_bytes > value_buffer_size - value_offset ||
+      validity_offset > validity_buffer_size ||
+      validity_bytes > validity_buffer_size - validity_offset ||
+      validity_element_size != 1 || validity_bytes != size;
+    if (invalid) {
+      JSValue exception = JS_GetException(ctx);
+      JS_FreeValue(ctx, exception);
+      JS_FreeValue(ctx, value_buffer);
+      JS_FreeValue(ctx, validity_buffer);
+      JS_FreeValue(ctx, values);
+      JS_FreeValue(ctx, validity);
+      cpp11::stop("masked typed array buffers are unavailable or have different lengths");
+    }
+
+    const uint8_t* value_data = value_buffer_data
+      ? value_buffer_data + value_offset
+      : nullptr;
+    const uint8_t* mask = validity_buffer_data
+      ? validity_buffer_data + validity_offset
+      : nullptr;
+    SEXP out = PROTECT(Rf_allocVector(metadata->type, size));
+    if (metadata->type == LGLSXP) {
+      for (size_t i = 0; i < size; i++) {
+        LOGICAL(out)[i] = mask[i] ? value_data[i] != 0 : NA_LOGICAL;
+      }
+    } else if (metadata->type == INTSXP) {
+      const int32_t* source = reinterpret_cast<const int32_t*>(value_data);
+      if (size > 0) std::copy_n(source, size, INTEGER(out));
+      for (size_t i = 0; i < size; i++) {
+        if (!mask[i]) INTEGER(out)[i] = NA_INTEGER;
+      }
+    } else {
+      const double* source = reinterpret_cast<const double*>(value_data);
+      if (size > 0) std::copy_n(source, size, REAL(out));
+      for (size_t i = 0; i < size; i++) {
+        if (!mask[i]) REAL(out)[i] = NA_REAL;
+      }
+    }
+    JS_FreeValue(ctx, value_buffer);
+    JS_FreeValue(ctx, validity_buffer);
+    JS_FreeValue(ctx, values);
+    JS_FreeValue(ctx, validity);
     UNPROTECT(1);
     return out;
   }
@@ -436,6 +545,16 @@ inline SEXP JSValue_to_SEXP(JSContext* ctx, const JSValue& val) {
       return out;
     }
     case JS_TAG_OBJECT: {
+      if (JS_GetClassID(val) == js_masked_typed_array_class_id) {
+        auto* metadata = static_cast<MaskedTypedArrayData*>(
+          JS_GetOpaque(val, js_masked_typed_array_class_id)
+        );
+        return masked_typed_array_sexp(ctx, val, metadata);
+      }
+      auto* view = static_cast<RVectorViewData*>(
+        JS_GetOpaque(val, js_rvector_view_class_id)
+      );
+      if (view) return view->source;
       int typed_array_type = JS_GetTypedArrayType(val);
       if (typed_array_type >= 0) {
         return typed_array_sexp(ctx, val, typed_array_type);

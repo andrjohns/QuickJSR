@@ -109,6 +109,23 @@ namespace quickjsr {
     JSValue proto = JS_NewObject(ctx);
     JS_SetClassProto(ctx, quickjsr::js_renv_class_id, proto);
 
+    JSValue global_obj = JS_GetGlobalObject(ctx);
+    JSValue array_ctor = JS_GetPropertyStr(ctx, global_obj, "Array");
+    JSValue array_proto = JS_GetPropertyStr(ctx, array_ctor, "prototype");
+    JSValue view_proto = JS_NewObjectProto(ctx, array_proto);
+    JS_SetPropertyFunctionList(
+      ctx, view_proto, quickjsr::js_rvector_view_funcs,
+      static_cast<int>(std::size(quickjsr::js_rvector_view_funcs))
+    );
+    JS_SetClassProto(ctx, quickjsr::js_rvector_view_class_id, view_proto);
+    JSValue masked_proto = JS_NewObject(ctx);
+    JS_SetClassProto(
+      ctx, quickjsr::js_masked_typed_array_class_id, masked_proto
+    );
+    JS_FreeValue(ctx, array_proto);
+    JS_FreeValue(ctx, array_ctor);
+    JS_FreeValue(ctx, global_obj);
+
     if (profile == CONTEXT_BARE) {
       return ctx;
     }
@@ -129,7 +146,7 @@ namespace quickjsr {
     eval_buf(ctx, str, strlen(str), "<input>", JS_EVAL_TYPE_MODULE);
 
     if (profile == CONTEXT_HOST) {
-      JSValue global_obj = JS_GetGlobalObject(ctx);
+      global_obj = JS_GetGlobalObject(ctx);
       JSValue r_obj = quickjsr::create_r_object(ctx);
       JS_SetPropertyStr(ctx, global_obj, "R", r_obj);
       JS_FreeValue(ctx, global_obj);
@@ -165,10 +182,20 @@ namespace quickjsr {
 
     JS_NewClassID(rt, &quickjsr::js_sexp_class_id);
     JS_NewClassID(rt, &quickjsr::js_renv_class_id);
+    JS_NewClassID(rt, &quickjsr::js_rvector_view_class_id);
+    JS_NewClassID(rt, &quickjsr::js_masked_typed_array_class_id);
     // Initialise a class which can be used for passing SEXP objects to JS
     // without needing conversion
     JS_NewClass(rt, quickjsr::js_sexp_class_id, &quickjsr::js_sexp_class_def);
     JS_NewClass(rt, quickjsr::js_renv_class_id, &quickjsr::js_renv_class_def);
+    JS_NewClass(
+      rt, quickjsr::js_rvector_view_class_id,
+      &quickjsr::js_rvector_view_class_def
+    );
+    JS_NewClass(
+      rt, quickjsr::js_masked_typed_array_class_id,
+      &quickjsr::js_masked_typed_array_class_def
+    );
 
     return rt;
   }

@@ -162,6 +162,33 @@ js_ref_to_r(doubled)
 Materialisation uses the normal QuickJSR conversion rules. Keeping it explicit
 makes the location and cost of conversion visible.
 
+## Zero-copy typed-array views in R
+
+Use `js_ref_to_altrep()` when R only needs to read a retained `Uint8Array`,
+`Uint8ClampedArray`, `Int32Array`, or `Float64Array`. It returns an ALTREP raw,
+integer, or double vector backed directly by the JavaScript ArrayBuffer.
+
+```{r}
+typed <- ctx$eval_ref("new Float64Array([1, 2, 3, 4])")
+r_view <- js_ref_to_altrep(typed)
+sum(r_view)
+r_view[1]
+```
+
+Creating the view permanently makes the backing ArrayBuffer immutable. This
+freezes every JavaScript alias of the same buffer and prevents transfer,
+resize, typed-array mutation methods, and DataView writes. Direct indexed
+writes are ignored by the JavaScript engine.
+
+R reads can use the buffer without copying. If R requests writable storage,
+the ALTREP object copies the values into R-owned memory and releases its need
+to retain the JavaScript context. Subsequent R modification affects only the
+R copy.
+
+This API is appropriate when the JavaScript buffer is complete and ready for
+read-only consumption. Use `js_ref_to_r()` when JavaScript must retain mutable
+storage or when the typed-array element type requires conversion.
+
 ## Context ownership
 
 Every reference belongs to one context. Passing it to another context raises

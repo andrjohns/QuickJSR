@@ -96,6 +96,113 @@ JavaScript typed arrays are copied directly into matching R vector storage on
 return. Use a persistent reference when the value should remain in JavaScript
 across several operations, and materialise it only when R needs the result.
 
+## Missing Typed Values
+
+Use `js_masked_typed_array()` when logical, integer, or double values need
+contiguous typed storage without losing R missing values. JavaScript receives
+a branded object containing `values`, `validity`, and `length`.
+
+```{r}
+ctx$source(code = paste(
+  "function fillMissing(x) {",
+  "  x.values[1] = 20;",
+  "  x.validity[1] = 1;",
+  "  return x;",
+  "}"
+))
+
+masked <- js_masked_typed_array(c(10L, NA_integer_, 30L))
+ctx$call("fillMissing", masked)
+```
+
+Logical values use a `Uint8Array`, integers use an `Int32Array`, and doubles
+use a `Float64Array`. The validity mask is a `Uint8Array` with zero for missing
+and one for valid. A double `NA` is masked, while an ordinary `NaN` remains a
+valid Float64 value.
+
+JavaScript may modify both buffers. Returning the branded object reconstructs
+the corresponding R vector using their current contents. The mask costs one
+byte per element, so `js_typed_array()` remains preferable when missing-value
+metadata is unnecessary. Factors and dates are excluded because their class
+semantics require more than numeric storage and a validity mask.
+
+## Read-only R Vector Views
+
+Use `js_readonly_view()` when JavaScript only needs to read an R vector. View
+creation wraps and retains the R vector but does not copy or convert its
+elements. Conversion happens one element at a time as JavaScript reads indexed
+values.
+
+```{r}
+ctx$source(code = paste(
+  "function endpoints(x) { return [x[0], x[x.length - 1]]; }",
+  "function viewTotal(x) { return x.reduce((a, b) => a + b, 0); }"
+))
+
+view <- js_readonly_view(as.double(1:1000))
+ctx$call("endpoints", view)
+ctx$call("viewTotal", view)
+```
+
+Views are array-like rather than typed arrays. They have `length`, indexed
+access, iteration, and inherited `Array` methods. `view.toArray()`, spread
+syntax, and `Array.from(view)` create an ordinary mutable JavaScript array.
+Direct writes and deletes throw an error.
+
+The JavaScript object retains the wrapper and vector for its full lifetime.
+Normal assignment in R still follows copy-on-write rules: changing an R
+binding can create a new vector while an existing JavaScript view continues
+to see the retained vector. Passing the view back to R returns that retained
+object directly.
+
+Use a view when JavaScript reads a small part of a large vector or when
+avoiding the initial transfer is important. Use `js_typed_array()` when
+JavaScript will scan the vector repeatedly, needs typed-array APIs, or needs a
+mutable independent copy.
+
+## Mutable R Vector Views
+
+Use `js_mutable_view()` when JavaScript needs repeated, sparse mutation of a
+vector and R needs to observe those changes without a full return conversion.
+The wrapper owns an independent R copy, so the input binding is never changed.
+
+```{r}
+ctx$source(code = paste(
+  "function updateEndpoints(x) {",
+  "  x[0] += 1;",
+  "  x[x.length - 1] += 1;",
+  "  return x;",
+  "}"
+))
+
+original <- as.double(1:1000)
+view <- js_mutable_view(original)
+ctx$call("updateEndpoints", view)
+view$value[c(1, length(view$value))]
+original[c(1, length(original))]
+```
+
+Creating the wrapper copies the vector once. Passing it to JavaScript is then
+constant time, and indexed reads and writes operate directly on its retained
+R storage. Returning the JavaScript view recovers the same wrapper without
+materialising an array.
+
+Mutable views are fixed-length array-like objects rather than typed arrays.
+Existing elements can be replaced directly or through methods such as
+`reverse()`, `sort()`, `fill()`, and `copyWithin()`. Adding properties, growing
+the view, or deleting elements throws an error. Writes are type checked, with
+`null` and `undefined` representing R missing values except for raw vectors.
+Only unclassed raw, logical, integer, double, and character vectors are
+accepted.
+
+If R modifies `view$value` after JavaScript retains the view, normal R
+copy-on-write can detach the R binding from the retained storage. Complete R
+updates before retaining a mutable view, then treat JavaScript as its writer.
+
+Use a mutable view for sparse or repeated mutation shared with R. Use
+`js_typed_array()` when JavaScript needs typed-array APIs or will perform dense
+numeric work entirely inside JavaScript.
+
 ## Column-oriented Data Frames
 
 The compatibility conversion represents a data frame as an array of row

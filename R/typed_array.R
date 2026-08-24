@@ -8,6 +8,16 @@ js_typed_array <- function(x) {
   structure(x, class = c("quickjs_typed_array", class(x)))
 }
 
+js_masked_typed_array <- function(x) {
+  if (!typeof(x) %in% c("logical", "integer", "double")) {
+    stop("x must be a logical, integer, or double vector", call. = FALSE)
+  }
+  if (inherits(x, c("factor", "Date", "POSIXct", "POSIXt"))) {
+    stop("factors and dates are not supported", call. = FALSE)
+  }
+  structure(list(value = x), class = "quickjs_masked_typed_array")
+}
+
 js_columnar_data_frame <- function(x, typed = TRUE) {
   if (!is.data.frame(x)) {
     stop("x must be a data frame", call. = FALSE)
