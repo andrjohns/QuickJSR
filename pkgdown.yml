@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   persistent_js_references: persistent_js_references.html
   working_with_js_types: working_with_js_types.html
-last_built: 2026-08-24T03:11Z
+last_built: 2026-09-14T00:46Z
 urls:
   reference: https://andrjohns.github.io/QuickJSR/reference
   article: https://andrjohns.github.io/QuickJSR/articles
