@@ -248,8 +248,8 @@ detached <- local({
 
 gc()
 #>           used (Mb) gc trigger (Mb) max used (Mb)
-#> Ncells  780955 41.8    1440315   77  1440315 77.0
-#> Vcells 1399662 10.7    8388608   64  2520251 19.3
+#> Ncells  780925 41.8    1440115   77  1440115 77.0
+#> Vcells 1399610 10.7    8388608   64  2520144 19.3
 js_ref_to_r(detached)
 #> $answer
 #> [1] 42
