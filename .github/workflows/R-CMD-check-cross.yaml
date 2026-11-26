@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 name: R-CMD-check-crossplatform
 
 jobs:
@@ -16,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          -  { platform: 386 }
+          -  { platform: i386 }
           -  { platform: armhf }
           -  { platform: ppc64le }
           -  { platform: s390x }
@@ -40,7 +44,7 @@ jobs:
         if: matrix.config.platform != 'FreeBSD'
         uses: addnab/docker-run-action@v3
         with:
-          image: debian:trixie-slim
+          image: debian:testing-slim
           options: -v ${{ github.workspace }}:/quickjsr --platform=linux/${{ matrix.config.platform }} -e DEBIAN_FRONTEND=noninteractive -e TZ=Etc/UTC -e LANG=en_AU.UTF-8
           run: |
             apt-get update

@@ -1,0 +1,88 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+name: revdep-check
+
+jobs:
+  revdep-check:
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      MAKEFLAGS: -j4
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Get reverse dependency sources
+        id: revdeps
+        run: |
+          # rstan and rstantools are covered by test-rstan.yaml
+          excluded <- c("rstan", "rstantools")
+          cran <- "https://cloud.r-project.org"
+          revdeps <- tools::package_dependencies(
+            "QuickJSR",
+            db = available.packages(repos = cran),
+            which = c("Depends", "Imports", "LinkingTo", "Suggests"),
+            reverse = TRUE
+          )[[1]]
+          revdeps <- setdiff(revdeps, excluded)
+          revdep_dir <- file.path(Sys.getenv("RUNNER_TEMP"), "revdep")
+          tarballs <- download.packages(
+            revdeps,
+            destdir = Sys.getenv("RUNNER_TEMP"),
+            repos = cran,
+            type = "source"
+          )[, 2]
+          for (tarball in tarballs) {
+            untar(tarball, exdir = revdep_dir)
+          }
+          refs <- paste0("deps::", file.path(revdep_dir, revdeps), collapse = " ")
+          cat("refs=", refs, "\n", sep = "", file = Sys.getenv("GITHUB_OUTPUT"), append = TRUE)
+        shell: Rscript {0}
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::. any::rcmdcheck ${{ steps.revdeps.outputs.refs }}
+
+      - name: Check reverse dependencies
+        env:
+          # Match the conditions of CRAN's own reverse dependency checks
+          NOT_CRAN: false
+        run: |
+          revdep_dirs <- list.dirs(
+            file.path(Sys.getenv("RUNNER_TEMP"), "revdep"),
+            recursive = FALSE
+          )
+          failed <- character()
+          for (revdep_dir in revdep_dirs) {
+            result <- rcmdcheck::rcmdcheck(
+              revdep_dir,
+              args = "--no-manual",
+              error_on = "never"
+            )
+            if (length(result$errors) > 0) {
+              failed <- c(failed, basename(revdep_dir))
+            }
+          }
+          if (length(failed) > 0) {
+            stop("Reverse dependency checks failed: ", paste(failed, collapse = ", "))
+          }
+        shell: Rscript {0}
