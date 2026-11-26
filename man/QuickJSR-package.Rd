@@ -13,6 +13,7 @@ Useful links:
 \itemize{
   \item \url{https://github.com/andrjohns/QuickJSR}
   \item \url{https://github.com/quickjs-ng/quickjs}
+  \item \url{https://andrjohns.github.io/QuickJSR/}
   \item Report bugs at \url{https://github.com/andrjohns/QuickJSR/issues}
 }
 

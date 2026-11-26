@@ -107,11 +107,98 @@ get <- NULL
 #' ctx$get("a")
 #' }
 assign <- NULL
+
+#' Create persistent JavaScript references
+#'
+#' @name JSContext-reference-methods
+#' @aliases JSContext-method-call_ref JSContext-method-get_ref JSContext-method-eval_ref call_ref get_ref eval_ref
+#'
+#' @usage
+#' call_ref(function_name, ...)
+#'
+#' get_ref(var_name)
+#'
+#' eval_ref(code)
+#'
+#' @description
+#' Evaluate, retrieve, or call JavaScript while retaining the result inside the
+#' context instead of eagerly converting it to R.
+#'
+#' @param function_name The global function or dotted method path to call.
+#' @param ... Arguments passed to the JavaScript function.
+#' @param var_name The global value or dotted property path to retrieve.
+#' @param code JavaScript source code to evaluate.
+#' @return A `JSValueRef` owned by the context.
 call_ref <- NULL
-compile <- NULL
 get_ref <- NULL
-eval <- NULL
 eval_ref <- NULL
+
+#' Compile code in a persistent JavaScript context
+#'
+#' @name JSContext-method-compile
+#' @aliases compile
+#'
+#' @usage compile(code)
+#'
+#' @description
+#' Compiles source code in an existing `JSContext` without executing it. Use
+#' `ctx$compile(code)` to invoke the method.
+#'
+#' @param code JavaScript source code to compile.
+#' @return A `JSCompiledScript` owned by the context.
+#'
+#' @seealso [js_script_run()]
+#'
+#' @examples
+#' ctx <- JSContext$new(profile = "bare")
+#' script <- ctx$compile("1 + 2")
+#' js_script_run(script)
+compile <- NULL
+
+#' Evaluate code in a persistent JavaScript context
+#'
+#' @name JSContext-method-eval
+#' @aliases eval
+#'
+#' @usage eval(code)
+#'
+#' @description
+#' Evaluates source code in an existing `JSContext`. Global state remains
+#' available to later evaluations, calls, and compiled scripts. Use
+#' `ctx$eval(code)` to invoke the method.
+#'
+#' @param code JavaScript source code to evaluate.
+#' @return The evaluation result converted to R.
+eval <- NULL
+
+#' Create a JavaScript context
+#'
+#' @name JSContext-new
+#' @aliases new
+#'
+#' @usage new(stack_size = NULL, profile = c("host", "standard", "bare"))
+#'
+#' @description
+#' Creates a persistent QuickJS runtime and context.
+#'
+#' @details
+#' Create contexts through `JSContext$new()`.
+#'
+#' The `host` profile preserves the complete API with `std`, `os`,
+#' console helpers, and the global `R` bridge. The `standard` profile
+#' installs `std`, `os`, and console helpers without the global
+#' `R` bridge. The `bare` profile installs only the core JavaScript
+#' runtime. R values can still be passed through context methods in every profile.
+#'
+#' @param stack_size Optional maximum JavaScript stack size in bytes.
+#' @param profile Context facilities to install. See Details.
+#' @return A persistent `JSContext`.
+#'
+#' @examples
+#' ctx <- JSContext$new(profile = "bare")
+#' ctx$source(code = "function add(a, b) { return a + b; }")
+#' ctx$call("add", 2, 3)
+new <- NULL
 
 new_JSContext <- function(stack_size = NULL, profile = c("host", "standard", "bare")) {
   stack_size_int <- ifelse(is.null(stack_size), -1, stack_size)

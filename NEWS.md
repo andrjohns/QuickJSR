@@ -1,3 +1,21 @@
+# QuickJSR 1.12.0
+  * Update bundled QuickJS-NG engine to v0.18.0 (see https://github.com/quickjs-ng/quickjs/releases/tag/v0.18.0 for release notes)
+    * `InternalError` and out-of-memory errors can no longer be caught by JS code
+  * Add persistent JS references: `JSContext$get_ref()`, `$call_ref()`, `$eval_ref()`, with `js_ref_get()`, `js_ref_call()`, `js_ref_to_r()`
+  * Add `JSContext$eval()` for evaluating code and returning the result
+  * Add compiled scripts: `JSContext$compile()`, `js_script_run()`, `js_script_run_ref()`
+  * Add `profile` argument to `JSContext$new()` (`"host"`, `"standard"`, `"bare"`)
+  * Add `js_typed_array()` and `js_masked_typed_array()` for passing R vectors as JS typed arrays
+  * Add `js_columnar_data_frame()` for passing data frames column-wise
+  * Add `js_readonly_view()` and `js_mutable_view()` for exposing R vectors to JS without copying
+  * Add `js_ref_to_altrep()` for ALTREP access to JS typed array buffers
+  * Errors from active bindings in R environments accessed from JS now propagate as R errors
+  * `JSContext$validate()` no longer evaluates the code being validated
+  * `JSContext$call()` on an object method now binds `this` to the owning object
+  * C++17 is now required
+  * `tinytest (>= 1.4.1)` is now required for the test suite
+  * Add pkgdown site at https://andrjohns.github.io/QuickJSR/
+
 # QuickJSR 1.11.0
   * Update bundled QuickJS-NG engine to v0.16.2 (see https://github.com/quickjs-ng/quickjs/releases/tag/v0.16.2 for release notes)
   * Properly divert logging and IO through R interfaces

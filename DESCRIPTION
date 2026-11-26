@@ -1,6 +1,6 @@
 Package: QuickJSR
 Title: Interface for the 'QuickJS-NG' Lightweight 'JavaScript' Engine
-Version: 1.11.9000
+Version: 1.12.0
 Authors@R: c(
     person(c("Andrew", "R."), "Johnson", , "andrew.johnson@arjohnsonau.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7000-8065")),
@@ -26,4 +26,4 @@ Roxygen: list(markdown = TRUE)
 SystemRequirements: GNU make
 VignetteBuilder: knitr
 Config/build/compilation-database: true
-Config/roxygen2/version: 8.1.0
+Config/roxygen2/version: 8.1.1
